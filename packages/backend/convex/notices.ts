@@ -3,8 +3,29 @@ import { mutation, query } from "./_generated/server";
 
 export const list = query({
   handler: async (ctx) => {
-    const notices = await ctx.db.query("notices").order("asc").collect();
-    return notices.sort((a, b) => new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime());
+    try {
+      const notices = await ctx.db.query("notices").collect();
+      
+      // Filter out any corrupted notices and sort safely
+      const validNotices = notices.filter(notice => 
+        notice.title && 
+        notice.subject && 
+        notice.type && 
+        notice.dueDate &&
+        typeof notice.description === 'string'
+      );
+      
+      return validNotices.sort((a, b) => {
+        try {
+          return new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime();
+        } catch (e) {
+          return 0; // If date parsing fails, maintain order
+        }
+      });
+    } catch (error) {
+      console.error("Error fetching notices:", error);
+      return []; // Return empty array on error
+    }
   },
 });
 

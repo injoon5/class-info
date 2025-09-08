@@ -14,8 +14,8 @@
     "dev:server": "turbo -F @class-info/backend dev",
     "dev:setup": "turbo -F @class-info/backend dev:setup"
   },
-  "dependencies": {},
   "devDependencies": {
+    "convex": "^1.26.2",
     "turbo": "^2.5.4"
   },
   "packageManager": "pnpm@8.8.0"
