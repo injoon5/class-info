@@ -157,7 +157,7 @@ function generateCopyText(notices: any[]): string {
 async function copyToClipboard() {
 	const text = generateCopyText($notices.data || []);
 	if (!text) {
-		alert('복사할 수행평가가 없습니다.');
+		alert('복사할 알림이 없습니다.');
 		return;
 	}
 	
@@ -176,11 +176,30 @@ $: pastNoticesByMonth = groupPastNoticesByMonth(pastNotices);
 
 </script>
 
+<svelte:head>
+	<title>학급 공지 - 3학년 4반</title>
+	<meta name="description" content="3학년 4반 학급 공지사항입니다. 수행평가, 숙제, 준비물 등 중요한 공지사항을 확인하세요." />
+	
+	<!-- Open Graph -->
+	<meta property="og:title" content="학급 공지사항 - 3학년 4반" />
+	<meta property="og:description" content="3학년 4반 학급 공지사항입니다. 수행평가, 숙제, 준비물 등 중요한 공지사항을 확인하세요." />
+	<meta property="og:image" content="https://og.ij5.dev/api/og/?title=3%ED%95%99%EB%85%84%204%EB%B0%98%20%EA%B3%B5%EC%A7%80&subheading=timefor.school" />
+	<meta property="og:url" content="https://timefor.school" />
+	<meta property="og:type" content="website" />
+	<meta property="og:site_name" content="학급 공지사항" />
+
+	<!-- Twitter Card -->
+	<meta name="twitter:card" content="summary_large_image" />
+	<meta name="twitter:title" content="학급 공지사항 - 3학년 4반" />
+	<meta name="twitter:description" content="3학년 4반 학급 공지사항입니다. 수행평가, 숙제, 준비물 등 중요한 공지사항을 확인하세요." />
+	<meta name="twitter:image" content="https://og.ij5.dev/api/og/?title=3%ED%95%99%EB%85%84%204%EB%B0%98%20%EA%B3%B5%EC%A7%80&subheading=timefor.school" />
+</svelte:head>
+
 <div class="min-h-screen bg-[#f6f6f6]">
 	<div class="max-w-4xl mx-auto p-4">
 		<!-- Header -->
 		<div class="flex justify-center items-center mb-6 sm:mb-8 pb-3 sm:pb-4 border-b border-[#d1d1d1]">
-			<h1 class="text-xl sm:text-2xl font-bold text-[#262626]">3-4 알림판</h1>
+			<h1 class="text-xl sm:text-2xl font-bold text-[#262626]">3-4 공지</h1>
 		</div>
 
 		<!-- Notice Board -->
@@ -307,7 +326,7 @@ $: pastNoticesByMonth = groupPastNoticesByMonth(pastNotices);
 					on:click={copyToClipboard}
 					class="text-xs text-[#888888] hover:text-[#262626] underline"
 				>
-					수행평가 복사
+					알림 복사
 				</button>
 			</div>
 			<div>

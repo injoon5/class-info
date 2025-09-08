@@ -63,7 +63,67 @@ function renderMarkdown(text: string) {
 	
 	return marked(processedText);
 }
+
+function getFirstLine(text: string): string {
+	if (!text) return '';
+	const cleanText = text
+		.replace(/^#{1,6}\s+/gm, '')
+		.replace(/\*\*(.*?)\*\*/g, '$1')
+		.replace(/\*(.*?)\*/g, '$1')
+		.replace(/`(.*?)`/g, '$1')
+		.replace(/^\>\s+/gm, '')
+		.replace(/^\-\s+/gm, '')
+		.replace(/^\d+\.\s+/gm, '')
+		.trim();
+	
+	const firstLine = cleanText.split('\n')[0];
+	return firstLine || '';
+}
+
+function truncateTitle(title: string): string {
+	if (title.length <= 18) return title;
+	return title.substring(0, 18);
+}
+
+function formatKoreanDueDate(dateString: string): string {
+	const date = new Date(dateString);
+	const month = date.getMonth() + 1;
+	const day = date.getDate();
+	const weekdays = ['일', '월', '화', '수', '목', '금', '토'];
+	const weekday = weekdays[date.getDay()];
+	return `${month}월 ${day}일(${weekday})까지`;
+}
 </script>
+
+<svelte:head>
+	{#if $notice.data}
+		<title>{$notice.data.subject} {$notice.data.title} | 3-4 학급 공지</title>
+		<meta name="description" content="{getFirstLine($notice.data.description) || '공지 내용을 확인하세요!'}" />
+		
+		<!-- Open Graph -->
+		<meta property="og:title" content="{$notice.data.subject} {$notice.data.title} | 3-4 학급 공지" />
+		<meta property="og:description" content="{getFirstLine($notice.data.description) || '공지 내용을 확인하세요!'}" />
+		<meta property="og:image" content="https://og.ij5.dev/api/og/?title={encodeURIComponent($notice.data.subject + ' ' + truncateTitle($notice.data.title))}&subheading={encodeURIComponent(formatKoreanDueDate($notice.data.dueDate))}" />
+		<meta property="og:type" content="article" />
+		<meta property="og:site_name" content="학급 공지" />
+		
+		<!-- Twitter Card -->
+		<meta name="twitter:card" content="summary_large_image" />
+		<meta name="twitter:title" content="{$notice.data.subject} {$notice.data.title} | 3-4 학급 공지" />
+		<meta name="twitter:description" content="{getFirstLine($notice.data.description) || '공지 내용을 확인하세요!'}" />
+		<meta name="twitter:image" content="https://og.ij5.dev/api/og/?title={encodeURIComponent($notice.data.subject + ' ' + truncateTitle($notice.data.title))}&subheading={encodeURIComponent(formatKoreanDueDate($notice.data.dueDate))}" />
+		
+		<!-- Additional meta tags -->
+		<meta name="keywords" content="학급, 공지, {$notice.data.type}, {$notice.data.subject}, 공지사항" />
+	{:else}
+		<title>공지 상세 - 3-4 학급 공지</title>
+		<meta name="description" content="학급 공지의 상세 내용을 확인하세요." />
+		<meta property="og:title" content="공지 상세 - 학급 공지" />
+		<meta property="og:description" content="학급 공지의 상세 내용을 확인하세요." />
+		<meta property="og:image" content="https://og.ij5.dev/api/og/?title=3%ED%95%99%EB%85%84%204%EB%B0%98%20%EA%B3%B5%EC%A7%80&subheading=timefor.school" />
+	{/if}
+</svelte:head>
+
 
 <div class="min-h-screen bg-[#f6f6f6]">
 	<div class="max-w-4xl mx-auto p-4">

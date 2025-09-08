@@ -196,6 +196,28 @@ $: pastNotices = allGroupedNotices.filter(group => group.isPast);
 $: pastNoticesByMonth = groupPastNoticesByMonth(pastNotices);
 </script>
 
+<svelte:head>
+	<title>관리자 페이지 - 학급 공지</title>
+	<meta name="description" content="학급 공지 관리자 페이지입니다. 공지사항을 작성하고 관리할 수 있습니다." />
+
+	<!-- Open Graph -->
+	<meta property="og:title" content="관리자 페이지 - 학급 공지" />
+	<meta property="og:description" content="학급 공지 관리자 페이지입니다. 공지사항을 작성하고 관리할 수 있습니다." />
+	<meta property="og:image" content="https://og.ij5.dev/api/og/?title=3%ED%95%99%EB%85%84%204%EB%B0%98%20%EA%B3%B5%EC%A7%80%20%EA%B4%80%EB%A6%AC&subheading=timefor.school" />
+	<meta property="og:type" content="website" />
+	<meta property="og:site_name" content="학급 공지" />
+	
+	<!-- Twitter Card -->
+	<meta name="twitter:card" content="summary_large_image" />
+	<meta name="twitter:title" content="관리자 페이지 - 학급 공지" />
+	<meta name="twitter:description" content="학급 공지 관리자 페이지입니다. 공지사항을 작성하고 관리할 수 있습니다." />
+	<meta name="twitter:image" content="https://og.ij5.dev/api/og/?title=3%ED%95%99%EB%85%84%204%EB%B0%98%20%EA%B3%B5%EC%A7%80%20%EA%B4%80%EB%A6%AC&subheading=timefor.school" />
+	
+	<!-- Additional meta tags -->
+	<meta name="keywords" content="학급, 관리자, 공지사항, 작성" />
+	<meta name="robots" content="noindex, nofollow" />
+</svelte:head>
+
 {#if !data.isAuthenticated}
 	<!-- PIN Authentication Form -->
 	<div class="min-h-screen bg-[#f6f6f6] flex items-center justify-center">
@@ -229,7 +251,7 @@ $: pastNoticesByMonth = groupPastNoticesByMonth(pastNotices);
 			</form>
 			
 			<div class="mt-6 text-center">
-				<a href="/" class="text-sm text-[#6d6d6d] hover:text-[#262626]">← 알림판으로 돌아가기</a>
+				<a href="/" class="text-sm text-[#6d6d6d] hover:text-[#262626]">← 홈으로 돌아가기</a>
 			</div>
 		</div>
 	</div>
@@ -248,7 +270,7 @@ $: pastNoticesByMonth = groupPastNoticesByMonth(pastNotices);
 					{$showForm ? '취소' : '새 알림 추가'}
 				</button>
 				<a href="/" class="px-3 sm:px-4 py-2 border border-[#b0b0b0] text-sm hover:bg-[#e7e7e7] text-[#262626] text-center">
-					알림판으로
+			홈으로
 				</a>
 				<form method="POST" action="?/logout" use:enhance class="inline">
 					<button type="submit" class="px-3 sm:px-4 py-2 border border-[#b0b0b0] text-sm hover:bg-[#e7e7e7] text-[#262626] text-center w-full sm:w-auto">
