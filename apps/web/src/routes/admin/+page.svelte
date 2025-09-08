@@ -1,16 +1,40 @@
 <script lang="ts">
-import { useQuery, useConvexClient } from 'convex-svelte';
+import { useConvexClient } from 'convex-svelte';
 import { api } from "@class-info/backend/convex/_generated/api";
-import { goto } from '$app/navigation';
 import { writable } from 'svelte/store';
+import { enhance } from '$app/forms';
+import { onMount } from 'svelte';
+import type { PageData, ActionData } from './$types';
 
-const notices = useQuery(api.notices.list, {});
+export let data: PageData;
+export let form: ActionData;
+
+const notices = writable({ isLoading: true, error: undefined as any, data: [] as any[] });
 const client = useConvexClient();
+
+onMount(async () => {
+	// Wait for client to initialize
+	setTimeout(async () => {
+		try {
+			// Set up live subscriptions for real-time updates
+			const unsubscribeNotices = client.onUpdate(api.notices.list, {}, (noticesData) => {
+				notices.set({ isLoading: false, error: undefined, data: noticesData });
+			});
+
+			// Clean up subscriptions when component unmounts
+			return () => {
+				unsubscribeNotices();
+			};
+		} catch (error) {
+			notices.set({ isLoading: false, error, data: [] });
+		}
+	}, 100);
+});
 
 const showForm = writable(false);
 const editingNotice = writable(null);
 
-const form = writable({
+const noticeForm = writable({
 	title: '',
 	subject: '',
 	type: '숙제' as '수행평가' | '숙제' | '준비물' | '기타',
@@ -18,10 +42,84 @@ const form = writable({
 	dueDate: ''
 });
 
+// PIN form state
+const pin = writable('');
+
 const noticeTypes = ['수행평가', '숙제', '준비물', '기타'] as const;
 
+function groupNoticesByDate(noticeList: any[]) {
+	if (!noticeList) return [];
+	
+	const groups = new Map();
+	const now = new Date();
+	const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+	const todayString = today.toDateString();
+	const currentHour = now.getHours();
+	
+	noticeList.forEach(notice => {
+		const dueDate = new Date(notice.dueDate);
+		const dateKey = dueDate.toDateString();
+		const isToday = dateKey === todayString;
+		
+		// Consider it past if:
+		// 1. Date is before today, OR
+		// 2. Date is today but it's after 4pm (16:00)
+		const isPast = dueDate < today || (isToday && currentHour >= 16);
+		
+		// Add weekday
+		const weekdays = ['일', '월', '화', '수', '목', '금', '토'];
+		const weekday = weekdays[dueDate.getDay()];
+		
+		let displayDate;
+		if (isToday) {
+			displayDate = '오늘';
+		} else {
+			displayDate = `${dueDate.getMonth() + 1}/${dueDate.getDate()} (${weekday})`;
+		}
+		
+		if (!groups.has(dateKey)) {
+			groups.set(dateKey, {
+				date: dateKey,
+				displayDate,
+				isToday,
+				isPast,
+				notices: []
+			});
+		}
+		groups.get(dateKey).notices.push(notice);
+	});
+	
+	return Array.from(groups.values()).sort((a, b) => 
+		new Date(a.date).getTime() - new Date(b.date).getTime()
+	);
+}
+
+function groupPastNoticesByMonth(pastGroups: any[]) {
+	const monthGroups = new Map();
+	
+	pastGroups.forEach(group => {
+		const date = new Date(group.date);
+		const monthKey = `${date.getFullYear()}-${date.getMonth()}`;
+		const monthName = `${date.getFullYear()}년 ${date.getMonth() + 1}월`;
+		
+		if (!monthGroups.has(monthKey)) {
+			monthGroups.set(monthKey, {
+				monthName,
+				groups: []
+			});
+		}
+		monthGroups.get(monthKey).groups.push(group);
+	});
+	
+	return Array.from(monthGroups.values()).sort((a, b) => {
+		const [yearA, monthA] = a.monthName.match(/(\d+)년 (\d+)월/).slice(1).map(Number);
+		const [yearB, monthB] = b.monthName.match(/(\d+)년 (\d+)월/).slice(1).map(Number);
+		return (yearB - yearA) || (monthB - monthA); // Most recent first
+	});
+}
+
 function resetForm() {
-	form.set({
+	noticeForm.set({
 		title: '',
 		subject: '',
 		type: '숙제',
@@ -33,7 +131,7 @@ function resetForm() {
 }
 
 function editNotice(notice: any) {
-	form.set({
+	noticeForm.set({
 		title: notice.title,
 		subject: notice.subject,
 		type: notice.type,
@@ -45,7 +143,7 @@ function editNotice(notice: any) {
 }
 
 async function handleSubmit() {
-	const formData = $form;
+	const formData = $noticeForm;
 	
 	if (!formData.title || !formData.subject || !formData.dueDate) {
 		alert('필수 항목을 모두 입력해주세요.');
@@ -91,58 +189,107 @@ function getTypeColor(type: string) {
 		default: return 'bg-[#d1d1d1] text-[#262626]';
 	}
 }
+
+$: allGroupedNotices = groupNoticesByDate($notices.data || []);
+$: currentNotices = allGroupedNotices.filter(group => !group.isPast);
+$: pastNotices = allGroupedNotices.filter(group => group.isPast);
+$: pastNoticesByMonth = groupPastNoticesByMonth(pastNotices);
 </script>
 
-<div class="min-h-screen bg-[#f6f6f6]">
-	<div class="max-w-4xl mx-auto p-4">
+{#if !data.isAuthenticated}
+	<!-- PIN Authentication Form -->
+	<div class="min-h-screen bg-[#f6f6f6] flex items-center justify-center">
+		<div class="bg-white p-8 border border-[#d1d1d1] max-w-md w-full mx-4">
+			<h1 class="text-2xl font-bold text-[#262626] mb-6 text-center">관리자 로그인</h1>
+			
+			<form method="POST" action="?/login" use:enhance>
+				<div class="mb-4">
+					<label for="pin" class="block text-sm font-medium mb-2 text-[#4f4f4f]">PIN</label>
+					<input 
+						id="pin"
+						name="pin"
+						type="password" 
+						bind:value={$pin}
+						class="w-full px-3 py-2 border border-[#b0b0b0] text-sm bg-white text-[#262626]"
+						placeholder="관리자 PIN을 입력하세요"
+						required
+					/>
+				</div>
+				
+				{#if form?.error}
+					<div class="mb-4 text-red-600 text-sm">{form.error}</div>
+				{/if}
+				
+				<button 
+					type="submit"
+					class="w-full px-4 py-2 bg-[#262626] text-white text-sm hover:bg-[#3d3d3d]"
+				>
+					로그인
+				</button>
+			</form>
+			
+			<div class="mt-6 text-center">
+				<a href="/" class="text-sm text-[#6d6d6d] hover:text-[#262626]">← 알림판으로 돌아가기</a>
+			</div>
+		</div>
+	</div>
+{:else}
+	<!-- Admin Panel -->
+	<div class="min-h-screen bg-[#f6f6f6]">
+		<div class="max-w-4xl mx-auto p-3 sm:p-4">
 		<!-- Header -->
-		<div class="flex justify-between items-center mb-8 pb-4 border-b border-[#d1d1d1]">
-			<h1 class="text-2xl font-bold text-[#262626]">관리자 페이지</h1>
-			<div class="flex gap-2">
+		<div class="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 mb-6 pb-3 border-b border-[#d1d1d1]">
+			<h1 class="text-xl sm:text-2xl font-bold text-[#262626]">관리자 페이지</h1>
+			<div class="flex flex-col sm:flex-row gap-2">
 				<button 
 					on:click={() => showForm.set(!$showForm)}
-					class="px-4 py-2 bg-[#262626] text-white text-sm hover:bg-[#3d3d3d]"
+					class="px-3 sm:px-4 py-2 bg-[#262626] text-white text-sm hover:bg-[#3d3d3d] text-center"
 				>
 					{$showForm ? '취소' : '새 알림 추가'}
 				</button>
-				<a href="/" class="px-4 py-2 border border-[#b0b0b0] text-sm hover:bg-[#e7e7e7] text-[#262626]">
+				<a href="/" class="px-3 sm:px-4 py-2 border border-[#b0b0b0] text-sm hover:bg-[#e7e7e7] text-[#262626] text-center">
 					알림판으로
 				</a>
+				<form method="POST" action="?/logout" use:enhance class="inline">
+					<button type="submit" class="px-3 sm:px-4 py-2 border border-[#b0b0b0] text-sm hover:bg-[#e7e7e7] text-[#262626] text-center w-full sm:w-auto">
+						로그아웃
+					</button>
+				</form>
 			</div>
 		</div>
 
 		<!-- Form -->
 		{#if $showForm}
-			<div class="bg-white border border-[#d1d1d1] p-6 mb-8">
-				<h2 class="text-lg font-semibold mb-4 text-[#262626]">
+			<div class="bg-white border border-[#d1d1d1] p-4 mb-6">
+				<h2 class="text-lg font-semibold mb-3 text-[#262626]">
 					{$editingNotice ? '알림 수정' : '새 알림 추가'}
 				</h2>
 				
-				<div class="grid gap-4">
+				<div class="grid gap-3">
 					<div>
 						<label class="block text-sm font-medium mb-1 text-[#4f4f4f]">제목 *</label>
 						<input 
 							type="text" 
-							bind:value={$form.title}
-							class="w-full px-3 py-2 border border-[#b0b0b0] text-sm bg-white text-[#262626]"
+							bind:value={$noticeForm.title}
+							class="w-full px-2 py-1.5 border border-[#b0b0b0] text-sm bg-white text-[#262626]"
 							placeholder="예: 수학 과제 제출"
 						/>
 					</div>
 					
-					<div class="grid grid-cols-2 gap-4">
+					<div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
 						<div>
 							<label class="block text-sm font-medium mb-1 text-[#4f4f4f]">과목 *</label>
 							<input 
 								type="text" 
-								bind:value={$form.subject}
-								class="w-full px-3 py-2 border border-[#b0b0b0] text-sm bg-white text-[#262626]"
+								bind:value={$noticeForm.subject}
+								class="w-full px-2 py-1.5 border border-[#b0b0b0] text-sm bg-white text-[#262626]"
 								placeholder="예: 수학"
 							/>
 						</div>
 						
 						<div>
 							<label class="block text-sm font-medium mb-1 text-[#4f4f4f]">종류 *</label>
-							<select bind:value={$form.type} class="w-full px-3 py-2 border border-[#b0b0b0] text-sm bg-white text-[#262626]">
+							<select bind:value={$noticeForm.type} class="w-full px-2 py-1.5 border border-[#b0b0b0] text-sm bg-white text-[#262626]">
 								{#each noticeTypes as type}
 									<option value={type}>{type}</option>
 								{/each}
@@ -154,31 +301,32 @@ function getTypeColor(type: string) {
 						<label class="block text-sm font-medium mb-1 text-[#4f4f4f]">마감일 *</label>
 						<input 
 							type="date" 
-							bind:value={$form.dueDate}
-							class="w-full px-3 py-2 border border-[#b0b0b0] text-sm bg-white text-[#262626]"
+							bind:value={$noticeForm.dueDate}
+							class="w-full px-2 py-1.5 border border-[#b0b0b0] text-sm bg-white text-[#262626]"
 						/>
 					</div>
 					
 					<div>
-						<label class="block text-sm font-medium mb-1 text-[#4f4f4f]">설명</label>
+						<label class="block text-sm font-medium mb-1 text-[#4f4f4f]">설명 (마크다운 지원)</label>
 						<textarea 
-							bind:value={$form.description}
-							rows="3"
-							class="w-full px-3 py-2 border border-[#b0b0b0] text-sm bg-white text-[#262626]"
-							placeholder="상세 설명 또는 준비물 목록"
+							bind:value={$noticeForm.description}
+							rows="8"
+							class="w-full px-2 py-1.5 border border-[#b0b0b0] text-sm bg-white text-[#262626] font-mono"
+							placeholder="상세 설명 또는 준비물 목록&#10;&#10;마크다운 사용 가능:&#10;**굵게** *기울임* `코드`&#10;# 제목 ## 부제목&#10;- 목록 항목&#10;> 인용구&#10;![이미지](URL)&#10;유튜브 링크는 자동 변환됩니다"
 						></textarea>
+						<p class="text-xs text-[#6d6d6d] mt-1">마크다운 문법을 사용할 수 있습니다. 상세 페이지에서 형식화되어 표시됩니다.</p>
 					</div>
 					
-					<div class="flex gap-2">
+					<div class="flex flex-col sm:flex-row gap-2">
 						<button 
 							on:click={handleSubmit}
-							class="px-4 py-2 bg-[#262626] text-white text-sm hover:bg-[#3d3d3d]"
+							class="px-3 py-1.5 bg-[#262626] text-white text-sm hover:bg-[#3d3d3d]"
 						>
 							{$editingNotice ? '수정' : '추가'}
 						</button>
 						<button 
 							on:click={resetForm}
-							class="px-4 py-2 border border-[#b0b0b0] text-sm hover:bg-[#e7e7e7] text-[#262626]"
+							class="px-3 py-1.5 border border-[#b0b0b0] text-sm hover:bg-[#e7e7e7] text-[#262626]"
 						>
 							취소
 						</button>
@@ -188,52 +336,141 @@ function getTypeColor(type: string) {
 		{/if}
 
 		<!-- Notice List -->
-		{#if notices.isLoading}
+		{#if $notices.isLoading}
 			<div class="text-center py-8 text-[#6d6d6d]">로딩 중...</div>
-		{:else if (notices.data || []).length === 0}
+		{:else if allGroupedNotices.length === 0}
 			<div class="text-center py-8 text-[#6d6d6d]">등록된 알림이 없습니다.</div>
 		{:else}
-			<div class="grid gap-3">
-				{#each (notices.data || []) as notice}
-					<div class="bg-white border border-[#d1d1d1] p-4">
-						<div class="flex items-start justify-between gap-4">
-							<div class="flex-1">
-								<div class="flex items-center gap-3 mb-2">
-									<span class="px-2 py-1 text-xs font-medium rounded {getTypeColor(notice.type)}">
-										{notice.type}
-									</span>
-									<span class="text-sm font-medium text-[#5c5c5c]">
-										{notice.subject}
-									</span>
-									<span class="text-xs text-[#6d6d6d]">
-										마감: {formatDate(notice.dueDate)}
-									</span>
+			<!-- Current and Future Notices -->
+			{#each currentNotices as group}
+				<div class="mb-6">
+					<h3 class="text-md font-semibold mb-3 text-[#4f4f4f] border-l-4 border-[#888888] pl-3">
+						{group.displayDate}
+					</h3>
+					
+					<div class="grid gap-2">
+						{#each group.notices as notice}
+							<div class="bg-white border border-[#d1d1d1] p-3">
+								<div class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
+									<div class="flex-1">
+										<div class="flex items-center gap-2 mb-1.5">
+											<span class="px-2 py-1 text-xs font-medium rounded {getTypeColor(notice.type)}">
+												{notice.type}
+											</span>
+											<span class="text-sm font-medium text-[#5c5c5c]">
+												{notice.subject}
+											</span>
+											<span class="text-xs text-[#6d6d6d]">
+												마감: {formatDate(notice.dueDate)}
+											</span>
+										</div>
+										<h4 class="font-semibold text-[#262626] mb-0.5">
+											{notice.title}
+										</h4>
+										<p class="text-[#4f4f4f] text-sm">
+											{notice.description}
+										</p>
+									</div>
+									<div class="flex gap-2">
+										<button 
+											on:click={() => editNotice(notice)}
+											class="px-3 py-1 text-xs border border-[#b0b0b0] hover:bg-[#e7e7e7] text-[#262626]"
+										>
+											수정
+										</button>
+										<button 
+											on:click={() => handleDelete(notice)}
+											class="px-3 py-1 text-xs bg-[#3d3d3d] text-white hover:bg-[#262626]"
+										>
+											삭제
+										</button>
+									</div>
 								</div>
-								<h3 class="font-semibold text-[#262626] mb-1">
-									{notice.title}
-								</h3>
-								<p class="text-[#4f4f4f] text-sm">
-									{notice.description}
-								</p>
 							</div>
-							<div class="flex gap-2">
-								<button 
-									on:click={() => editNotice(notice)}
-									class="px-3 py-1 text-xs border border-[#b0b0b0] hover:bg-[#e7e7e7] text-[#262626]"
-								>
-									수정
-								</button>
-								<button 
-									on:click={() => handleDelete(notice)}
-									class="px-3 py-1 text-xs bg-[#3d3d3d] text-white hover:bg-[#262626]"
-								>
-									삭제
-								</button>
-							</div>
-						</div>
+						{/each}
 					</div>
-				{/each}
-			</div>
+				</div>
+			{/each}
+
+			<!-- Past Notices by Month -->
+			{#if pastNoticesByMonth.length > 0}
+				<div class="mt-6 pt-6 border-t border-[#e0e0e0]">
+					<h3 class="text-md font-semibold mb-4 text-[#6d6d6d]">지난 알림</h3>
+					{#each pastNoticesByMonth as monthGroup}
+						<details class="mb-3 bg-white border border-[#e0e0e0] rounded">
+							<summary class="px-4 py-3 cursor-pointer hover:bg-[#f9f9f9] text-[#6d6d6d] font-medium">
+								{monthGroup.monthName} ({monthGroup.groups.reduce((sum: number, g: any) => sum + g.notices.length, 0)}개)
+							</summary>
+							<div class="px-4 pb-4">
+								{#each monthGroup.groups as group}
+									<div class="mb-3 last:mb-0">
+										<h4 class="text-sm font-medium mb-2 text-[#888888] border-l-2 border-[#d1d1d1] pl-2">
+											{group.displayDate}
+										</h4>
+										<div class="grid gap-2">
+											{#each group.notices as notice}
+												<div class="bg-[#f9f9f9] border border-[#e0e0e0] p-3 opacity-75">
+													<div class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
+														<div class="flex-1">
+															<div class="flex items-center gap-2 mb-1">
+																<span class="px-1.5 py-0.5 text-xs font-medium rounded {getTypeColor(notice.type)} opacity-75">
+																	{notice.type}
+																</span>
+																<span class="text-xs font-medium text-[#888888]">
+																	{notice.subject}
+																</span>
+																<span class="text-xs text-[#aaa]">
+																	마감: {formatDate(notice.dueDate)}
+																</span>
+															</div>
+															<h5 class="font-medium text-[#666666] mb-0.5 text-sm">
+																{notice.title}
+															</h5>
+															<p class="text-[#888888] text-xs">
+																{notice.description}
+															</p>
+														</div>
+														<div class="flex gap-1">
+															<button 
+																on:click={() => editNotice(notice)}
+																class="px-2 py-1 text-xs border border-[#ccc] hover:bg-[#eee] text-[#666] opacity-75"
+															>
+																수정
+															</button>
+															<button 
+																on:click={() => handleDelete(notice)}
+																class="px-2 py-1 text-xs bg-[#666] text-white hover:bg-[#555] opacity-75"
+															>
+																삭제
+															</button>
+														</div>
+													</div>
+												</div>
+											{/each}
+										</div>
+									</div>
+								{/each}
+							</div>
+						</details>
+					{/each}
+				</div>
+			{/if}
 		{/if}
+		
+		<!-- Footer -->
+		<div class="text-center py-4 text-xs text-[#888888] border-t border-[#e0e0e0] mt-8">
+			{#if $notices.data && $notices.data.length > 0}
+				마지막 업데이트: {new Date(Math.max(...$notices.data.map(n => n.updatedAt || n.createdAt).filter(Boolean))).toLocaleString('ko-KR', { 
+					year: 'numeric', 
+					month: 'long', 
+					day: 'numeric', 
+					hour: '2-digit', 
+					minute: '2-digit' 
+				})}
+			{:else}
+				마지막 업데이트: 데이터 없음
+			{/if}
+		</div>
 	</div>
 </div>
+{/if}

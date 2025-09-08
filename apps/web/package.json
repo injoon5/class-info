@@ -23,10 +23,11 @@
     "vite": "^7.1.2"
   },
   "dependencies": {
+    "@class-info/backend": "workspace:*",
     "@tanstack/svelte-form": "^1.19.2",
-    "zod": "^4.0.17",
     "convex": "^1.25.4",
     "convex-svelte": "^0.0.11",
-    "@class-info/backend": "workspace:*"
+    "marked": "^16.2.1",
+    "zod": "^4.0.17"
   }
 }

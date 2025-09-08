@@ -8,6 +8,13 @@ export const list = query({
   },
 });
 
+export const getById = query({
+  args: { id: v.id("notices") },
+  handler: async (ctx, args) => {
+    return await ctx.db.get(args.id);
+  },
+});
+
 export const create = mutation({
   args: {
     title: v.string(),
@@ -17,9 +24,11 @@ export const create = mutation({
     dueDate: v.string(),
   },
   handler: async (ctx, args) => {
+    const now = Date.now();
     const noticeId = await ctx.db.insert("notices", {
       ...args,
-      createdAt: Date.now(),
+      createdAt: now,
+      updatedAt: now,
     });
     return noticeId;
   },
@@ -36,7 +45,10 @@ export const update = mutation({
   },
   handler: async (ctx, args) => {
     const { id, ...updates } = args;
-    await ctx.db.patch(id, updates);
+    await ctx.db.patch(id, {
+      ...updates,
+      updatedAt: Date.now(),
+    });
   },
 });
 

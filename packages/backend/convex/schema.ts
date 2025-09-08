@@ -9,6 +9,7 @@ export default defineSchema({
     description: v.string(),
     dueDate: v.string(), // ISO date string
     createdAt: v.number(),
+    updatedAt: v.number(),
   }).index("by_due_date", ["dueDate"]),
   
   settings: defineTable({
