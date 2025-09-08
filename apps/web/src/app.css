@@ -10,3 +10,49 @@ body {
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
 }
+
+/* Dark mode styles for markdown content */
+@media (prefers-color-scheme: dark) {
+	.markdown-content h1,
+	.markdown-content h2,
+	.markdown-content h3,
+	.markdown-content h4,
+	.markdown-content h5,
+	.markdown-content h6 {
+		color: rgb(229 229 229) !important; /* neutral-200 */
+	}
+	
+	.markdown-content strong {
+		color: rgb(255 255 255) !important;
+	}
+	
+	.markdown-content em,
+	.markdown-content p,
+	.markdown-content li {
+		color: rgb(212 212 212) !important; /* neutral-300 */
+	}
+	
+	.markdown-content code {
+		background-color: rgb(64 64 64) !important; /* neutral-700 */
+		color: rgb(255 255 255) !important;
+	}
+	
+	.markdown-content pre {
+		background-color: rgb(38 38 38) !important; /* neutral-800 */
+		color: rgb(229 229 229) !important; /* neutral-200 */
+	}
+	
+	.markdown-content blockquote {
+		border-left-color: rgb(115 115 115) !important; /* neutral-500 */
+		color: rgb(163 163 163) !important; /* neutral-400 */
+	}
+	
+	.markdown-content a {
+		color: rgb(96 165 250) !important; /* blue-400 */
+	}
+	
+	.markdown-content a:hover {
+		color: rgb(147 197 253) !important; /* blue-300 */
+	}
+}
+

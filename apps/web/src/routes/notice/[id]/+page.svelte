@@ -34,11 +34,11 @@ onMount(async () => {
 
 function getTypeColor(type: string) {
 	switch(type) {
-		case '수행평가': return 'bg-[#3d3d3d] text-white';
-		case '숙제': return 'bg-[#5c5c5c] text-white';
-		case '준비물': return 'bg-[#888888] text-white';
-		case '기타': return 'bg-[#b0b0b0] text-[#262626]';
-		default: return 'bg-[#d1d1d1] text-[#262626]';
+		case '수행평가': return 'bg-neutral-700 dark:bg-neutral-500 text-white';
+		case '숙제': return 'bg-neutral-600 dark:bg-neutral-400 text-white';
+		case '준비물': return 'bg-neutral-500 dark:bg-neutral-400 text-white';
+		case '기타': return 'bg-neutral-400 dark:bg-neutral-500 text-neutral-800 dark:text-neutral-200';
+		default: return 'bg-neutral-300 dark:bg-neutral-500 text-neutral-800 dark:text-neutral-200';
 	}
 }
 
@@ -125,61 +125,61 @@ function formatKoreanDueDate(dateString: string): string {
 </svelte:head>
 
 
-<div class="min-h-screen bg-[#f6f6f6]">
+<div class="min-h-screen bg-neutral-100 dark:bg-neutral-900">
 	<div class="max-w-4xl mx-auto p-4">
 		<!-- Header -->
-		<div class="flex items-center mb-6 sm:mb-8 pb-3 sm:pb-4 border-b border-[#d1d1d1]">
+		<div class="flex items-center mb-6 sm:mb-8 pb-3 sm:pb-4 border-b border-neutral-300 dark:border-neutral-600">
 			<button 
 				on:click={() => goto('/')}
-				class="mr-4 text-[#888888] hover:text-[#262626] transition-colors"
+				class="mr-4 text-neutral-500 dark:text-neutral-400 hover:text-neutral-800 dark:hover:text-neutral-200 transition-colors"
 			>
 				← 뒤로
 			</button>
-			<h1 class="text-lg sm:text-xl md:text-2xl font-bold text-[#262626]">알림 상세</h1>
+			<h1 class="text-lg sm:text-xl md:text-2xl font-bold text-neutral-800 dark:text-neutral-200">알림 상세</h1>
 		</div>
 
 		<!-- Notice Detail -->
 		{#if $notice.isLoading}
-			<div class="text-center py-8 text-[#6d6d6d]">로딩 중...</div>
+			<div class="text-center py-8 text-neutral-500 dark:text-neutral-400">로딩 중...</div>
 		{:else if $notice.error}
 			<div class="text-center py-8 text-red-600">
 				<p>데이터를 불러오는 중 오류가 발생했습니다.</p>
 				<p class="text-sm mt-2">{$notice.error.toString()}</p>
-				<button on:click={() => window.location.reload()} class="mt-4 px-4 py-2 bg-[#262626] text-white text-sm hover:bg-[#3d3d3d]">
+				<button on:click={() => window.location.reload()} class="mt-4 px-4 py-2 bg-neutral-800 dark:bg-neutral-300 text-white dark:text-neutral-800 text-sm hover:bg-neutral-700 dark:hover:bg-neutral-200">
 					다시 시도
 				</button>
 			</div>
 		{:else if !$notice.data}
-			<div class="text-center py-8 text-[#6d6d6d]">알림을 찾을 수 없습니다.</div>
+			<div class="text-center py-8 text-neutral-500 dark:text-neutral-400">알림을 찾을 수 없습니다.</div>
 		{:else}
-			<div class="bg-white border border-[#d1d1d1] p-4 sm:p-6">
+			<div class="bg-white dark:bg-neutral-800 border border-neutral-300 dark:border-neutral-600 p-4 sm:p-6">
 				<div class="mb-4">
 					<div class="flex items-center gap-2 sm:gap-3 mb-2">
 						<span class="px-2 py-1 text-sm font-medium rounded {getTypeColor($notice.data.type)}">
 							{$notice.data.type}
 						</span>
-						<span class="text-base sm:text-lg font-medium text-[#5c5c5c]">
+						<span class="text-base sm:text-lg font-medium text-neutral-600 dark:text-neutral-300">
 							{$notice.data.subject}
 						</span>
 					</div>
-					<h2 class="text-lg sm:text-xl md:text-2xl font-bold text-[#262626] mb-2">
+					<h2 class="text-lg sm:text-xl md:text-2xl font-bold text-neutral-800 dark:text-neutral-200 mb-2">
 						{$notice.data.title}
 					</h2>
-					<p class="text-sm sm:text-base text-[#888888]">
+					<p class="text-sm sm:text-base text-neutral-500 dark:text-neutral-400">
 						마감일: {formatDate($notice.data.dueDate)}
 					</p>
 				</div>
 				
 				{#if $notice.data.description && $notice.data.description.trim()}
-					<div class="border-t border-[#e0e0e0] pt-4">
-						<div class="text-sm sm:text-base text-[#4f4f4f] leading-relaxed markdown-content">
+					<div class="border-t border-neutral-200 dark:border-neutral-700 pt-4">
+						<div class="text-sm sm:text-base text-neutral-600 dark:text-neutral-300 leading-relaxed markdown-content">
 							{@html renderMarkdown($notice.data.description)}
 						</div>
 					</div>
 				{/if}
 
 				{#if $notice.data.createdAt}
-					<div class="border-t border-[#e0e0e0] pt-4 mt-6 text-xs sm:text-sm text-[#888888]">
+					<div class="border-t border-neutral-200 dark:border-neutral-700 pt-4 mt-6 text-xs sm:text-sm text-neutral-500 dark:text-neutral-400">
 						등록일: {new Date($notice.data.createdAt).toLocaleString('ko-KR', { 
 							year: 'numeric', 
 							month: 'long', 
