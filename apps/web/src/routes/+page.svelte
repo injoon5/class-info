@@ -225,29 +225,49 @@ $: pastNoticesByMonth = groupPastNoticesByMonth(pastNotices);
 					
 					<div class="grid gap-1.5 sm:gap-2">
 						{#each group.notices as notice}
-							<div class="bg-white border border-[#d1d1d1] p-2 sm:p-3 hover:border-[#b0b0b0] transition-colors cursor-pointer" on:click={() => window.location.href = `/notice/${notice._id}`}>
-								<div class="flex items-start justify-between gap-2 sm:gap-4">
-									<div class="flex-1">
-										<div class="flex items-center gap-1.5 sm:gap-2 mb-1">
-											<span class="px-1 py-0.5 sm:py-1 text-xs font-medium rounded {getTypeColor(notice.type)}">
-												{notice.type}
-											</span>
-											<span class="text-xs sm:text-sm  font-bold text-[#5c5c5c]">
-												{notice.subject}
-											</span>
+							{#if notice.description && notice.description.trim()}
+								<div class="bg-white border border-[#d1d1d1] p-2 sm:p-3 hover:border-[#b0b0b0] transition-colors cursor-pointer" on:click={() => window.location.href = `/notice/${notice._id}`}>
+									<div class="flex items-start justify-between gap-2 sm:gap-4">
+										<div class="flex-1">
+											<div class="flex items-center gap-1.5 sm:gap-2 mb-1">
+												<span class="px-1 py-0.5 sm:py-1 text-xs font-medium rounded {getTypeColor(notice.type)}">
+													{notice.type}
+												</span>
+												<span class="text-xs sm:text-sm  font-bold text-[#5c5c5c]">
+													{notice.subject}
+												</span>
+											</div>
+											<h3 class="font-semibold text-sm sm:text-base text-[#262626] mb-0.5 sm:mb-1">
+												{notice.title}
+											</h3>
+											<p class="text-[#4f4f4f] text-xs sm:text-sm truncate">
+												{getFirstLine(notice.description)}
+											</p>
 										</div>
-										<h3 class="font-semibold text-sm sm:text-base text-[#262626] mb-0.5 sm:mb-1">
-											{notice.title}
-										</h3>
-										<p class="text-[#4f4f4f] text-xs sm:text-sm truncate">
-											{getFirstLine(notice.description)}
-										</p>
-									</div>
-									<div class="text-[#b0b0b0] text-sm">
-										→
+										<div class="text-[#b0b0b0] text-sm">
+											→
+										</div>
 									</div>
 								</div>
-							</div>
+							{:else}
+								<div class="bg-white border border-[#d1d1d1] p-2 sm:p-3">
+									<div class="flex items-start justify-between gap-2 sm:gap-4">
+										<div class="flex-1">
+											<div class="flex items-center gap-1.5 sm:gap-2 mb-1">
+												<span class="px-1 py-0.5 sm:py-1 text-xs font-medium rounded {getTypeColor(notice.type)}">
+													{notice.type}
+												</span>
+												<span class="text-xs sm:text-sm  font-bold text-[#5c5c5c]">
+													{notice.subject}
+												</span>
+											</div>
+											<h3 class="font-semibold text-sm sm:text-base text-[#262626] mb-0.5 sm:mb-1">
+												{notice.title}
+											</h3>
+										</div>
+									</div>
+								</div>
+							{/if}
 						{/each}
 					</div>
 				</div>
@@ -270,29 +290,49 @@ $: pastNoticesByMonth = groupPastNoticesByMonth(pastNotices);
 										</h3>
 										<div class="grid gap-1.5 sm:gap-2">
 											{#each group.notices as notice}
-												<div class="bg-[#f9f9f9] border border-[#e0e0e0] p-2 sm:p-3 opacity-75 hover:opacity-90 cursor-pointer transition-opacity" on:click={() => window.location.href = `/notice/${notice._id}`}>
-													<div class="flex items-start justify-between gap-2 sm:gap-4">
-														<div class="flex-1">
-															<div class="flex items-center gap-1.5 sm:gap-2 mb-0.5 sm:mb-1">
-																<span class="px-1 py-0.5 text-xs font-medium rounded {getTypeColor(notice.type)} opacity-75">
-																	{notice.type}
-																</span>
-																<span class="text-xs font-medium text-[#888888]">
-																	{notice.subject}
-																</span>
+												{#if notice.description && notice.description.trim()}
+													<div class="bg-[#f9f9f9] border border-[#e0e0e0] p-2 sm:p-3 opacity-75 hover:opacity-90 cursor-pointer transition-opacity" on:click={() => window.location.href = `/notice/${notice._id}`}>
+														<div class="flex items-start justify-between gap-2 sm:gap-4">
+															<div class="flex-1">
+																<div class="flex items-center gap-1.5 sm:gap-2 mb-0.5 sm:mb-1">
+																	<span class="px-1 py-0.5 text-xs font-medium rounded {getTypeColor(notice.type)} opacity-75">
+																		{notice.type}
+																	</span>
+																	<span class="text-xs font-medium text-[#888888]">
+																		{notice.subject}
+																	</span>
+																</div>
+																<h4 class="font-medium text-[#666666] mb-0.5 text-xs sm:text-sm">
+																	{notice.title}
+																</h4>
+																<p class="text-[#888888] text-xs truncate">
+																	{getFirstLine(notice.description)}
+																</p>
 															</div>
-															<h4 class="font-medium text-[#666666] mb-0.5 text-xs sm:text-sm">
-																{notice.title}
-															</h4>
-															<p class="text-[#888888] text-xs truncate">
-																{getFirstLine(notice.description)}
-															</p>
-														</div>
-														<div class="text-[#c0c0c0] text-sm opacity-75">
-															→
+															<div class="text-[#c0c0c0] text-sm opacity-75">
+																→
+															</div>
 														</div>
 													</div>
-												</div>
+												{:else}
+													<div class="bg-[#f9f9f9] border border-[#e0e0e0] p-2 sm:p-3 opacity-75">
+														<div class="flex items-start justify-between gap-2 sm:gap-4">
+															<div class="flex-1">
+																<div class="flex items-center gap-1.5 sm:gap-2 mb-0.5 sm:mb-1">
+																	<span class="px-1 py-0.5 text-xs font-medium rounded {getTypeColor(notice.type)} opacity-75">
+																		{notice.type}
+																	</span>
+																	<span class="text-xs font-medium text-[#888888]">
+																		{notice.subject}
+																	</span>
+																</div>
+																<h4 class="font-medium text-[#666666] mb-0.5 text-xs sm:text-sm">
+																	{notice.title}
+																</h4>
+															</div>
+														</div>
+													</div>
+												{/if}
 											{/each}
 										</div>
 									</div>

@@ -140,6 +140,11 @@ function editNotice(notice: any) {
 	});
 	editingNotice.set(notice);
 	showForm.set(true);
+	
+	// Wait for the form to render, then smooth scroll to top
+	setTimeout(() => {
+		window.scrollTo({ top: 0, behavior: 'smooth' });
+	}, 100);
 }
 
 async function handleSubmit() {
