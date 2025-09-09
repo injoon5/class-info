@@ -1,5 +1,12 @@
 @import 'tailwindcss';
 
+/* CSS Custom Properties for viewport units that work with dynamic Safari UI */
+html {
+    /* Support for dynamic viewport on mobile Safari */
+    height: 100vh; /* Fallback for older browsers */
+    height: 100dvh; /* Dynamic viewport height - adapts when URL bar hides/shows */
+}
+
 /* Apply Pretendard font globally */
 * {
 	font-family: Pretendard, -apple-system, BlinkMacSystemFont, system-ui, Roboto, 'Helvetica Neue', 'Segoe UI', 'Apple SD Gothic Neo', 'Noto Sans KR', 'Malgun Gothic', 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', sans-serif;
@@ -9,6 +16,19 @@ body {
     font-weight: 400;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+    /* iOS Safari optimizations */
+    -webkit-text-size-adjust: 100%;
+    -webkit-tap-highlight-color: rgba(0, 0, 0, 0);
+    touch-action: manipulation;
+    /* Full screen support for iOS Safari */
+    margin: 0;
+    padding: 0;
+    min-height: 100vh;
+    /* Use safe area insets to extend into notch/home indicator areas */
+    padding-top: env(safe-area-inset-top);
+    padding-bottom: env(safe-area-inset-bottom);
+    padding-left: env(safe-area-inset-left);
+    padding-right: env(safe-area-inset-right);
 }
 
 /* Dark mode styles for markdown content */

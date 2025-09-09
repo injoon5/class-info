@@ -54,7 +54,6 @@ function renderMarkdown(text: string) {
 		<!-- Open Graph -->
 		<meta property="og:title" content="{notice.data.subject} {notice.data.title} | 3-4 학급 공지" />
 		<meta property="og:description" content="{getFirstLine(notice.data.description) || '공지 내용을 확인하세요!'}" />
-		<meta property="og:image" content="https://og.ij5.dev/api/og/?title={encodeURIComponent(notice.data.subject + ' ' + truncateTitle(notice.data.title))}&subheading={encodeURIComponent(formatKoreanDueDate(notice.data.dueDate))}" />
 		<meta property="og:type" content="article" />
 		<meta property="og:site_name" content="학급 공지" />
 		
@@ -62,8 +61,7 @@ function renderMarkdown(text: string) {
 		<meta name="twitter:card" content="summary_large_image" />
 		<meta name="twitter:title" content="{notice.data.subject} {notice.data.title} | 3-4 학급 공지" />
 		<meta name="twitter:description" content="{getFirstLine(notice.data.description) || '공지 내용을 확인하세요!'}" />
-		<meta name="twitter:image" content="https://og.ij5.dev/api/og/?title={encodeURIComponent(notice.data.subject + ' ' + truncateTitle(notice.data.title))}&subheading={encodeURIComponent(formatKoreanDueDate(notice.data.dueDate))}" />
-		
+
 		<!-- Additional meta tags -->
 		<meta name="keywords" content="학급, 공지, {notice.data.type}, {notice.data.subject}, 공지사항" />
 	{:else}
@@ -71,7 +69,6 @@ function renderMarkdown(text: string) {
 		<meta name="description" content="학급 공지의 상세 내용을 확인하세요." />
 		<meta property="og:title" content="공지 상세 - 학급 공지" />
 		<meta property="og:description" content="학급 공지의 상세 내용을 확인하세요." />
-		<meta property="og:image" content="https://og.ij5.dev/api/og/?title=3%ED%95%99%EB%85%84%204%EB%B0%98%20%EA%B3%B5%EC%A7%80&subheading=timefor.school" />
 	{/if}
 </svelte:head>
 
@@ -224,6 +221,7 @@ function renderMarkdown(text: string) {
 @media (min-width: 640px) {
 	.markdown-content :global(h2) {
 		font-size: 1.5rem;
+		
 	}
 }
 

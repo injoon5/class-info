@@ -16,7 +16,7 @@
 </script>
 
 <div class="grid h-svh grid-rows-[auto_1fr] subpixel-antialiased">
-	<main class="overflow-y-auto">
+	<main class="">
 		{@render children()}
 	</main>
 	

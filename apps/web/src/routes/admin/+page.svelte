@@ -229,6 +229,12 @@ const pastNoticesByMonth = $derived(groupPastNoticesByMonth(pastNotices));
 	<!-- Additional meta tags -->
 	<meta name="keywords" content="학급, 관리자, 공지사항, 작성" />
 	<meta name="robots" content="noindex, nofollow" />
+	
+	<!-- Theme colors for iOS Safari -->
+	<meta name="theme-color" content="#f5f5f5" media="(prefers-color-scheme: light)" />
+	<meta name="theme-color" content="#171717" media="(prefers-color-scheme: dark)" />
+	<meta name="msapplication-navbutton-color" content="#f5f5f5" />
+	<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
 </svelte:head>
 
 {#if !data.isAuthenticated}
