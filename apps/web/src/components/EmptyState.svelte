@@ -1,0 +1,1 @@
+<div class="text-center py-8 text-neutral-500 dark:text-neutral-400">등록된 알림이 없습니다.</div>

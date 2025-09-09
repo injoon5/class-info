@@ -1,6 +1,5 @@
 <script lang="ts">
 	import '../app.css';
-    import Header from '../components/Header.svelte';
     import { PUBLIC_CONVEX_URL } from '$env/static/public';
 	import { setupConvex } from 'convex-svelte';
 	import { onMount } from 'svelte';
