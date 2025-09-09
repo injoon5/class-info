@@ -1,8 +1,6 @@
 <script lang="ts">
-import { useConvexClient } from 'convex-svelte';
+import { useQuery } from 'convex-svelte';
 import { api } from "@class-info/backend/convex/_generated/api";
-import { writable } from 'svelte/store';
-import { onMount } from 'svelte';
 import { groupNoticesByDate, groupPastNoticesByMonth } from '../lib/utils.js';
 import NoticeGroup from '../components/NoticeGroup.svelte';
 import PastNoticesSection from '../components/PastNoticesSection.svelte';
@@ -10,34 +8,23 @@ import LoadingState from '../components/LoadingState.svelte';
 import ErrorState from '../components/ErrorState.svelte';
 import EmptyState from '../components/EmptyState.svelte';
 import NoticeFooter from '../components/NoticeFooter.svelte';
+import type { PageData } from './$types.js';
 
-const notices = writable({ isLoading: true, error: undefined as any, data: [] as any[] });
+let { data }: { data: PageData } = $props();
 
-const client = useConvexClient();
+const notices = useQuery(
+	api.notices.list,
+	{},
+	() => ({ 
+		initialData: data.notices,
+		keepPreviousData: true 
+	})
+);
 
-onMount(async () => {
-	// Wait for client to initialize
-	setTimeout(async () => {
-		try {
-			// Set up live subscriptions for real-time updates
-			const unsubscribeNotices = client.onUpdate(api.notices.list, {}, (noticesData) => {
-				notices.set({ isLoading: false, error: undefined, data: noticesData });
-			});
-
-			// Clean up subscriptions when component unmounts
-			return () => {
-				unsubscribeNotices();
-			};
-		} catch (error) {
-			notices.set({ isLoading: false, error, data: [] });
-		}
-	}, 100);
-});
-
-$: allGroupedNotices = groupNoticesByDate($notices.data || []);
-$: currentNotices = allGroupedNotices.filter(group => !group.isPast);
-$: pastNotices = allGroupedNotices.filter(group => group.isPast);
-$: pastNoticesByMonth = groupPastNoticesByMonth(pastNotices);
+const allGroupedNotices = $derived(groupNoticesByDate(notices.data || []));
+const currentNotices = $derived(allGroupedNotices.filter(group => !group.isPast));
+const pastNotices = $derived(allGroupedNotices.filter(group => group.isPast));
+const pastNoticesByMonth = $derived(groupPastNoticesByMonth(pastNotices));
 
 </script>
 
@@ -68,10 +55,10 @@ $: pastNoticesByMonth = groupPastNoticesByMonth(pastNotices);
 		</div>
 
 		<!-- Notice Board -->
-		{#if $notices.isLoading}
+		{#if notices.isLoading}
 			<LoadingState />
-		{:else if $notices.error}
-			<ErrorState error={$notices.error} />
+		{:else if notices.error}
+			<ErrorState error={notices.error} />
 		{:else if allGroupedNotices.length === 0}
 			<EmptyState />
 		{:else}
@@ -83,6 +70,6 @@ $: pastNoticesByMonth = groupPastNoticesByMonth(pastNotices);
 			<PastNoticesSection {pastNoticesByMonth} />
 		{/if}
 		
-		<NoticeFooter notices={$notices.data} />
+		<NoticeFooter notices={notices.data || []} />
 	</div>
 </div>

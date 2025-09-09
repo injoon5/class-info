@@ -123,3 +123,25 @@ export function generateCopyText(notices: any[]): string {
 	
 	return text.trim();
 }
+
+export function formatDate(dateString: string) {
+	const date = new Date(dateString);
+	const weekdays = ['일', '월', '화', '수', '목', '금', '토'];
+	const weekday = weekdays[date.getDay()];
+	return `${date.getFullYear()}년 ${date.getMonth() + 1}월 ${date.getDate()}일 (${weekday})`;
+}
+
+export function truncateTitle(title: string): string {
+	if (title.length <= 18) return title;
+	return title.substring(0, 18);
+}
+
+export function formatKoreanDueDate(dateString: string): string {
+	const date = new Date(dateString);
+	const month = date.getMonth() + 1;
+	const day = date.getDate();
+	const weekdays = ['일', '월', '화', '수', '목', '금', '토'];
+	const weekday = weekdays[date.getDay()];
+	return `${month}월 ${day}일(${weekday})까지`;
+}
+
