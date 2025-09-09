@@ -277,7 +277,7 @@ const pastNoticesByMonth = $derived(groupPastNoticesByMonth(pastNotices));
 {:else}
 	<!-- Admin Panel -->
 	<div class="min-h-screen bg-neutral-100 dark:bg-neutral-900">
-		<div class="max-w-4xl mx-auto p-3 sm:p-4">
+		<div class="max-w-4xl mx-auto p-3 sm:p-4 overflow-hidden">
 		<!-- Header -->
 		<div class="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 mb-6 pb-3 border-b border-neutral-300 dark:border-neutral-600">
 			<h1 class="text-xl sm:text-2xl font-bold text-neutral-800 dark:text-neutral-200">관리자 페이지</h1>
@@ -313,7 +313,7 @@ const pastNoticesByMonth = $derived(groupPastNoticesByMonth(pastNotices));
 							id="notice-title"
 							type="text" 
 							bind:value={$noticeForm.title}
-							class="w-full px-2 py-1.5 border border-neutral-400 dark:border-neutral-500 text-sm bg-white dark:bg-neutral-800 text-neutral-800 dark:text-neutral-200"
+							class="w-full px-2 py-1.5 border border-neutral-400 dark:border-neutral-500 text-sm bg-white dark:bg-neutral-800 text-neutral-800 dark:text-neutral-200 break-words"
 							placeholder="예: 수학 과제 제출"
 						/>
 					</div>
@@ -325,7 +325,7 @@ const pastNoticesByMonth = $derived(groupPastNoticesByMonth(pastNotices));
 								id="notice-subject"
 								type="text" 
 								bind:value={$noticeForm.subject}
-								class="w-full px-2 py-1.5 border border-neutral-400 dark:border-neutral-500 text-sm bg-white dark:bg-neutral-800 text-neutral-800 dark:text-neutral-200"
+								class="w-full px-2 py-1.5 border border-neutral-400 dark:border-neutral-500 text-sm bg-white dark:bg-neutral-800 text-neutral-800 dark:text-neutral-200 break-words"
 								placeholder="예: 수학"
 							/>
 						</div>
@@ -356,7 +356,7 @@ const pastNoticesByMonth = $derived(groupPastNoticesByMonth(pastNotices));
 							id="notice-description"
 							bind:value={$noticeForm.description}
 							rows="8"
-							class="w-full px-2 py-1.5 border border-neutral-400 dark:border-neutral-500 text-sm bg-white dark:bg-neutral-800 text-neutral-800 dark:text-neutral-200 font-mono"
+							class="w-full px-2 py-1.5 border border-neutral-400 dark:border-neutral-500 text-sm bg-white dark:bg-neutral-800 text-neutral-800 dark:text-neutral-200 font-mono resize-none break-words overflow-hidden"
 							placeholder="상세 설명 또는 준비물 목록&#10;&#10;마크다운 사용 가능:&#10;**굵게** *기울임* `코드`&#10;# 제목 ## 부제목&#10;- 목록 항목&#10;> 인용구&#10;![이미지](URL)&#10;유튜브 링크는 자동 변환됩니다"
 						></textarea>
 						<p class="text-xs text-neutral-500 dark:text-neutral-400 mt-1">마크다운 문법을 사용할 수 있습니다. 상세 페이지에서 형식화되어 표시됩니다.</p>
@@ -403,9 +403,9 @@ const pastNoticesByMonth = $derived(groupPastNoticesByMonth(pastNotices));
 					
 					<div class="grid gap-2">
 						{#each group.notices as notice}
-							<div class="bg-white dark:bg-neutral-800 border border-neutral-300 dark:border-neutral-600 p-3">
+							<div class="bg-white dark:bg-neutral-800 border border-neutral-300 dark:border-neutral-600 p-3 overflow-hidden">
 								<div class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
-									<div class="flex-1">
+									<div class="flex-1 min-w-0">
 										<div class="flex items-center gap-2 mb-1.5">
 											<span class="px-2 py-1 text-xs font-medium rounded {getTypeColor(notice.type)}">
 												{notice.type}
@@ -416,7 +416,7 @@ const pastNoticesByMonth = $derived(groupPastNoticesByMonth(pastNotices));
 
 										</div>
 										<div class="flex items-center gap-1.5 mb-0.5">
-											<h4 class="font-semibold text-neutral-800 dark:text-neutral-200">
+											<h4 class="font-semibold text-neutral-800 dark:text-neutral-200 break-words">
 												{notice.title}
 											</h4>
 											{#if notice.files && notice.files.length > 0}
@@ -425,11 +425,11 @@ const pastNoticesByMonth = $derived(groupPastNoticesByMonth(pastNotices));
 												</svg>
 											{/if}
 										</div>
-										<p class="text-neutral-600 dark:text-neutral-300 text-sm line-clamp-2">
+										<p class="text-neutral-600 dark:text-neutral-300 text-sm line-clamp-2 break-words">
 											{notice.description}
 										</p>
 									</div>
-									<div class="flex gap-2">
+									<div class="flex gap-2 flex-shrink-0">
 										<button 
 											onclick={() => editNotice(notice)}
 											class="px-3 py-1 text-xs border border-neutral-400 dark:border-neutral-500 hover:bg-neutral-100 dark:hover:bg-neutral-600 text-neutral-800 dark:text-neutral-200"
@@ -467,7 +467,7 @@ const pastNoticesByMonth = $derived(groupPastNoticesByMonth(pastNotices));
 										</h4>
 										<div class="grid gap-2">
 											{#each group.notices as notice}
-												<div class="bg-neutral-50 dark:bg-neutral-700 border border-neutral-200 dark:border-neutral-700 p-3 opacity-75">
+												<div class="bg-neutral-50 dark:bg-neutral-700 border border-neutral-200 dark:border-neutral-700 p-3 opacity-75 overflow-hidden">
 													<div class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
 														<div class="flex-1">
 															<div class="flex items-center gap-2 mb-1">

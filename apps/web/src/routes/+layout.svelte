@@ -15,7 +15,7 @@
 	});
 </script>
 
-<div class="grid h-svh grid-rows-[auto_1fr] subpixel-antialiased">
+<div class="grid h-svh grid-rows-[auto_1fr] subpixel-antialiased break-keep">
 	<main class="">
 		{@render children()}
 	</main>
