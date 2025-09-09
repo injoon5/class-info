@@ -35,8 +35,11 @@ function renderMarkdown(text: string) {
 	
 	// Convert YouTube links to embeds BEFORE markdown processing to avoid duplication
 	processedText = processedText.replace(
-		/(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/watch\?v=|youtu\.be\/)([a-zA-Z0-9_-]{11})/g,
-		'\n\n<div class="video-embed"><iframe src="https://www.youtube.com/embed/$1" frameborder="0" allowfullscreen></iframe></div>\n\n'
+		/(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/watch\?v=|youtu\.be\/)([a-zA-Z0-9_-]{11})(?:[&?]t=(\d+)s?)?/g,
+		(match, videoId, timestamp) => {
+			const startParam = timestamp ? `?start=${timestamp}` : '';
+			return `\n\n<div class="video-embed"><iframe src="https://www.youtube.com/embed/${videoId}${startParam}" frameborder="0" allowfullscreen></iframe></div>\n\n`;
+		}
 	);
 	
 	return marked(processedText);
@@ -193,7 +196,7 @@ function renderMarkdown(text: string) {
 
 <style>
 .markdown-content :global(h1) {
-	font-size: 1.25rem;
+	font-size: 1.5rem;
 	font-weight: bold;
 	color: #262626;
 	margin-top: 1rem;
@@ -204,12 +207,42 @@ function renderMarkdown(text: string) {
 }
 @media (min-width: 640px) {
 	.markdown-content :global(h1) {
+		font-size: 1.75rem;
+	}
+}
+
+.markdown-content :global(h2) {
+	font-size: 1.25rem;
+	font-weight: bold;
+	color: #262626;
+	margin-top: 0.75rem;
+	margin-bottom: 0.5rem;
+}
+.markdown-content :global(h2:first-child) {
+	margin-top: 0;
+}
+@media (min-width: 640px) {
+	.markdown-content :global(h2) {
 		font-size: 1.5rem;
 	}
 }
 
-.markdown-content :global(h2),
-.markdown-content :global(h3),
+.markdown-content :global(h3) {
+	font-size: 1.125rem;
+	font-weight: bold;
+	color: #262626;
+	margin-top: 0.75rem;
+	margin-bottom: 0.5rem;
+}
+.markdown-content :global(h3:first-child) {
+	margin-top: 0;
+}
+@media (min-width: 640px) {
+	.markdown-content :global(h3) {
+		font-size: 1.25rem;
+	}
+}
+
 .markdown-content :global(h4),
 .markdown-content :global(h5),
 .markdown-content :global(h6) {
@@ -219,16 +252,12 @@ function renderMarkdown(text: string) {
 	margin-top: 0.75rem;
 	margin-bottom: 0.5rem;
 }
-.markdown-content :global(h2:first-child),
-.markdown-content :global(h3:first-child),
 .markdown-content :global(h4:first-child),
 .markdown-content :global(h5:first-child),
 .markdown-content :global(h6:first-child) {
 	margin-top: 0;
 }
 @media (min-width: 640px) {
-	.markdown-content :global(h2),
-	.markdown-content :global(h3),
 	.markdown-content :global(h4),
 	.markdown-content :global(h5),
 	.markdown-content :global(h6) {

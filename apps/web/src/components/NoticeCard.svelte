@@ -27,7 +27,7 @@ export let isPast = false;
 						</svg>
 					{/if}
 				</div>
-				<p class="{isPast ? 'text-neutral-500 dark:text-neutral-400 text-xs' : 'text-neutral-600 dark:text-neutral-300 text-xs sm:text-sm'} truncate">
+				<p class="{isPast ? 'text-neutral-500 dark:text-neutral-400 text-xs' : 'text-neutral-600 dark:text-neutral-300 text-xs sm:text-sm'} line-clamp-2">
 					{getFirstLine(notice.description)}
 				</p>
 			</div>

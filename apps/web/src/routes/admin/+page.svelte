@@ -421,7 +421,7 @@ const pastNoticesByMonth = $derived(groupPastNoticesByMonth(pastNotices));
 												</svg>
 											{/if}
 										</div>
-										<p class="text-neutral-600 dark:text-neutral-300 text-sm">
+										<p class="text-neutral-600 dark:text-neutral-300 text-sm line-clamp-2">
 											{notice.description}
 										</p>
 									</div>
@@ -487,7 +487,7 @@ const pastNoticesByMonth = $derived(groupPastNoticesByMonth(pastNotices));
 																	</svg>
 																{/if}
 															</div>
-															<p class="text-neutral-500 dark:text-neutral-400 text-xs">
+															<p class="text-neutral-500 dark:text-neutral-400 text-xs line-clamp-2">
 																{notice.description}
 															</p>
 														</div>
