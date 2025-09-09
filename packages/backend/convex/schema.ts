@@ -10,7 +10,17 @@ export default defineSchema({
     dueDate: v.string(), // ISO date string
     createdAt: v.number(),
     updatedAt: v.number(),
+    files: v.optional(v.array(v.id("files"))),
   }).index("by_due_date", ["dueDate"]),
+  
+  files: defineTable({
+    name: v.string(),
+    type: v.string(), // MIME type
+    size: v.number(),
+    url: v.string(), // R2 URL
+    storageId: v.string(), // R2 storage ID
+    uploadedAt: v.number(),
+  }),
   
   settings: defineTable({
     key: v.string(),

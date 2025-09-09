@@ -43,6 +43,7 @@ export const create = mutation({
     type: v.union(v.literal("수행평가"), v.literal("숙제"), v.literal("준비물"), v.literal("기타")),
     description: v.string(),
     dueDate: v.string(),
+    files: v.optional(v.array(v.id("files"))),
   },
   handler: async (ctx, args) => {
     const now = Date.now();
@@ -63,6 +64,7 @@ export const update = mutation({
     type: v.union(v.literal("수행평가"), v.literal("숙제"), v.literal("준비물"), v.literal("기타")),
     description: v.string(),
     dueDate: v.string(),
+    files: v.optional(v.array(v.id("files"))),
   },
   handler: async (ctx, args) => {
     const { id, ...updates } = args;

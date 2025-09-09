@@ -24,6 +24,7 @@
   },
   "dependencies": {
     "@class-info/backend": "workspace:*",
+    "@convex-dev/r2": "^0.7.3",
     "@tanstack/svelte-form": "^1.19.2",
     "convex": "^1.25.4",
     "convex-svelte": "^0.0.11",

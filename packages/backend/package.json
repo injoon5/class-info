@@ -13,6 +13,7 @@
     "typescript": "^5.9.2"
   },
   "dependencies": {
+    "@convex-dev/r2": "^0.7.3",
     "convex": "^1.25.4"
   }
 }

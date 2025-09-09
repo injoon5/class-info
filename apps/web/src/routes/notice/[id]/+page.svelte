@@ -18,6 +18,15 @@ const notice = useQuery(
 	})
 );
 
+const noticeFiles = useQuery(
+	api.files.getNoticeFiles,
+	() => ({ noticeId: $page.params.id }),
+	() => ({ 
+		initialData: [],
+		keepPreviousData: true 
+	})
+);
+
 function renderMarkdown(text: string) {
 	// Convert single line breaks to double line breaks for proper markdown parsing
 	let processedText = text
@@ -69,7 +78,7 @@ function renderMarkdown(text: string) {
 		<!-- Header -->
 		<div class="flex items-center mb-6 sm:mb-8 pb-3 sm:pb-4 border-b border-neutral-300 dark:border-neutral-600">
 			<button 
-				on:click={() => goto('/')}
+				onclick={() => goto('/')}
 				class="mr-4 text-neutral-500 dark:text-neutral-400 hover:text-neutral-800 dark:hover:text-neutral-200 transition-colors"
 			>
 				← 뒤로
@@ -84,7 +93,7 @@ function renderMarkdown(text: string) {
 			<div class="text-center py-8 text-red-600">
 				<p>데이터를 불러오는 중 오류가 발생했습니다.</p>
 				<p class="text-sm mt-2">{notice.error.toString()}</p>
-				<button on:click={() => window.location.reload()} class="mt-4 px-4 py-2 bg-neutral-800 dark:bg-neutral-300 text-white dark:text-neutral-800 text-sm hover:bg-neutral-700 dark:hover:bg-neutral-200">
+				<button onclick={() => window.location.reload()} class="mt-4 px-4 py-2 bg-neutral-800 dark:bg-neutral-300 text-white dark:text-neutral-800 text-sm hover:bg-neutral-700 dark:hover:bg-neutral-200">
 					다시 시도
 				</button>
 			</div>
@@ -113,6 +122,48 @@ function renderMarkdown(text: string) {
 					<div class="border-t border-neutral-200 dark:border-neutral-700 pt-4">
 						<div class="text-sm sm:text-base text-neutral-600 dark:text-neutral-300 leading-relaxed markdown-content">
 							{@html renderMarkdown(notice.data.description)}
+						</div>
+					</div>
+				{/if}
+
+				{#if noticeFiles.data && noticeFiles.data.length > 0}
+					<div class="border-t border-neutral-200 dark:border-neutral-700 pt-4 mt-6">
+						<h3 class="text-sm font-medium mb-3 text-neutral-600 dark:text-neutral-300">첨부 파일</h3>
+						<div class="space-y-2">
+							{#each noticeFiles.data as file}
+								<div class="flex items-center gap-3 p-3 bg-neutral-50 dark:bg-neutral-700 border border-neutral-200 dark:border-neutral-600">
+									<div class="flex-shrink-0">
+										{#if file.type.startsWith('image/')}
+											<svg class="w-5 h-5 text-neutral-500" fill="currentColor" viewBox="0 0 20 20">
+												<path fill-rule="evenodd" d="M4 3a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V5a2 2 0 00-2-2H4zm12 12H4l4-8 3 6 2-4 3 6z" clip-rule="evenodd"/>
+											</svg>
+										{:else}
+											<svg class="w-5 h-5 text-red-500" fill="currentColor" viewBox="0 0 20 20">
+												<path fill-rule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4z" clip-rule="evenodd"/>
+											</svg>
+										{/if}
+									</div>
+									<div class="flex-1">
+										<a 
+											href={file.url} 
+											target="_blank" 
+											rel="noopener noreferrer"
+											class="text-sm font-medium text-neutral-800 dark:text-neutral-200 hover:text-neutral-600 dark:hover:text-neutral-300 underline"
+										>
+											{file.name}
+										</a>
+										<p class="text-xs text-neutral-500 dark:text-neutral-400">
+											{(file.size / 1024 / 1024).toFixed(2)} MB
+										</p>
+									</div>
+									<button
+										onclick={() => window.open(file.url, '_blank')}
+										class="px-3 py-1 text-xs border border-neutral-300 dark:border-neutral-600 hover:bg-neutral-100 dark:hover:bg-neutral-600 text-neutral-600 dark:text-neutral-300"
+									>
+										열기
+									</button>
+								</div>
+							{/each}
 						</div>
 					</div>
 				{/if}

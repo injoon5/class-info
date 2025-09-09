@@ -4,10 +4,10 @@ import { api } from "@class-info/backend/convex/_generated/api";
 import { writable } from 'svelte/store';
 import { enhance } from '$app/forms';
 import { onMount } from 'svelte';
+import FileUpload from '../../components/FileUpload.svelte';
 import type { PageData, ActionData } from './$types';
 
-export let data: PageData;
-export let form: ActionData;
+let { data, form }: { data: PageData; form: ActionData } = $props();
 
 const notices = writable({ isLoading: true, error: undefined as any, data: [] as any[] });
 const client = useConvexClient();
@@ -39,7 +39,8 @@ const noticeForm = writable({
 	subject: '',
 	type: '숙제' as '수행평가' | '숙제' | '준비물' | '기타',
 	description: '',
-	dueDate: ''
+	dueDate: '',
+	files: [] as any[]
 });
 
 // PIN form state
@@ -124,7 +125,8 @@ function resetForm() {
 		subject: '',
 		type: '숙제',
 		description: '',
-		dueDate: ''
+		dueDate: '',
+		files: []
 	});
 	editingNotice.set(null);
 	showForm.set(false);
@@ -136,7 +138,8 @@ function editNotice(notice: any) {
 		subject: notice.subject,
 		type: notice.type,
 		description: notice.description,
-		dueDate: notice.dueDate
+		dueDate: notice.dueDate,
+		files: notice.files || []
 	});
 	editingNotice.set(notice);
 	showForm.set(true);
@@ -145,6 +148,13 @@ function editNotice(notice: any) {
 	setTimeout(() => {
 		window.scrollTo({ top: 0, behavior: 'smooth' });
 	}, 100);
+}
+
+function handleFilesChange(fileIds: any[]) {
+	noticeForm.update(form => ({
+		...form,
+		files: fileIds
+	}));
 }
 
 async function handleSubmit() {
@@ -195,10 +205,10 @@ function getTypeColor(type: string) {
 	}
 }
 
-$: allGroupedNotices = groupNoticesByDate($notices.data || []);
-$: currentNotices = allGroupedNotices.filter(group => !group.isPast);
-$: pastNotices = allGroupedNotices.filter(group => group.isPast);
-$: pastNoticesByMonth = groupPastNoticesByMonth(pastNotices);
+const allGroupedNotices = $derived(groupNoticesByDate($notices.data || []));
+const currentNotices = $derived(allGroupedNotices.filter(group => !group.isPast));
+const pastNotices = $derived(allGroupedNotices.filter(group => group.isPast));
+const pastNoticesByMonth = $derived(groupPastNoticesByMonth(pastNotices));
 </script>
 
 <svelte:head>
@@ -226,7 +236,7 @@ $: pastNoticesByMonth = groupPastNoticesByMonth(pastNotices);
 {#if !data.isAuthenticated}
 	<!-- PIN Authentication Form -->
 	<div class="min-h-screen bg-neutral-100 dark:bg-neutral-900 flex items-center justify-center">
-		<div class="bg-white dark:bg-neutral-800 dark:bg-neutral-800 p-8 border border-neutral-300 dark:border-neutral-600 max-w-md w-full mx-4">
+		<div class="bg-white dark:bg-neutral-800 p-8 border border-neutral-300 dark:border-neutral-600 max-w-md w-full mx-4">
 			<h1 class="text-2xl font-bold text-neutral-800 dark:text-neutral-200 mb-6 text-center">관리자 로그인</h1>
 			
 			<form method="POST" action="?/login" use:enhance>
@@ -269,7 +279,7 @@ $: pastNoticesByMonth = groupPastNoticesByMonth(pastNotices);
 			<h1 class="text-xl sm:text-2xl font-bold text-neutral-800 dark:text-neutral-200">관리자 페이지</h1>
 			<div class="flex flex-col sm:flex-row gap-2">
 				<button 
-					on:click={() => showForm.set(!$showForm)}
+					onclick={() => showForm.set(!$showForm)}
 					class="px-3 sm:px-4 py-2 bg-neutral-800 dark:bg-neutral-300 text-white dark:text-neutral-950 text-sm hover:bg-neutral-700 dark:hover:bg-neutral-200 text-center"
 				>
 					{$showForm ? '취소' : '새 알림 추가'}
@@ -294,8 +304,9 @@ $: pastNoticesByMonth = groupPastNoticesByMonth(pastNotices);
 				
 				<div class="grid gap-3">
 					<div>
-						<label class="block text-sm font-medium mb-1 text-neutral-600 dark:text-neutral-300">제목 *</label>
+						<label for="notice-title" class="block text-sm font-medium mb-1 text-neutral-600 dark:text-neutral-300">제목 *</label>
 						<input 
+							id="notice-title"
 							type="text" 
 							bind:value={$noticeForm.title}
 							class="w-full px-2 py-1.5 border border-neutral-400 dark:border-neutral-500 text-sm bg-white dark:bg-neutral-800 text-neutral-800 dark:text-neutral-200"
@@ -305,8 +316,9 @@ $: pastNoticesByMonth = groupPastNoticesByMonth(pastNotices);
 					
 					<div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
 						<div>
-							<label class="block text-sm font-medium mb-1 text-neutral-600 dark:text-neutral-300">과목 *</label>
+							<label for="notice-subject" class="block text-sm font-medium mb-1 text-neutral-600 dark:text-neutral-300">과목 *</label>
 							<input 
+								id="notice-subject"
 								type="text" 
 								bind:value={$noticeForm.subject}
 								class="w-full px-2 py-1.5 border border-neutral-400 dark:border-neutral-500 text-sm bg-white dark:bg-neutral-800 text-neutral-800 dark:text-neutral-200"
@@ -315,8 +327,8 @@ $: pastNoticesByMonth = groupPastNoticesByMonth(pastNotices);
 						</div>
 						
 						<div>
-							<label class="block text-sm font-medium mb-1 text-neutral-600 dark:text-neutral-300">종류 *</label>
-							<select bind:value={$noticeForm.type} class="w-full px-2 py-1.5 border border-neutral-400 dark:border-neutral-500 text-sm bg-white dark:bg-neutral-800 text-neutral-800 dark:text-neutral-200">
+							<label for="notice-type" class="block text-sm font-medium mb-1 text-neutral-600 dark:text-neutral-300">종류 *</label>
+							<select id="notice-type" bind:value={$noticeForm.type} class="w-full px-2 py-1.5 border border-neutral-400 dark:border-neutral-500 text-sm bg-white dark:bg-neutral-800 text-neutral-800 dark:text-neutral-200">
 								{#each noticeTypes as type}
 									<option value={type}>{type}</option>
 								{/each}
@@ -325,8 +337,9 @@ $: pastNoticesByMonth = groupPastNoticesByMonth(pastNotices);
 					</div>
 					
 					<div>
-						<label class="block text-sm font-medium mb-1 text-neutral-600 dark:text-neutral-300">마감일 *</label>
+						<label for="notice-date" class="block text-sm font-medium mb-1 text-neutral-600 dark:text-neutral-300">마감일 *</label>
 						<input 
+							id="notice-date"
 							type="date" 
 							bind:value={$noticeForm.dueDate}
 							class="w-full px-2 py-1.5 border border-neutral-400 dark:border-neutral-500 text-sm bg-white dark:bg-neutral-800 text-neutral-800 dark:text-neutral-200"
@@ -334,8 +347,9 @@ $: pastNoticesByMonth = groupPastNoticesByMonth(pastNotices);
 					</div>
 					
 					<div>
-						<label class="block text-sm font-medium mb-1 text-neutral-600 dark:text-neutral-300">설명 (마크다운 지원)</label>
+						<label for="notice-description" class="block text-sm font-medium mb-1 text-neutral-600 dark:text-neutral-300">설명 (마크다운 지원)</label>
 						<textarea 
+							id="notice-description"
 							bind:value={$noticeForm.description}
 							rows="8"
 							class="w-full px-2 py-1.5 border border-neutral-400 dark:border-neutral-500 text-sm bg-white dark:bg-neutral-800 text-neutral-800 dark:text-neutral-200 font-mono"
@@ -344,15 +358,23 @@ $: pastNoticesByMonth = groupPastNoticesByMonth(pastNotices);
 						<p class="text-xs text-neutral-500 dark:text-neutral-400 mt-1">마크다운 문법을 사용할 수 있습니다. 상세 페이지에서 형식화되어 표시됩니다.</p>
 					</div>
 					
+					<div>
+						<div class="text-sm font-medium mb-1 text-neutral-600 dark:text-neutral-300">파일 첨부</div>
+						<FileUpload 
+							files={$noticeForm.files} 
+							onFilesChange={handleFilesChange}
+						/>
+					</div>
+					
 					<div class="flex flex-col sm:flex-row gap-2">
 						<button 
-							on:click={handleSubmit}
+							onclick={handleSubmit}
 							class="px-3 py-1.5 bg-neutral-800 dark:bg-neutral-300 text-white dark:text-neutral-950 text-sm hover:bg-neutral-700 dark:hover:bg-neutral-200"
 						>
 							{$editingNotice ? '수정' : '추가'}
 						</button>
 						<button 
-							on:click={resetForm}
+							onclick={resetForm}
 							class="px-3 py-1.5 border border-neutral-400 dark:border-neutral-500 text-sm hover:bg-neutral-100 dark:hover:bg-neutral-600 text-neutral-800 dark:text-neutral-200"
 						>
 							취소
@@ -398,13 +420,13 @@ $: pastNoticesByMonth = groupPastNoticesByMonth(pastNotices);
 									</div>
 									<div class="flex gap-2">
 										<button 
-											on:click={() => editNotice(notice)}
+											onclick={() => editNotice(notice)}
 											class="px-3 py-1 text-xs border border-neutral-400 dark:border-neutral-500 hover:bg-neutral-100 dark:hover:bg-neutral-600 text-neutral-800 dark:text-neutral-200"
 										>
 											수정
 										</button>
 										<button 
-											on:click={() => handleDelete(notice)}
+											onclick={() => handleDelete(notice)}
 											class="px-3 py-1 text-xs bg-neutral-800 dark:bg-neutral-300 text-white dark:text-neutral-950 hover:bg-neutral-700 dark:hover:bg-neutral-200"
 										>
 											삭제
@@ -457,13 +479,13 @@ $: pastNoticesByMonth = groupPastNoticesByMonth(pastNotices);
 														</div>
 														<div class="flex gap-1">
 															<button 
-																on:click={() => editNotice(notice)}
+																onclick={() => editNotice(notice)}
 																class="px-2 py-1 text-xs border border-neutral-300 dark:border-neutral-600 hover:bg-neutral-100 dark:hover:bg-neutral-600 text-neutral-600 dark:text-neutral-300 opacity-75"
 															>
 																수정
 															</button>
 															<button 
-																on:click={() => handleDelete(notice)}
+																onclick={() => handleDelete(notice)}
 																class="px-2 py-1 text-xs bg-neutral-600 dark:bg-neutral-400 text-white hover:bg-neutral-700 dark:hover:bg-neutral-300 opacity-75"
 															>
 																삭제
