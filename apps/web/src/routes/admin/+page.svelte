@@ -218,7 +218,6 @@ const pastNoticesByMonth = $derived(groupPastNoticesByMonth(pastNotices));
 	<!-- Open Graph -->
 	<meta property="og:title" content="관리자 페이지 - 학급 공지" />
 	<meta property="og:description" content="학급 공지 관리자 페이지입니다. 공지사항을 작성하고 관리할 수 있습니다." />
-	<meta property="og:image" content="https://og.ij5.dev/api/og/?title=3%ED%95%99%EB%85%84%204%EB%B0%98%20%EA%B3%B5%EC%A7%80%20%EA%B4%80%EB%A6%AC&subheading=timefor.school" />
 	<meta property="og:type" content="website" />
 	<meta property="og:site_name" content="학급 공지" />
 	
@@ -226,7 +225,6 @@ const pastNoticesByMonth = $derived(groupPastNoticesByMonth(pastNotices));
 	<meta name="twitter:card" content="summary_large_image" />
 	<meta name="twitter:title" content="관리자 페이지 - 학급 공지" />
 	<meta name="twitter:description" content="학급 공지 관리자 페이지입니다. 공지사항을 작성하고 관리할 수 있습니다." />
-	<meta name="twitter:image" content="https://og.ij5.dev/api/og/?title=3%ED%95%99%EB%85%84%204%EB%B0%98%20%EA%B3%B5%EC%A7%80%20%EA%B4%80%EB%A6%AC&subheading=timefor.school" />
 	
 	<!-- Additional meta tags -->
 	<meta name="keywords" content="학급, 관리자, 공지사항, 작성" />

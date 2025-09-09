@@ -35,7 +35,6 @@ const pastNoticesByMonth = $derived(groupPastNoticesByMonth(pastNotices));
 	<!-- Open Graph -->
 	<meta property="og:title" content="학급 공지사항 - 3학년 4반" />
 	<meta property="og:description" content="3학년 4반 학급 공지사항입니다. 수행평가, 숙제, 준비물 등 중요한 공지사항을 확인하세요." />
-	<meta property="og:image" content="https://og.ij5.dev/api/og/?title=3%ED%95%99%EB%85%84%204%EB%B0%98%20%EA%B3%B5%EC%A7%80&subheading=timefor.school" />
 	<meta property="og:url" content="https://timefor.school" />
 	<meta property="og:type" content="website" />
 	<meta property="og:site_name" content="학급 공지사항" />
@@ -44,7 +43,6 @@ const pastNoticesByMonth = $derived(groupPastNoticesByMonth(pastNotices));
 	<meta name="twitter:card" content="summary_large_image" />
 	<meta name="twitter:title" content="학급 공지사항 - 3학년 4반" />
 	<meta name="twitter:description" content="3학년 4반 학급 공지사항입니다. 수행평가, 숙제, 준비물 등 중요한 공지사항을 확인하세요." />
-	<meta name="twitter:image" content="https://og.ij5.dev/api/og/?title=3%ED%95%99%EB%85%84%204%EB%B0%98%20%EA%B3%B5%EC%A7%80&subheading=timefor.school" />
 </svelte:head>
 
 <div class="min-h-screen bg-neutral-100 dark:bg-neutral-900">
