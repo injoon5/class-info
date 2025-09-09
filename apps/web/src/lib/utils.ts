@@ -16,6 +16,7 @@ export function getFirstLine(text: string): string {
 		.replace(/\*\*(.*?)\*\*/g, '$1') // Remove bold
 		.replace(/\*(.*?)\*/g, '$1') // Remove italic
 		.replace(/`(.*?)`/g, '$1') // Remove inline code
+		.replace(/\[([^\]]*)\]\([^)]*\)/g, '$1') // Replace links with link text
 		.replace(/^\>\s+/gm, '') // Remove blockquotes
 		.replace(/^\-\s+/gm, '') // Remove list markers
 		.replace(/^\d+\.\s+/gm, '') // Remove numbered list markers

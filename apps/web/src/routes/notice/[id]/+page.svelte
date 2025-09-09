@@ -22,7 +22,7 @@ const noticeFiles = useQuery(
 	api.files.getNoticeFiles,
 	() => ({ noticeId: $page.params.id }),
 	() => ({ 
-		initialData: [],
+		initialData: data.files || [],
 		keepPreviousData: true 
 	})
 );
@@ -181,6 +181,13 @@ function renderMarkdown(text: string) {
 				{/if}
 			</div>
 		{/if}
+	</div>
+	<div class="text-center py-3 sm:py-4 text-xs text-neutral-500 dark:text-neutral-400 space-y-1.5 sm:space-y-2">
+		<div>
+			<a href="/admin" class="text-xs text-neutral-500 dark:text-neutral-400 hover:text-neutral-800 dark:hover:text-neutral-200 underline">
+				관리자
+			</a>
+		</div>
 	</div>
 </div>
 

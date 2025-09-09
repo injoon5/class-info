@@ -411,9 +411,16 @@ const pastNoticesByMonth = $derived(groupPastNoticesByMonth(pastNotices));
 											</span>
 
 										</div>
-										<h4 class="font-semibold text-neutral-800 dark:text-neutral-200 mb-0.5">
-											{notice.title}
-										</h4>
+										<div class="flex items-center gap-1.5 mb-0.5">
+											<h4 class="font-semibold text-neutral-800 dark:text-neutral-200">
+												{notice.title}
+											</h4>
+											{#if notice.files && notice.files.length > 0}
+												<svg class="w-3 h-3 text-neutral-400 dark:text-neutral-500 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+													<path fill-rule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clip-rule="evenodd"/>
+												</svg>
+											{/if}
+										</div>
 										<p class="text-neutral-600 dark:text-neutral-300 text-sm">
 											{notice.description}
 										</p>
@@ -470,9 +477,16 @@ const pastNoticesByMonth = $derived(groupPastNoticesByMonth(pastNotices));
 																	마감: {formatDate(notice.dueDate)}
 																</span>
 															</div>
-															<h5 class="font-medium text-neutral-600 dark:text-neutral-300 mb-0.5 text-sm">
-																{notice.title}
-															</h5>
+															<div class="flex items-center gap-1.5 mb-0.5">
+																<h5 class="font-medium text-neutral-600 dark:text-neutral-300 text-sm">
+																	{notice.title}
+																</h5>
+																{#if notice.files && notice.files.length > 0}
+																	<svg class="w-3 h-3 text-neutral-400 dark:text-neutral-500 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+																		<path fill-rule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clip-rule="evenodd"/>
+																	</svg>
+																{/if}
+															</div>
 															<p class="text-neutral-500 dark:text-neutral-400 text-xs">
 																{notice.description}
 															</p>

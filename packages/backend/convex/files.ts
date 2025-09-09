@@ -106,8 +106,15 @@ export const deleteFile = mutation({
       throw new Error("File not found");
     }
     
-    // For now, just delete from database
-    // R2 file cleanup can be done separately if needed
+    // Delete from R2 storage
+    try {
+      await r2.deleteObject(ctx, file.storageId);
+    } catch (error) {
+      console.error("Failed to delete file from R2:", error);
+      // Continue with database deletion even if R2 deletion fails
+    }
+    
+    // Delete from database
     await ctx.db.delete(fileId);
   },
 });

@@ -90,6 +90,8 @@ async function removeFile(fileId: string) {
     await client.mutation(api.files.deleteFile, { fileId });
     const updatedFiles = files.filter(id => id !== fileId);
     onFilesChange(updatedFiles);
+    // Also update the local uploadedFiles array immediately
+    uploadedFiles = uploadedFiles.filter(file => file._id !== fileId);
   } catch (error) {
     console.error('Error removing file:', error);
     alert('파일 삭제 중 오류가 발생했습니다.');

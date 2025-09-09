@@ -7,7 +7,13 @@ export const load = (async ({ params }) => {
 	const client = new ConvexHttpClient(PUBLIC_CONVEX_URL!);
 	const { id } = params;
 	
+	const [notice, files] = await Promise.all([
+		client.query(api.notices.getById, { id: id as any }),
+		client.query(api.files.getNoticeFiles, { noticeId: id as any })
+	]);
+	
 	return {
-		notice: await client.query(api.notices.getById, { id })
+		notice,
+		files
 	};
 }) satisfies PageServerLoad;

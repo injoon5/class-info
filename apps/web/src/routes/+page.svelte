@@ -69,7 +69,6 @@ const pastNoticesByMonth = $derived(groupPastNoticesByMonth(pastNotices));
 
 			<PastNoticesSection {pastNoticesByMonth} />
 		{/if}
-		
 		<NoticeFooter notices={notices.data || []} />
 	</div>
 </div>
