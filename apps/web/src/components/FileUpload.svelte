@@ -21,6 +21,14 @@ interface UploadedFile {
 
 let uploadedFiles: UploadedFile[] = [];
 
+function updateStatus(message: string) {
+  const statusEl = document.getElementById('file-upload-status');
+  if (statusEl) {
+    statusEl.textContent = message;
+  }
+  alert(message); // Fallback alert for visibility
+}
+
 // Load existing files when component mounts
 $: if (files.length > 0) {
   loadFiles();
@@ -49,13 +57,13 @@ async function handleFileUpload(fileList: FileList) {
       // Validate file type
       const allowedTypes = ['image/', 'application/pdf'];
       if (!allowedTypes.some(type => file.type.startsWith(type))) {
-        alert(`지원하지 않는 파일 형식입니다: ${file.name}`);
+        updateStatus(`지원하지 않는 파일 형식입니다: ${file.name}`);
         return null;
       }
       
       // Validate file size (10MB max)
       if (file.size > 10 * 1024 * 1024) {
-        alert(`파일 크기가 너무 큽니다: ${file.name} (최대 10MB)`);
+        updateStatus(`파일 크기가 너무 큽니다: ${file.name} (최대 10MB)`);
         return null;
       }
       
@@ -79,7 +87,7 @@ async function handleFileUpload(fileList: FileList) {
     onFilesChange(updatedFiles);
   } catch (error) {
     console.error('Upload error:', error);
-    alert('파일 업로드 중 오류가 발생했습니다.');
+    updateStatus('파일 업로드 중 오류가 발생했습니다.');
   } finally {
     isUploading = false;
   }
@@ -94,19 +102,19 @@ async function removeFile(fileId: string) {
     uploadedFiles = uploadedFiles.filter(file => file._id !== fileId);
   } catch (error) {
     console.error('Error removing file:', error);
-    alert('파일 삭제 중 오류가 발생했습니다.');
+    updateStatus('파일 삭제 중 오류가 발생했습니다.');
   }
 }
 
 function copyMarkdownToClipboard(file: UploadedFile) {
-  const markdown = file.type.startsWith('image/') 
+  const markdown = file.type.startsWith('image/')
     ? `![${file.name}](${file.url})`
     : `[${file.name}](${file.url})`;
-  
+
   navigator.clipboard.writeText(markdown).then(() => {
-    alert('마크다운 코드가 클립보드에 복사되었습니다!');
+    updateStatus('마크다운 코드가 클립보드에 복사되었습니다!');
   }).catch(() => {
-    alert('복사에 실패했습니다.');
+    updateStatus('복사에 실패했습니다.');
   });
 }
 
@@ -138,6 +146,9 @@ function handleDrop(e: DragEvent) {
 </script>
 
 <div class="space-y-3">
+  <!-- ARIA live region for feedback -->
+  <div aria-live="polite" aria-atomic="true" class="sr-only" id="file-upload-status"></div>
+
   <!-- File Upload Area -->
   <div 
     class="border-2 border-dashed {dragOver ? 'border-neutral-500 bg-neutral-50 dark:bg-neutral-700' : 'border-neutral-300 dark:border-neutral-600'} p-4 text-center transition-colors"
@@ -162,10 +173,11 @@ function handleDrop(e: DragEvent) {
         <p class="text-neutral-600 dark:text-neutral-300 mb-2">
           이미지나 PDF 파일을 드래그하거나 클릭해서 업로드하세요
         </p>
-        <button 
+        <button
           type="button"
           class="px-4 py-2 border border-neutral-400 dark:border-neutral-500 text-sm hover:bg-neutral-100 dark:hover:bg-neutral-600 text-neutral-800 dark:text-neutral-200"
           onclick={() => document.getElementById('file-upload')?.click()}
+          aria-label="파일 선택"
         >
           파일 추가
         </button>
@@ -205,7 +217,7 @@ function handleDrop(e: DragEvent) {
                 type="button"
                 onclick={() => copyMarkdownToClipboard(file)}
                 class="px-2 py-1 text-xs border border-neutral-300 dark:border-neutral-600 hover:bg-neutral-200 dark:hover:bg-neutral-500 text-neutral-600 dark:text-neutral-300 opacity-0 group-hover:opacity-100 transition-opacity"
-                title="마크다운 복사"
+                aria-label="{file.name} 마크다운 코드 복사"
               >
                 복사
               </button>
@@ -213,7 +225,7 @@ function handleDrop(e: DragEvent) {
                 type="button"
                 onclick={() => removeFile(file._id)}
                 class="px-2 py-1 text-xs bg-red-600 dark:bg-red-500 text-white hover:bg-red-700 dark:hover:bg-red-600 opacity-0 group-hover:opacity-100 transition-opacity"
-                title="파일 삭제"
+                aria-label="{file.name} 파일 삭제"
               >
                 삭제
               </button>
