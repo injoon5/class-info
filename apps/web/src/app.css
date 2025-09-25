@@ -31,6 +31,36 @@ body {
     padding-right: env(safe-area-inset-right);
 }
 
+/* Focus styles: visible only when using keyboard */
+:focus {
+    outline: none;
+}
+:focus-visible {
+    outline: 2px solid rgb(59 130 246);
+    outline-offset: 2px;
+}
+
+/* Reduced motion: prefer non-animated or subtle transitions */
+@media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+        animation-duration: 0.001ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.001ms !important;
+        scroll-behavior: auto !important;
+    }
+}
+
+/* Heading anchor offset to avoid being hidden under sticky headers */
+h1[id], h2[id], h3[id], h4[id], h5[id], h6[id] {
+    scroll-margin-top: 96px; /* adjust if header height changes */
+}
+
+/* Prevent double-tap zoom delay on iOS and reduce tap highlight per design */
+button, a, input, textarea, select {
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: rgba(0, 0, 0, 0);
+}
+
 /* Dark mode styles for markdown content */
 @media (prefers-color-scheme: dark) {
 	.markdown-content h1,

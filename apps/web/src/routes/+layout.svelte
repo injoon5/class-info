@@ -17,7 +17,7 @@
 </script>
 
 
-<div class="min-h-screen bg-neutral-100 dark:bg-neutral-900 subpixel-antialiased break-keep">
+    <a href="#main" class="sr-only focus:not-sr-only focus:fixed focus:z-[1000] focus:top-2 focus:left-2 focus:bg-neutral-900 focus:text-white focus:px-3 focus:py-2 focus:rounded">Skip to content</a>
 	<!-- Global Header -->
 	<div class="max-w-4xl mx-auto p-4 ios-content-padding w-full">
 		<div class="flex justify-between items-center gap-2 pb-3 sm:pb-4 border-b border-neutral-300 dark:border-neutral-600">
@@ -36,8 +36,9 @@
 			
 		</div>
 	</div>
-	<main class="">
+	<main id="main" class="">
 		{@render children()}
 	</main>
+
+    <div aria-live="polite" aria-atomic="true" class="sr-only" id="aria-live-region"></div>
 	
-</div>
