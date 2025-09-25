@@ -45,28 +45,23 @@ const pastNoticesByMonth = $derived(groupPastNoticesByMonth(pastNotices));
 	<meta name="twitter:description" content="3학년 4반 학급 공지사항입니다. 수행평가, 숙제, 준비물 등 중요한 공지사항을 확인하세요." />
 </svelte:head>
 
-<div class="min-h-screen bg-neutral-100 dark:bg-neutral-900">
-	<div class="max-w-4xl mx-auto p-4 ios-content-padding">
-		<!-- Header -->
-		<div class="flex justify-center items-center mb-6 sm:mb-8 pb-3 sm:pb-4 border-b border-neutral-300 dark:border-neutral-600">
-			<h1 class="text-xl sm:text-2xl font-bold text-neutral-800 dark:text-neutral-200 ios-text-optimized">3-4 공지사항</h1>
-		</div>
 
-		<!-- Notice Board -->
-		{#if notices.isLoading}
-			<LoadingState />
-		{:else if notices.error}
-			<ErrorState error={notices.error} />
-		{:else if allGroupedNotices.length === 0}
-			<EmptyState />
-		{:else}
-			<!-- Current and Future Notices -->
-			{#each currentNotices as group}
-				<NoticeGroup {group} />
-			{/each}
+<div class="max-w-4xl mx-auto p-4 ios-content-padding">
+	<!-- Notice Board -->
+	{#if notices.isLoading}
+		<LoadingState />
+	{:else if notices.error}
+		<ErrorState error={notices.error} />
+	{:else if allGroupedNotices.length === 0}
+		<EmptyState />
+	{:else}
+		<!-- Current and Future Notices -->
+		{#each currentNotices as group}
+			<NoticeGroup {group} />
+		{/each}
 
-			<PastNoticesSection {pastNoticesByMonth} />
-		{/if}
-		<NoticeFooter notices={notices.data || []} />
-	</div>
+		<PastNoticesSection {pastNoticesByMonth} />
+	{/if}
+	<NoticeFooter notices={notices.data || []} />
 </div>
+

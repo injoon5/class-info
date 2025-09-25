@@ -74,17 +74,15 @@ function renderMarkdown(text: string) {
 
 
 <div class="min-h-screen bg-neutral-100 dark:bg-neutral-900">
-	<div class="max-w-4xl mx-auto p-4">
+	<div class="max-w-4xl mx-auto px-4">
 		<!-- Header -->
-		<div class="flex items-center mb-6 sm:mb-8 pb-3 sm:pb-4 border-b border-neutral-300 dark:border-neutral-600">
-			<button 
-				onclick={() => goto('/')}
-				class="mr-4 text-neutral-500 dark:text-neutral-400 hover:text-neutral-800 dark:hover:text-neutral-200 transition-colors"
-			>
-				← 뒤로
-			</button>
-			<h1 class="text-lg sm:text-xl md:text-2xl font-bold text-neutral-800 dark:text-neutral-200">알림 상세</h1>
-		</div>
+		<a
+			type="button"
+			href="/"
+			class="mr-4 sm:pb-3 mb-4 text-neutral-500 dark:text-neutral-400 hover:text-neutral-800 dark:hover:text-neutral-200 transition-colors"
+		>
+			← 뒤로
+		</a>
 
 		<!-- Notice Detail -->
 		{#if notice.isLoading}
@@ -100,9 +98,9 @@ function renderMarkdown(text: string) {
 		{:else if !notice.data}
 			<div class="text-center py-8 text-neutral-500 dark:text-neutral-400">알림을 찾을 수 없습니다.</div>
 		{:else}
-			<div class="bg-white dark:bg-neutral-800 border border-neutral-300 dark:border-neutral-600 p-4 sm:p-6">
+			<div class="my-4 bg-white dark:bg-neutral-800 border border-neutral-300 dark:border-neutral-600 p-4 sm:p-6">
 				<div class="mb-4">
-					<div class="flex items-center gap-2 sm:gap-3 mb-2">
+					<div class="flex items-center gap-2 sm:gap-3 mb-1 sm:mb-2">
 						<span class="px-2 py-1 text-sm font-medium rounded {getTypeColor(notice.data.type)}">
 							{notice.data.type}
 						</span>
@@ -110,7 +108,7 @@ function renderMarkdown(text: string) {
 							{notice.data.subject}
 						</span>
 					</div>
-					<h2 class="text-lg sm:text-xl md:text-2xl font-bold text-neutral-800 dark:text-neutral-200 mb-2">
+					<h2 class="text-lg sm:text-2xl font-bold text-neutral-800 dark:text-neutral-200 sm:mb-1">
 						{notice.data.title}
 					</h2>
 					<p class="text-sm sm:text-base text-neutral-500 dark:text-neutral-400">

@@ -1,7 +1,7 @@
 import { v } from "convex/values";
-import { mutation, query } from "./_generated/server";
+import { internalMutation, internalQuery, mutation, query } from "./_generated/server";
 
-export const getPin = query({
+export const getPin = internalQuery({
   handler: async (ctx) => {
     const setting = await ctx.db
       .query("settings")
@@ -11,7 +11,7 @@ export const getPin = query({
   },
 });
 
-export const setPin = mutation({
+export const setPin = internalMutation({
   args: { newPin: v.string() },
   handler: async (ctx, args) => {
     const existing = await ctx.db

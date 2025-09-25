@@ -11,7 +11,7 @@ export let isPast = false;
 			{group.displayDate}
 		</h3>
 	{:else}
-		<h2 class="text-sm sm:text-lg font-semibold mb-2 sm:mb-4 text-neutral-600 dark:text-neutral-300 border-l-4 border-neutral-500 dark:border-neutral-400 pl-3">
+		<h2 class="text-base sm:text-lg font-semibold mb-2 sm:mb-4 text-neutral-600 dark:text-neutral-300 border-l-4 border-neutral-500 dark:border-neutral-400 pl-3">
 			{group.displayDate}
 		</h2>
 	{/if}

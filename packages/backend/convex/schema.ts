@@ -21,6 +21,32 @@ export default defineSchema({
     storageId: v.string(), // R2 storage ID
     uploadedAt: v.number(),
   }),
+
+
+  timetables: defineTable({
+    day_time: v.array(v.string()),
+    timetable: v.array(
+      v.array(
+        v.object({
+          period: v.number(),
+          subject: v.string(),
+          teacher: v.string(),
+          replaced: v.boolean(),
+          original: v.union(
+            v.null(),
+            v.object({
+              period: v.number(),
+              subject: v.string(),
+              teacher: v.string(),
+            })
+          ),
+        })
+      )
+    ),
+    update_date: v.string(),
+    week: v.number(),
+    editedAt: v.number(),
+  }),
   
   settings: defineTable({
     key: v.string(),
