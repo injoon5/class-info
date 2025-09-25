@@ -41,23 +41,37 @@ function getPeriodLabel(period: number): string {
 
 <div class="max-w-4xl mx-auto p-4 ios-content-padding">
 	<!-- Header: Week Selector -->
-	<div class="flex justify-end gap-2 mb-3">
+	<div class="flex justify-center mb-3">
+		<div class="relative flex w-full rounded-xl bg-neutral-200 dark:bg-neutral-800 p-1 shadow-inner transition h-9 sm:h-11">
+			<!-- Sliding indicator -->
+			<div
+				class="absolute top-1 h-7 sm:h-9 w-[calc(50%-0.25rem)] rounded-lg bg-white dark:bg-neutral-900 shadow transition-transform duration-300 ease-in-out z-0"
+				style="transform: translateX({(selectedWeek * 100)}%);"
+				aria-hidden="true"
+			></div>
 			<button
-				class="px-3 py-1.5 rounded border text-sm font-medium transition
-					{selectedWeek === 0 ? 'bg-neutral-900 text-white dark:bg-neutral-100 dark:text-neutral-900 border-neutral-900 dark:border-neutral-100' : 'bg-white dark:bg-neutral-900 text-neutral-800 dark:text-neutral-200 border-neutral-300 dark:border-neutral-700'}"
+				class="flex-1 relative z-10 px-3 py-1 rounded-lg text-sm font-medium transition
+					{selectedWeek === 0 
+						? 'text-neutral-900 dark:text-neutral-100'
+						: 'text-neutral-600 dark:text-neutral-300'}"
 				onclick={() => selectedWeek = 0}
 				aria-pressed={selectedWeek === 0}
+				type="button"
 			>
 				이번 주
 			</button>
 			<button
-				class="px-3 py-1.5 rounded border text-sm font-medium transition
-					{selectedWeek === 1 ? 'bg-neutral-900 text-white dark:bg-neutral-100 dark:text-neutral-900 border-neutral-900 dark:border-neutral-100' : 'bg-white dark:bg-neutral-900 text-neutral-800 dark:text-neutral-200 border-neutral-300 dark:border-neutral-700'}"
+				class="flex-1 relative z-10 px-3 py-1 rounded-lg text-sm font-medium transition
+					{selectedWeek === 1 
+						? 'text-neutral-900 dark:text-neutral-100'
+						: 'text-neutral-600 dark:text-neutral-300'}"
 				onclick={() => selectedWeek = 1}
 				aria-pressed={selectedWeek === 1}
+				type="button"
 			>
 				다음 주
 			</button>
+		</div>
 	</div>
 
 	{#if timetableQuery.isLoading}
