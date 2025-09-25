@@ -77,10 +77,9 @@ function renderMarkdown(text: string) {
 	<div class="max-w-4xl mx-auto p-4">
 		<!-- Header -->
 		<div class="flex items-center mb-6 sm:mb-8 pb-3 sm:pb-4 border-b border-neutral-300 dark:border-neutral-600">
-			<button
+			<button 
 				onclick={() => goto('/')}
 				class="mr-4 text-neutral-500 dark:text-neutral-400 hover:text-neutral-800 dark:hover:text-neutral-200 transition-colors"
-				aria-label="홈으로 돌아가기"
 			>
 				← 뒤로
 			</button>
@@ -160,7 +159,6 @@ function renderMarkdown(text: string) {
 									<button
 										onclick={() => window.open(file.url, '_blank')}
 										class="px-3 py-1 text-xs border border-neutral-300 dark:border-neutral-600 hover:bg-neutral-100 dark:hover:bg-neutral-600 text-neutral-600 dark:text-neutral-300"
-										aria-label="{file.name} 파일 열기"
 									>
 										열기
 									</button>

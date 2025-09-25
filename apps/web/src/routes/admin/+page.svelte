@@ -48,14 +48,6 @@ const pin = writable('');
 
 const noticeTypes = ['수행평가', '숙제', '준비물', '기타'] as const;
 
-function updateStatus(message: string) {
-  const statusEl = document.getElementById('admin-status');
-  if (statusEl) {
-    statusEl.textContent = message;
-  }
-  alert(message); // Fallback alert for visibility
-}
-
 function groupNoticesByDate(noticeList: any[]) {
 	if (!noticeList) return [];
 	
@@ -169,7 +161,7 @@ async function handleSubmit() {
 	const formData = $noticeForm;
 	
 	if (!formData.title || !formData.subject || !formData.dueDate) {
-		updateStatus('필수 항목을 모두 입력해주세요.');
+		alert('필수 항목을 모두 입력해주세요.');
 		return;
 	}
 	
@@ -184,7 +176,7 @@ async function handleSubmit() {
 		}
 		resetForm();
 	} catch (error) {
-		updateStatus('저장 중 오류가 발생했습니다.');
+		alert('저장 중 오류가 발생했습니다.');
 	}
 }
 
@@ -193,7 +185,7 @@ async function handleDelete(notice: any) {
 		try {
 			await client.mutation(api.notices.remove, { id: notice._id });
 		} catch (error) {
-			updateStatus('삭제 중 오류가 발생했습니다.');
+			alert('삭제 중 오류가 발생했습니다.');
 		}
 	}
 }
@@ -290,10 +282,9 @@ const pastNoticesByMonth = $derived(groupPastNoticesByMonth(pastNotices));
 		<div class="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 mb-6 pb-3 border-b border-neutral-300 dark:border-neutral-600">
 			<h1 class="text-xl sm:text-2xl font-bold text-neutral-800 dark:text-neutral-200">관리자 페이지</h1>
 			<div class="flex flex-col sm:flex-row gap-2">
-				<button
+				<button 
 					onclick={() => showForm.set(!$showForm)}
 					class="px-3 sm:px-4 py-2 bg-neutral-800 dark:bg-neutral-300 text-white dark:text-neutral-950 text-sm hover:bg-neutral-700 dark:hover:bg-neutral-200 text-center"
-					aria-label={$showForm ? '알림 추가 취소' : '새 알림 추가'}
 				>
 					{$showForm ? '취소' : '새 알림 추가'}
 				</button>

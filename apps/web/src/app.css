@@ -31,36 +31,6 @@ body {
     padding-right: env(safe-area-inset-right);
 }
 
-/* Global accessibility styles */
-:focus-visible {
-    outline: 2px solid #3b82f6;
-    outline-offset: 2px;
-}
-
-/* Ensure interactive elements have adequate hit targets */
-button, a, input, select, textarea {
-    touch-action: manipulation;
-    -webkit-tap-highlight-color: rgba(0, 0, 0, 0);
-}
-
-/* Honor prefers-reduced-motion */
-@media (prefers-reduced-motion: reduce) {
-    *, *::before, *::after {
-        animation-duration: 0.01ms !important;
-        animation-iteration-count: 1 !important;
-        transition-duration: 0.01ms !important;
-        scroll-behavior: auto !important;
-    }
-}
-
-/* Ensure minimum hit targets on mobile */
-@media (max-width: 768px) {
-    button, a, input, select, textarea {
-        min-height: 44px;
-        min-width: 44px;
-    }
-}
-
 /* Dark mode styles for markdown content */
 @media (prefers-color-scheme: dark) {
 	.markdown-content h1,

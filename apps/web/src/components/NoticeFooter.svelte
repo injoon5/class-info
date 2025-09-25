@@ -3,33 +3,21 @@ import { generateCopyText } from '../lib/utils.js';
 
 export let notices: any[];
 
-function updateStatus(message: string) {
-
-  const statusEl = document.getElementById('footer-status');
-  if (statusEl) {
-    statusEl.textContent = message;
-  }
-  alert(message); // Fallback alert for visibility
-}
-
 async function copyToClipboard() {
 	const text = generateCopyText(notices || []);
 	if (!text) {
-		updateStatus('복사할 알림이 없습니다.');
+		alert('복사할 알림이 없습니다.');
 		return;
 	}
-
+	
 	try {
 		await navigator.clipboard.writeText(text);
-		updateStatus('클립보드에 복사되었습니다!');
+		alert('클립보드에 복사되었습니다!');
 	} catch (err) {
-		updateStatus('복사에 실패했습니다.');
+		alert('복사에 실패했습니다.');
 	}
 }
 </script>
-
-<!-- ARIA live region for feedback -->
-<div aria-live="polite" aria-atomic="true" class="sr-only" id="footer-status"></div>
 
 <!-- Footer -->
 <div class="text-center py-3 sm:py-4 text-xs text-neutral-500 dark:text-neutral-400 border-t border-neutral-200 dark:border-neutral-700 mt-6 sm:mt-8">
