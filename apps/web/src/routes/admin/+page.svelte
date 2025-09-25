@@ -279,8 +279,7 @@ const pastNoticesByMonth = $derived(groupPastNoticesByMonth(pastNotices));
 	<div class="min-h-screen bg-neutral-100 dark:bg-neutral-900">
 		<div class="max-w-4xl mx-auto p-3 sm:p-4 overflow-hidden">
 		<!-- Header -->
-		<div class="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 mb-6 pb-3 border-b border-neutral-300 dark:border-neutral-600">
-			<h1 class="text-xl sm:text-2xl font-bold text-neutral-800 dark:text-neutral-200">관리자 페이지</h1>
+		<div class="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 mb-3 pb-3 sm:-mt-4 ">
 			<div class="flex flex-col sm:flex-row gap-2">
 				<button 
 					onclick={() => showForm.set(!$showForm)}
@@ -288,9 +287,7 @@ const pastNoticesByMonth = $derived(groupPastNoticesByMonth(pastNotices));
 				>
 					{$showForm ? '취소' : '새 알림 추가'}
 				</button>
-				<a href="/" class="px-3 sm:px-4 py-2 border border-neutral-400 dark:border-neutral-500 text-sm hover:bg-neutral-100 dark:hover:bg-neutral-600 text-neutral-800 dark:text-neutral-200 text-center">
-			홈으로
-				</a>
+
 				<form method="POST" action="?/logout" use:enhance class="inline">
 					<button type="submit" class="px-3 sm:px-4 py-2 border border-neutral-400 dark:border-neutral-500 text-sm hover:bg-neutral-100 dark:hover:bg-neutral-600 text-neutral-800 dark:text-neutral-200 text-center w-full sm:w-auto">
 						로그아웃

@@ -71,26 +71,26 @@ function getPeriodLabel(period: number): string {
 			<table class="w-full table-fixed border border-neutral-200 dark:border-neutral-700 shadow-sm mx-auto">
 				<thead>
 					<tr class="bg-neutral-100 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700">
-						<th class="px-1 py-3 text-center text-base sm:text-lg font-semibold text-neutral-600 dark:text-neutral-300 border-r border-neutral-200 dark:border-neutral-700"> </th>
+						<th class="px-1 py-3 text-center text-base sm:text-lg text-neutral-600 dark:text-neutral-300 border-r border-neutral-200 dark:border-neutral-700"> </th>
 						{#each dayNames as name}
-							<th class=" px-1 py-2 text-center text-base sm:text-lg font-semibold text-neutral-600 dark:text-neutral-300 border-b border-neutral-200 dark:border-neutral-700">{name}</th>
+							<th class=" px-1 py-2 text-center text-base font-medium sm:text-lg text-neutral-600 dark:text-neutral-300 border-b border-neutral-200 dark:border-neutral-700">{name}</th>
 						{/each}
 					</tr>
 				</thead>
 				<tbody>
 					{#each Array(getMaxPeriods()) as _, i}
 						<tr>
-							<td class="py-3 sm:py-6 border-r border-neutral-200 dark:border-neutral-700 text-neutral-700 dark:text-neutral-200 whitespace-nowrap text-center bg-white dark:bg-neutral-900">
+							<td class="py-3 sm:py-6 border-r border-neutral-200 dark:border-neutral-700 text-neutral-700 dark:text-neutral-200 whitespace-nowrap text-center bg-neutral-100 dark:bg-neutral-800">
 								<div class="text-base sm:text-lg font-medium">{i + 1}교시</div>
 								<div class="text-sm sm:text-lg text-neutral-500 dark:text-neutral-400">{getPeriodLabel(i + 1)}</div>
 							</td>
 							{#each (timetableQuery.data?.timetable || []) as day}
-								<td class="py-3 sm:py-6 text-center {day[i]?.replaced ? 'bg-yellow-100 dark:bg-yellow-900/20' : 'bg-white dark:bg-neutral-900'}">
+								<td class="py-3 sm:py-6 text-center {day[i]?.replaced ? 'bg-yellow-100 dark:bg-yellow-900/20' : 'bg-neutral-50 dark:bg-neutral-900'}">
 									{#if day[i]}
 										<!-- Subject cell -->
 										<div class="flex items-center justify-center gap-2">
 											<div>
-												<span class="text-md sm:text-xl text-neutral-800 dark:text-neutral-200">{day[i].subject}</span>
+												<span class="text-md sm:text-xl font-medium text-neutral-800 dark:text-neutral-200">{day[i].subject}</span>
 											</div>
 										</div>
 										<div class="text-sm sm:text-lg mt-0.5 text-neutral-500 dark:text-neutral-400">{day[i].teacher}</div>
