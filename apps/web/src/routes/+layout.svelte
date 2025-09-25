@@ -15,8 +15,6 @@
 		setupConvex(PUBLIC_CONVEX_URL);
 	});
 </script>
-
-
     <a href="#main" class="sr-only focus:not-sr-only focus:fixed focus:z-[1000] focus:top-2 focus:left-2 focus:bg-neutral-900 focus:text-white focus:px-3 focus:py-2 focus:rounded">Skip to content</a>
 	<!-- Global Header -->
 	<div class="max-w-4xl mx-auto p-4 ios-content-padding w-full">
@@ -32,11 +30,10 @@
 				</a>
 				<a href="/timetable" class="hover:underline {($page.url.pathname.startsWith('/timetable')) ? 'underline' : ''}" aria-current={($page.url.pathname.startsWith('/timetable')) ? 'page' : undefined}>시간표</a>
 			</nav>
-			<!-- empty cell for grid alignment on desktop -->
-			
+
 		</div>
 	</div>
-	<main id="main" class="">
+	<main id="main">
 		{@render children()}
 	</main>
 
