@@ -1,6 +1,7 @@
 <script lang="ts">
 import { useConvexClient } from 'convex-svelte';
 import { api } from "@class-info/backend/convex/_generated/api";
+import type { Id } from "@class-info/backend/convex/_generated/dataModel";
 import { writable } from 'svelte/store';
 import { enhance } from '$app/forms';
 import { onMount } from 'svelte';
@@ -8,31 +9,10 @@ import FileUpload from '../../components/FileUpload.svelte';
 import type { PageData, ActionData } from './$types';
 
 let { data, form }: { data: PageData; form: ActionData } = $props();
-
-const notices = writable({ isLoading: true, error: undefined as any, data: [] as any[] });
 const client = useConvexClient();
 
-onMount(async () => {
-	// Wait for client to initialize
-	setTimeout(async () => {
-		try {
-			// Set up live subscriptions for real-time updates
-			const unsubscribeNotices = client.onUpdate(api.notices.list, {}, (noticesData) => {
-				notices.set({ isLoading: false, error: undefined, data: noticesData });
-			});
-
-			// Clean up subscriptions when component unmounts
-			return () => {
-				unsubscribeNotices();
-			};
-		} catch (error) {
-			notices.set({ isLoading: false, error, data: [] });
-		}
-	}, 100);
-});
-
 const showForm = writable(false);
-const editingNotice = writable(null);
+const editingNotice = writable<any>(null);
 
 const noticeForm = writable({
 	title: '',
@@ -48,76 +28,11 @@ const pin = writable('');
 
 const noticeTypes = ['수행평가', '숙제', '준비물', '기타'] as const;
 
-function groupNoticesByDate(noticeList: any[]) {
-	if (!noticeList) return [];
-	
-	const groups = new Map();
-	const now = new Date();
-	const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-	const todayString = today.toDateString();
-	const currentHour = now.getHours();
-	
-	noticeList.forEach(notice => {
-		const dueDate = new Date(notice.dueDate);
-		const dateKey = dueDate.toDateString();
-		const isToday = dateKey === todayString;
-		
-		// Consider it past if:
-		// 1. Date is before today, OR
-		// 2. Date is today but it's after 4pm (16:00)
-		const isPast = dueDate < today || (isToday && currentHour >= 16);
-		
-		// Add weekday
-		const weekdays = ['일', '월', '화', '수', '목', '금', '토'];
-		const weekday = weekdays[dueDate.getDay()];
-		
-		let displayDate;
-		if (isToday) {
-			displayDate = '오늘';
-		} else {
-			displayDate = `${dueDate.getMonth() + 1}/${dueDate.getDate()} (${weekday})`;
-		}
-		
-		if (!groups.has(dateKey)) {
-			groups.set(dateKey, {
-				date: dateKey,
-				displayDate,
-				isToday,
-				isPast,
-				notices: []
-			});
-		}
-		groups.get(dateKey).notices.push(notice);
-	});
-	
-	return Array.from(groups.values()).sort((a, b) => 
-		new Date(a.date).getTime() - new Date(b.date).getTime()
-	);
-}
-
-function groupPastNoticesByMonth(pastGroups: any[]) {
-	const monthGroups = new Map();
-	
-	pastGroups.forEach(group => {
-		const date = new Date(group.date);
-		const monthKey = `${date.getFullYear()}-${date.getMonth()}`;
-		const monthName = `${date.getFullYear()}년 ${date.getMonth() + 1}월`;
-		
-		if (!monthGroups.has(monthKey)) {
-			monthGroups.set(monthKey, {
-				monthName,
-				groups: []
-			});
-		}
-		monthGroups.get(monthKey).groups.push(group);
-	});
-	
-	return Array.from(monthGroups.values()).sort((a, b) => {
-		const [yearA, monthA] = a.monthName.match(/(\d+)년 (\d+)월/).slice(1).map(Number);
-		const [yearB, monthB] = b.monthName.match(/(\d+)년 (\d+)월/).slice(1).map(Number);
-		return (yearB - yearA) || (monthB - monthA); // Most recent first
-	});
-}
+// Server now provides grouped current notices; fetch past months on demand
+import AdminPastMonthDetails from '../../components/AdminPastMonthDetails.svelte';
+import { useQuery } from 'convex-svelte';
+const overview = useQuery(api.notices.overview, {});
+let openMonthKey = $state<string | null>(null);
 
 function resetForm() {
 	noticeForm.set({
@@ -132,19 +47,23 @@ function resetForm() {
 	showForm.set(false);
 }
 
-function editNotice(notice: any) {
+async function editNotice(noticeOrId: any) {
+	const id = typeof noticeOrId === 'string' ? noticeOrId : String(noticeOrId?._id);
+	let full: any = null;
+	try {
+		full = await client.query(api.notices.getById, { id: id as unknown as Id<'notices'> });
+	} catch {}
+	const notice = full || noticeOrId || {};
 	noticeForm.set({
-		title: notice.title,
-		subject: notice.subject,
-		type: notice.type,
-		description: notice.description,
-		dueDate: notice.dueDate,
-		files: notice.files || []
+		title: notice.title || '',
+		subject: notice.subject || '',
+		type: notice.type || '숙제',
+		description: typeof notice.description === 'string' ? notice.description : '',
+		dueDate: notice.dueDate || '',
+		files: Array.isArray(notice.files) ? notice.files : []
 	});
-	editingNotice.set(notice);
+	editingNotice.set({ _id: id, ...notice });
 	showForm.set(true);
-	
-	// Wait for the form to render, then smooth scroll to top
 	setTimeout(() => {
 		window.scrollTo({ top: 0, behavior: 'smooth' });
 	}, 100);
@@ -159,20 +78,21 @@ function handleFilesChange(fileIds: any[]) {
 
 async function handleSubmit() {
 	const formData = $noticeForm;
+	const payload = {
+		...formData,
+		description: typeof formData.description === 'string' ? formData.description : ''
+	};
 	
-	if (!formData.title || !formData.subject || !formData.dueDate) {
+	if (!payload.title || !payload.subject || !payload.dueDate) {
 		alert('필수 항목을 모두 입력해주세요.');
 		return;
 	}
 	
 	try {
 		if ($editingNotice) {
-			await client.mutation(api.notices.update, {
-				id: $editingNotice._id,
-				...formData
-			});
+			await client.mutation(api.notices.update, { id: $editingNotice._id, ...payload });
 		} else {
-			await client.mutation(api.notices.create, formData);
+			await client.mutation(api.notices.create, payload);
 		}
 		resetForm();
 	} catch (error) {
@@ -205,10 +125,8 @@ function getTypeColor(type: string) {
 	}
 }
 
-const allGroupedNotices = $derived(groupNoticesByDate($notices.data || []));
-const currentNotices = $derived(allGroupedNotices.filter(group => !group.isPast));
-const pastNotices = $derived(allGroupedNotices.filter(group => group.isPast));
-const pastNoticesByMonth = $derived(groupPastNoticesByMonth(pastNotices));
+// Grouped notices from overview
+const allGroupedNotices = $derived(overview.data?.currentGroups || []);
 </script>
 
 <svelte:head>
@@ -386,13 +304,12 @@ const pastNoticesByMonth = $derived(groupPastNoticesByMonth(pastNotices));
 		{/if}
 
 		<!-- Notice List -->
-		{#if $notices.isLoading}
+		{#if overview.isLoading}
 			<div class="text-center py-8 text-neutral-500 dark:text-neutral-400">로딩 중...</div>
-		{:else if allGroupedNotices.length === 0}
-			<div class="text-center py-8 text-neutral-500 dark:text-neutral-400">등록된 알림이 없습니다.</div>
-		{:else}
+        {:else}
 			<!-- Current and Future Notices -->
-			{#each currentNotices as group}
+            {#if allGroupedNotices && allGroupedNotices.length > 0}
+            {#each allGroupedNotices as group}
 				<div class="mb-6">
 					<h3 class="text-md font-semibold mb-3 text-neutral-600 dark:text-neutral-300 border-l-4 border-neutral-500 dark:border-neutral-400 pl-3">
 						{group.displayDate}
@@ -412,18 +329,18 @@ const pastNoticesByMonth = $derived(groupPastNoticesByMonth(pastNotices));
 											</span>
 
 										</div>
-										<div class="flex items-center gap-1.5 mb-0.5">
+                                        <div class="flex items-center gap-1.5 mb-0.5">
 											<h4 class="font-semibold text-neutral-800 dark:text-neutral-200 break-words">
 												{notice.title}
 											</h4>
-											{#if notice.files && notice.files.length > 0}
+                                            {#if notice.hasFiles}
 												<svg class="w-3 h-3 text-neutral-400 dark:text-neutral-500 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
 													<path fill-rule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clip-rule="evenodd"/>
 												</svg>
 											{/if}
 										</div>
-										<p class="text-neutral-600 dark:text-neutral-300 text-sm line-clamp-2 break-words">
-											{notice.description}
+                                        <p class="text-neutral-600 dark:text-neutral-300 text-sm line-clamp-2 break-words">
+                                            {notice.summary}
 										</p>
 									</div>
 									<div class="flex gap-2 flex-shrink-0">
@@ -445,84 +362,50 @@ const pastNoticesByMonth = $derived(groupPastNoticesByMonth(pastNotices));
 						{/each}
 					</div>
 				</div>
-			{/each}
+            {/each}
+            {:else}
+                <div class="text-center py-8 text-neutral-500 dark:text-neutral-400">등록된 알림이 없습니다.</div>
+            {/if}
 
-			<!-- Past Notices by Month -->
-			{#if pastNoticesByMonth.length > 0}
-				<div class="mt-6 pt-6 border-t border-neutral-200 dark:border-neutral-700">
-					<h3 class="text-md font-semibold mb-4 text-neutral-500 dark:text-neutral-400">지난 알림</h3>
-					{#each pastNoticesByMonth as monthGroup}
-						<details class="mb-3 bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded">
-							<summary class="px-4 py-3 cursor-pointer hover:bg-neutral-50 dark:hover:bg-neutral-700 text-neutral-500 dark:text-neutral-400 font-medium">
-								{monthGroup.monthName} ({monthGroup.groups.reduce((sum: number, g: any) => sum + g.notices.length, 0)}개)
-							</summary>
-							<div class="px-4 pb-4">
-								{#each monthGroup.groups as group}
-									<div class="mb-3 last:mb-0">
-										<h4 class="text-sm font-medium mb-2 text-neutral-500 dark:text-neutral-400 border-l-2 border-neutral-300 dark:border-neutral-600 pl-2">
-											{group.displayDate}
-										</h4>
-										<div class="grid gap-2">
-											{#each group.notices as notice}
-												<div class="bg-neutral-50 dark:bg-neutral-700 border border-neutral-200 dark:border-neutral-700 p-3 opacity-75 overflow-hidden">
-													<div class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
-														<div class="flex-1">
-															<div class="flex items-center gap-2 mb-1">
-																<span class="px-1.5 py-0.5 text-xs font-medium rounded {getTypeColor(notice.type)} opacity-75">
-																	{notice.type}
-																</span>
-																<span class="text-xs font-medium text-neutral-500 dark:text-neutral-400">
-																	{notice.subject}
-																</span>
-																<span class="text-xs text-neutral-400 dark:text-neutral-500">
-																	마감: {formatDate(notice.dueDate)}
-																</span>
-															</div>
-															<div class="flex items-center gap-1.5 mb-0.5">
-																<h5 class="font-medium text-neutral-600 dark:text-neutral-300 text-sm">
-																	{notice.title}
-																</h5>
-																{#if notice.files && notice.files.length > 0}
-																	<svg class="w-3 h-3 text-neutral-400 dark:text-neutral-500 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
-																		<path fill-rule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clip-rule="evenodd"/>
-																	</svg>
-																{/if}
-															</div>
-															<p class="text-neutral-500 dark:text-neutral-400 text-xs line-clamp-2">
-																{notice.description}
-															</p>
-														</div>
-														<div class="flex gap-1">
-															<button 
-																onclick={() => editNotice(notice)}
-																class="px-2 py-1 text-xs border border-neutral-300 dark:border-neutral-600 hover:bg-neutral-100 dark:hover:bg-neutral-600 text-neutral-600 dark:text-neutral-300 opacity-75"
-															>
-																수정
-															</button>
-															<button 
-																onclick={() => handleDelete(notice)}
-																class="px-2 py-1 text-xs bg-neutral-600 dark:bg-neutral-400 text-white hover:bg-neutral-700 dark:hover:bg-neutral-300 opacity-75"
-															>
-																삭제
-															</button>
-														</div>
-													</div>
-												</div>
-											{/each}
-										</div>
-									</div>
-								{/each}
-							</div>
-						</details>
-					{/each}
-				</div>
-			{/if}
+			<!-- Past Notices by Month (lazy) -->
+			{#if overview.data?.pastMonths && overview.data.pastMonths.length > 0}
+                <div class="mt-6 pt-6 border-t border-neutral-200 dark:border-neutral-700">
+                    <h3 class="text-base sm:text-lg font-medium mb-2 text-neutral-500 dark:text-neutral-400">지난 알림</h3>
+					{#each overview.data.pastMonths as m (m.monthKey)}
+                        <details class="mb-3 bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded" ontoggle={(e) => {
+                            const el = e.currentTarget as HTMLDetailsElement;
+                            openMonthKey = el.open ? m.monthKey : (openMonthKey === m.monthKey ? null : openMonthKey);
+                        }}>
+                            <summary class="px-4 py-3 cursor-pointer hover:bg-neutral-50 dark:hover:bg-neutral-700 text-neutral-500 dark:text-neutral-400 font-medium">
+                                {m.monthName} ({m.total}개)
+                            </summary>
+                            {#if openMonthKey === m.monthKey}
+                                {#key m.monthKey}
+                                    <AdminPastMonthDetails 
+                                        monthKey={m.monthKey}
+                                        onEdit={(id: string) => {
+											const all: any[] = (overview.data?.currentGroups || []).flatMap((g: any) => g.notices || []);
+                                            const found = all.find((n: any) => String(n?._id) === id);
+                                            if (found) {
+                                                editNotice(found);
+                                            } else {
+                                                editNotice(id);
+                                            }
+                                        }}
+                                        onDelete={(id: string) => handleDelete({ _id: id } as any)}
+                                    />
+                                {/key}
+                            {/if}
+                        </details>
+                    {/each}
+                </div>
+            {/if}
 		{/if}
 		
 		<!-- Footer -->
 		<div class="text-center py-4 text-xs text-neutral-500 dark:text-neutral-400 border-t border-neutral-200 dark:border-neutral-700 mt-8">
-			{#if $notices.data && $notices.data.length > 0}
-				마지막 업데이트: {new Date(Math.max(...$notices.data.map(n => n.updatedAt || n.createdAt).filter(Boolean))).toLocaleString('ko-KR', { 
+			{#if allGroupedNotices && allGroupedNotices.length > 0}
+				마지막 업데이트: {new Date(Math.max(...allGroupedNotices.flatMap(g => g.notices || []).map((n: any) => n.updatedAt || n.createdAt).filter(Boolean))).toLocaleString('ko-KR', { 
 					year: 'numeric', 
 					month: 'long', 
 					day: 'numeric', 

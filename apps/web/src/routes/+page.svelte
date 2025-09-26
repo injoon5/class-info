@@ -1,9 +1,8 @@
 <script lang="ts">
 import { useQuery } from 'convex-svelte';
 import { api } from "@class-info/backend/convex/_generated/api";
-import { groupNoticesByDate, groupPastNoticesByMonth } from '../lib/utils.js';
 import NoticeGroup from '../components/NoticeGroup.svelte';
-import PastNoticesSection from '../components/PastNoticesSection.svelte';
+import PastMonthDetails from '../components/PastMonthDetails.svelte';
 import LoadingState from '../components/LoadingState.svelte';
 import ErrorState from '../components/ErrorState.svelte';
 import EmptyState from '../components/EmptyState.svelte';
@@ -11,20 +10,16 @@ import NoticeFooter from '../components/NoticeFooter.svelte';
 import type { PageData } from './$types.js';
 
 let { data }: { data: PageData } = $props();
+let openMonthKey = $state<string | null>(null);
 
-const notices = useQuery(
-	api.notices.list,
-	{},
-	() => ({ 
-		initialData: data.notices,
-		keepPreviousData: true 
-	})
-);
+$effect(() => {
+    console.debug('[notices] openMonthKey changed:', openMonthKey);
+});
 
-const allGroupedNotices = $derived(groupNoticesByDate(notices.data || []));
-const currentNotices = $derived(allGroupedNotices.filter(group => !group.isPast));
-const pastNotices = $derived(allGroupedNotices.filter(group => group.isPast));
-const pastNoticesByMonth = $derived(groupPastNoticesByMonth(pastNotices));
+const overview = useQuery(api.notices.overview, {}, () => ({
+    initialData: data,
+    keepPreviousData: true,
+}));
 
 </script>
 
@@ -48,20 +43,50 @@ const pastNoticesByMonth = $derived(groupPastNoticesByMonth(pastNotices));
 
 <div class="max-w-4xl mx-auto p-4 ios-content-padding">
 	<!-- Notice Board -->
-	{#if notices.isLoading}
-		<LoadingState />
-	{:else if notices.error}
-		<ErrorState error={notices.error} />
-	{:else if allGroupedNotices.length === 0}
-		<EmptyState />
-	{:else}
-		<!-- Current and Future Notices -->
-		{#each currentNotices as group}
-			<NoticeGroup {group} />
-		{/each}
-
-		<PastNoticesSection {pastNoticesByMonth} />
-	{/if}
-	<NoticeFooter notices={notices.data || []} />
+    {#if overview.isLoading}
+        <LoadingState />
+    {:else if overview.error}
+        <ErrorState error={overview.error} />
+    {:else}
+        <!-- Current and Future Notices -->
+        {#if overview.data?.currentGroups && overview.data.currentGroups.length > 0}
+            {#each overview.data.currentGroups as group}
+                <NoticeGroup {group} />
+            {/each}
+        {:else}
+            <EmptyState />
+        {/if}
+		
+        {#if overview.data?.pastMonths && overview.data.pastMonths.length > 0}
+            <div class="mt-6 sm:mt-8 pt-4 sm:pt-6 border-t border-neutral-200 dark:border-neutral-700">
+                <h2 class="text-base sm:text-lg font-medium mb-1 sm:mb-2 text-neutral-500 dark:text-neutral-400">지난 알림</h2>
+                {#each overview.data.pastMonths as month (month.monthKey)}
+                    <details class="mb-3 sm:mb-4 bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded" ontoggle={(e) => {
+                        const el = e.currentTarget as HTMLDetailsElement;
+                        if (el.open) {
+                            console.debug('[notices] details opened for month:', month.monthKey, month.monthName);
+                            openMonthKey = month.monthKey;
+                        } else if (openMonthKey === month.monthKey) {
+                            console.debug('[notices] details closed for month:', month.monthKey, month.monthName);
+                            openMonthKey = null;
+                        }
+                    }}>
+                        <summary class="rounded-t px-3 sm:px-4 py-2 sm:py-3 cursor-pointer hover:bg-neutral-50 dark:hover:bg-neutral-700 text-neutral-500 dark:text-neutral-400 font-medium text-sm sm:text-base">
+                            {month.monthName} ({month.total}개)
+                        </summary>
+                        {#if openMonthKey === month.monthKey}
+                            {#key month.monthKey}
+                                <PastMonthDetails monthKey={month.monthKey} />
+                            {/key}
+                        {/if}
+                    </details>
+                {/each}
+            </div>
+        {/if}
+        {#if (!overview.data?.currentGroups || overview.data.currentGroups.length === 0) && (!overview.data?.pastMonths || overview.data.pastMonths.length === 0)}
+            <EmptyState />
+        {/if}
+    {/if}
+    <NoticeFooter notices={overview.data?.currentGroups || []} />
 </div>
 
