@@ -10,6 +10,7 @@
 
 import type * as crons from "../crons.js";
 import type * as files from "../files.js";
+import type * as meals from "../meals.js";
 import type * as notices from "../notices.js";
 import type * as settings from "../settings.js";
 import type * as timetable from "../timetable.js";
@@ -31,6 +32,7 @@ import type {
 declare const fullApi: ApiFromModules<{
   crons: typeof crons;
   files: typeof files;
+  meals: typeof meals;
   notices: typeof notices;
   settings: typeof settings;
   timetable: typeof timetable;

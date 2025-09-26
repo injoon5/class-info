@@ -52,18 +52,18 @@ function getPeriodLabel(period: number): string {
 	<meta name="robots" content="noindex" />
 </svelte:head>
 
-<div class="max-w-4xl mx-auto p-4 ios-content-padding">
+<div class="max-w-4xl mx-auto px-4 py-1 sm:py-0 sm:px-4">
 	<!-- Header: Week Selector -->
 	<div class="flex justify-center mb-3">
-		<div class="relative flex w-full rounded-xl bg-neutral-200 dark:bg-neutral-800 p-1 shadow-inner transition h-9 sm:h-11">
+		<div class="relative flex w-full rounded-xl bg-neutral-200 dark:bg-neutral-800 p-1 shadow-inner transition h-9 sm:h-11 text-sm sm:text-base">
 			<!-- Sliding indicator -->
 			<div
-				class="absolute top-1 h-7 sm:h-9 w-[calc(50%-0.25rem)] rounded-lg bg-white dark:bg-neutral-900 shadow transition-transform duration-300 ease-in-out z-0"
+				class="absolute top-1 h-7 sm:h-9 w-[calc(50%-0.25rem)] rounded-lg bg-white dark:bg-neutral-700 shadow transition-transform duration-300 ease-in-out z-0"
 				style="transform: translateX({(selectedWeek * 100)}%);"
 				aria-hidden="true"
 			></div>
 			<button
-				class="flex-1 relative z-10 px-3 py-1 rounded-lg text-sm font-medium transition
+				class="flex-1 relative z-10 px-3 py-1 rounded-lg font-medium transition
 					{selectedWeek === 0 
 						? 'text-neutral-900 dark:text-neutral-100'
 						: 'text-neutral-600 dark:text-neutral-300'}"
@@ -74,7 +74,7 @@ function getPeriodLabel(period: number): string {
 				이번 주
 			</button>
 			<button
-				class="flex-1 relative z-10 px-3 py-1 rounded-lg text-sm font-medium transition
+				class="flex-1 relative z-10 px-3 py-1 rounded-lg font-medium transition
 					{selectedWeek === 1 
 						? 'text-neutral-900 dark:text-neutral-100'
 						: 'text-neutral-600 dark:text-neutral-300'}"
@@ -95,9 +95,9 @@ function getPeriodLabel(period: number): string {
 		<EmptyState />
 	{:else}
 		<div class="overflow-x-auto">
-			<table class="w-full table-fixed border border-neutral-200 dark:border-neutral-700 shadow-sm mx-auto">
+			<table class="w-full min-w-[18rem] table-fixed border border-neutral-200 dark:border-neutral-700 border-collapse shadow-sm mx-auto">
 				<thead>
-					<tr class="bg-neutral-100 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700">
+					<tr class="bg-neutral-100 dark:bg-neutral-800">
 						<th class="px-1 py-3 text-center text-base sm:text-lg text-neutral-600 dark:text-neutral-300 border border-neutral-200 dark:border-neutral-700"> </th>
 						{#each dayNames as name}
 							<th class="px-1 py-2 text-center text-base font-medium sm:text-lg text-neutral-600 dark:text-neutral-300 border border-neutral-200 dark:border-neutral-700">{name}</th>
@@ -117,10 +117,10 @@ function getPeriodLabel(period: number): string {
 										<!-- Subject cell -->
 										<div class="flex items-center justify-center gap-2">
 											<div>
-												<span class="text-md sm:text-xl font-medium text-neutral-800 dark:text-neutral-200">{day[i].subject}</span>
+												<span class="text-md sm:text-xl font-semibold text-neutral-800 dark:text-neutral-200">{day[i].subject}</span>
 											</div>
 										</div>
-										<div class="text-sm sm:text-lg mt-0.5 text-neutral-500 dark:text-neutral-400">{day[i].teacher}</div>
+										<div class="text-sm sm:text-lg mt-0.5 font-medium text-neutral-500 dark:text-neutral-400">{day[i].teacher}</div>
 									{:else}
 										<span class="text-neutral-400 text-base sm:text-lg">-</span>
 									{/if}

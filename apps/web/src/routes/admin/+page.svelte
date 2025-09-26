@@ -239,7 +239,7 @@ const pastNoticesByMonth = $derived(groupPastNoticesByMonth(pastNotices));
 
 {#if !data.isAuthenticated}
 	<!-- PIN Authentication Form -->
-	<div class="min-h-screen bg-neutral-100 dark:bg-neutral-900 flex items-center justify-center">
+	<div class="flex items-center justify-center min-h-[calc(100vh-5rem)] bg-neutral-100 dark:bg-neutral-900">
 		<div class="bg-white dark:bg-neutral-800 p-8 border border-neutral-300 dark:border-neutral-600 max-w-md w-full mx-4">
 			<h1 class="text-2xl font-bold text-neutral-800 dark:text-neutral-200 mb-6 text-center">관리자 로그인</h1>
 			
@@ -263,7 +263,7 @@ const pastNoticesByMonth = $derived(groupPastNoticesByMonth(pastNotices));
 				
 				<button 
 					type="submit"
-					class="w-full px-4 py-2 bg-neutral-800 dark:bg-neutral-300 text-white text-sm hover:bg-neutral-700 dark:hover:bg-neutral-200"
+					class="w-full px-4 py-2 bg-neutral-800 dark:bg-neutral-300 font-semibold text-white dark:text-black text-sm hover:bg-neutral-700 dark:hover:bg-neutral-200"
 				>
 					로그인
 				</button>

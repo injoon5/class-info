@@ -52,4 +52,20 @@ export default defineSchema({
     key: v.string(),
     value: v.string(),
   }).index("by_key", ["key"]),
+  
+  meals: defineTable({
+    // YYYYMMDD string for the meal date (local KST date)
+    date: v.string(),
+    mealType: v.string(), // e.g., "중식"
+    dishes: v.array(v.string()), // split by newline from DDISH_NM
+    originInfo: v.string(), // raw ORPLC_INFO
+    calories: v.union(v.string(), v.null()), // e.g., "685.4 Kcal"
+    nutrients: v.union(v.string(), v.null()), // raw NTR_INFO text
+    schoolCode: v.string(),
+    schoolName: v.string(),
+    loadedAt: v.string(), // LOAD_DTM from source (YYYYMMDD)
+    editedAt: v.number(),
+  })
+    .index("by_date", ["date"]) // query by day/week
+    .index("by_date_type", ["date", "mealType"]),
 });
