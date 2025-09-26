@@ -9,8 +9,8 @@ importers:
   .:
     devDependencies:
       convex:
-        specifier: ^1.26.2
-        version: 1.26.2(react@19.1.1)
+        specifier: ^1.27.3
+        version: 1.27.3
       turbo:
         specifier: ^2.5.4
         version: 2.5.6
@@ -71,7 +71,7 @@ importers:
     dependencies:
       '@convex-dev/r2':
         specifier: ^0.7.3
-        version: 0.7.3(convex-svelte@0.0.11)(convex@1.26.2)(react-dom@19.1.1)(react@19.1.1)(svelte@5.38.7)(typescript@5.9.2)(zod@4.1.5)
+        version: 0.7.3(convex-svelte@0.0.11)(convex@1.26.2)(react-dom@19.1.1)(react@19.1.1)(svelte@5.39.6)(typescript@5.9.2)
       convex:
         specifier: ^1.25.4
         version: 1.26.2(react@19.1.1)
@@ -847,6 +847,35 @@ packages:
       react: 19.1.1
       react-dom: 19.1.1(react@19.1.1)
       svelte: 5.38.7
+      uuid: 11.1.0
+    transitivePeerDependencies:
+      - '@standard-schema/spec'
+      - aws-crt
+      - hono
+      - supports-color
+      - typescript
+      - zod
+    dev: false
+
+  /@convex-dev/r2@0.7.3(convex-svelte@0.0.11)(convex@1.26.2)(react-dom@19.1.1)(react@19.1.1)(svelte@5.39.6)(typescript@5.9.2):
+    resolution: {integrity: sha512-IUqbzRqBc57spMN2RHWOL4+7j02DOPmMJd0duJj+aceaIM2pEcMQSvwbpOlnAZt3k7aW6ZEtbYeGszwR38bwJg==}
+    peerDependencies:
+      convex: ~1.16.5 || >=1.17.0 <1.35.0
+      convex-svelte: ^0.0.11
+      react: ^18 || ^19
+      react-dom: ^18 || ^19
+      svelte: '>=5.0.0'
+    dependencies:
+      '@aws-sdk/client-s3': 3.726.1
+      '@aws-sdk/s3-request-presigner': 3.884.0
+      '@convex-dev/action-retrier': 0.2.1(convex@1.26.2)
+      convex: 1.26.2(react@19.1.1)
+      convex-helpers: 0.1.104(convex@1.26.2)(react@19.1.1)(typescript@5.9.2)(zod@4.1.5)
+      convex-svelte: 0.0.11(convex@1.26.2)(svelte@5.39.6)
+      file-type: 20.5.0
+      react: 19.1.1
+      react-dom: 19.1.1(react@19.1.1)
+      svelte: 5.39.6
       uuid: 11.1.0
     transitivePeerDependencies:
       - '@standard-schema/spec'
@@ -2001,6 +2030,14 @@ packages:
     dependencies:
       acorn: 8.15.0
 
+  /@sveltejs/acorn-typescript@1.0.6(acorn@8.15.0):
+    resolution: {integrity: sha512-4awhxtMh4cx9blePWl10HRHj8Iivtqj+2QdDCSMDzxG+XKa9+VCNupQuCuvzEhYPzZSrX+0gC+0lHA/0fFKKQQ==}
+    peerDependencies:
+      acorn: ^8.9.0
+    dependencies:
+      acorn: 8.15.0
+    dev: false
+
   /@sveltejs/adapter-auto@6.1.0(@sveltejs/kit@2.37.1):
     resolution: {integrity: sha512-shOuLI5D2s+0zTv2ab5M5PqfknXqWbKi+0UwB9yLTRIdzsK1R93JOO8jNhIYSHdW+IYXIYnLniu+JZqXs7h9Wg==}
     peerDependencies:
@@ -2365,6 +2402,16 @@ packages:
       svelte: 5.38.7
     dev: false
 
+  /convex-svelte@0.0.11(convex@1.26.2)(svelte@5.39.6):
+    resolution: {integrity: sha512-N/29gg5Zqy72vKL4xHSLk3jGwXVKIWXPs6xzq6KxGL84y/D6hG85pG2CPOzn08EzMmByts5FTkJ5p3var6yDng==}
+    peerDependencies:
+      convex: ^1.10.0
+      svelte: ^5.0.0
+    dependencies:
+      convex: 1.26.2(react@19.1.1)
+      svelte: 5.39.6
+    dev: false
+
   /convex@1.26.2(react@19.1.1):
     resolution: {integrity: sha512-QG3zvZ9GTTeeBS+N5PJj73TULHYu99eVSOI3KU2hMnB9q40fHxkMFJ+AYox+K81roTakciBvNTvGlhfz+M10fQ==}
     engines: {node: '>=18.0.0', npm: '>=7.0.0'}
@@ -2385,6 +2432,28 @@ packages:
       jwt-decode: 4.0.0
       prettier: 3.6.2
       react: 19.1.1
+    dev: false
+
+  /convex@1.27.3:
+    resolution: {integrity: sha512-Ebr9lPgXkL7JO5IFr3bG+gYvHskyJjc96Fx0BBNkJUDXrR/bd9/uI4q8QszbglK75XfDu068vR0d/HK2T7tB9Q==}
+    engines: {node: '>=18.0.0', npm: '>=7.0.0'}
+    hasBin: true
+    peerDependencies:
+      '@auth0/auth0-react': ^2.0.1
+      '@clerk/clerk-react': ^4.12.8 || ^5.0.0
+      react: ^18.0.0 || ^19.0.0-0 || ^19.0.0
+    peerDependenciesMeta:
+      '@auth0/auth0-react':
+        optional: true
+      '@clerk/clerk-react':
+        optional: true
+      react:
+        optional: true
+    dependencies:
+      esbuild: 0.25.4
+      jwt-decode: 4.0.0
+      prettier: 3.6.2
+    dev: true
 
   /cookie@0.6.0:
     resolution: {integrity: sha512-U71cyTamuh1CRNCfpGY6to28lxvNwPG4Guz/EVjgf3Jmzv0vlDp1atT9eS5dDjMYHucpHbWns6Lwf3BKz6svdw==}
@@ -2769,6 +2838,7 @@ packages:
   /react@19.1.1:
     resolution: {integrity: sha512-w8nqGImo45dmMIfljjMwOGtbmC/mk4CMYhWIicdSflH91J9TyCyczcPFXJzrZ/ZXcgGRFeP6BU0BEJTw6tZdfQ==}
     engines: {node: '>=0.10.0'}
+    dev: false
 
   /readdirp@4.1.2:
     resolution: {integrity: sha512-GDhwkLfywWL2s6vEjyhri+eXmfH6j1L7JE27WhqLeYzoh/A3DBaYGEj2H/HFZCn/kMfim73FXxEJTw06WtxQwg==}
@@ -2887,6 +2957,26 @@ packages:
       locate-character: 3.0.0
       magic-string: 0.30.19
       zimmerframe: 1.1.2
+
+  /svelte@5.39.6:
+    resolution: {integrity: sha512-bOJXmuwLNaoqPCTWO8mPu/fwxI5peGE5Efe7oo6Cakpz/G60vsnVF6mxbGODaxMUFUKEnjm6XOwHEqOht6cbvw==}
+    engines: {node: '>=18'}
+    dependencies:
+      '@jridgewell/remapping': 2.3.5
+      '@jridgewell/sourcemap-codec': 1.5.5
+      '@sveltejs/acorn-typescript': 1.0.6(acorn@8.15.0)
+      '@types/estree': 1.0.8
+      acorn: 8.15.0
+      aria-query: 5.3.2
+      axobject-query: 4.1.0
+      clsx: 2.1.1
+      esm-env: 1.2.2
+      esrap: 2.1.0
+      is-reference: 3.0.3
+      locate-character: 3.0.0
+      magic-string: 0.30.19
+      zimmerframe: 1.1.4
+    dev: false
 
   /tailwindcss@4.1.13:
     resolution: {integrity: sha512-i+zidfmTqtwquj4hMEwdjshYYgMbOrPzb9a0M3ZgNa0JMoZeFC6bxZvO8yr8ozS6ix2SDz0+mvryPeBs2TFE+w==}
@@ -3087,6 +3177,10 @@ packages:
 
   /zimmerframe@1.1.2:
     resolution: {integrity: sha512-rAbqEGa8ovJy4pyBxZM70hg4pE6gDgaQ0Sl9M3enG3I0d6H4XSAM3GeNGLKnsBpuijUow064sf7ww1nutC5/3w==}
+
+  /zimmerframe@1.1.4:
+    resolution: {integrity: sha512-B58NGBEoc8Y9MWWCQGl/gq9xBCe4IiKM0a2x7GZdQKOW5Exr8S1W24J6OgM1njK8xCRGvAJIL/MxXHf6SkmQKQ==}
+    dev: false
 
   /zod@4.1.5:
     resolution: {integrity: sha512-rcUUZqlLJgBC33IT3PNMgsCq6TzLQEG/Ei/KTCU0PedSWRMAXoOUN+4t/0H+Q8bdnLPdqUYnvboJT0bn/229qg==}
