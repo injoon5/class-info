@@ -197,6 +197,18 @@ export const overview = query({
   },
 });
 
+export const detail = query({
+  args: { id: v.id("notices") },
+  handler: async (ctx, { id }) => {
+    const notice = await ctx.db.get(id);
+    if (!notice) return { notice: null, files: [] as any[] };
+    const files = Array.isArray(notice.files)
+      ? (await Promise.all(notice.files.map((fid: any) => ctx.db.get(fid)))).filter(Boolean)
+      : [];
+    return { notice, files };
+  },
+});
+
 export const getById = query({
   args: { id: v.id("notices") },
   handler: async (ctx, args) => {

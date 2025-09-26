@@ -9,23 +9,16 @@ import type { PageData } from './$types.js';
 
 let { data }: { data: PageData } = $props();
 
-const notice = useQuery(
-	api.notices.getById, 
+const detail = useQuery(
+	(api as any).notices.detail,
 	() => ({ id: $page.params.id }),
 	() => ({ 
-		initialData: data.notice,
+		initialData: { notice: data.notice, files: data.files },
 		keepPreviousData: true 
 	})
 );
 
-const noticeFiles = useQuery(
-	api.files.getNoticeFiles,
-	() => ({ noticeId: $page.params.id }),
-	() => ({ 
-		initialData: data.files || [],
-		keepPreviousData: true 
-	})
-);
+let html = $state<string | null>(data.prerenderedHtml || null);
 
 function renderMarkdown(text: string) {
 	// Convert single line breaks to double line breaks for proper markdown parsing
@@ -42,28 +35,36 @@ function renderMarkdown(text: string) {
 		}
 	);
 	
-	return marked(processedText);
+	return marked.parse(processedText) as string;
 }
+
+$effect(() => {
+	if (!html && detail.data?.notice?.description) {
+		const run = () => {
+			html = renderMarkdown(detail.data!.notice!.description);
+		};
+		// Lazy render markdown when idle
+		if (typeof requestIdleCallback !== 'undefined') requestIdleCallback(run);
+		else setTimeout(run, 0);
+	}
+});
 </script>
 
 <svelte:head>
-	{#if notice.data}
-		<title>{notice.data.subject} {notice.data.title} | 3-4 학급 공지</title>
-		<meta name="description" content="{getFirstLine(notice.data.description) || '공지 내용을 확인하세요!'}" />
+	{#if detail.data?.notice}
+		<title>{detail.data.notice.subject} {detail.data.notice.title} | 3-4 학급 공지</title>
+		<meta name="description" content="{getFirstLine(detail.data.notice.description) || '공지 내용을 확인하세요!'}" />
 		
 		<!-- Open Graph -->
-		<meta property="og:title" content="{notice.data.subject} {notice.data.title} | 3-4 학급 공지" />
-		<meta property="og:description" content="{getFirstLine(notice.data.description) || '공지 내용을 확인하세요!'}" />
+		<meta property="og:title" content="{detail.data.notice.subject} {detail.data.notice.title} | 3-4 학급 공지" />
+		<meta property="og:description" content="{getFirstLine(detail.data.notice.description) || '공지 내용을 확인하세요!'}" />
 		<meta property="og:type" content="article" />
 		<meta property="og:site_name" content="학급 공지" />
 		
 		<!-- Twitter Card -->
 		<meta name="twitter:card" content="summary_large_image" />
-		<meta name="twitter:title" content="{notice.data.subject} {notice.data.title} | 3-4 학급 공지" />
-		<meta name="twitter:description" content="{getFirstLine(notice.data.description) || '공지 내용을 확인하세요!'}" />
-
-		<!-- Additional meta tags -->
-		<meta name="keywords" content="학급, 공지, {notice.data.type}, {notice.data.subject}, 공지사항" />
+		<meta name="twitter:title" content="{detail.data.notice.subject} {detail.data.notice.title} | 3-4 학급 공지" />
+		<meta name="twitter:description" content="{getFirstLine(detail.data.notice.description) || '공지 내용을 확인하세요!'}" />
 	{:else}
 		<title>공지 상세 - 3-4 학급 공지</title>
 		<meta name="description" content="학급 공지의 상세 내용을 확인하세요." />
@@ -85,50 +86,50 @@ function renderMarkdown(text: string) {
 		</a>
 
 		<!-- Notice Detail -->
-		{#if notice.isLoading}
+		{#if detail.isLoading}
 			<div class="text-center py-8 text-neutral-500 dark:text-neutral-400">로딩 중...</div>
-		{:else if notice.error}
+		{:else if detail.error}
 			<div class="text-center py-8 text-red-600">
 				<p>데이터를 불러오는 중 오류가 발생했습니다.</p>
-				<p class="text-sm mt-2">{notice.error.toString()}</p>
+				<p class="text-sm mt-2">{detail.error.toString()}</p>
 				<button onclick={() => window.location.reload()} class="mt-4 px-4 py-2 bg-neutral-800 dark:bg-neutral-300 text-white dark:text-neutral-800 text-sm hover:bg-neutral-700 dark:hover:bg-neutral-200">
 					다시 시도
 				</button>
 			</div>
-		{:else if !notice.data}
+		{:else if !detail.data?.notice}
 			<div class="text-center py-8 text-neutral-500 dark:text-neutral-400">알림을 찾을 수 없습니다.</div>
 		{:else}
 			<div class="mb-4 mt-2 sm:mt-3 bg-white dark:bg-neutral-800 border border-neutral-300 dark:border-neutral-600 p-4 sm:p-6">
 				<div class="mb-4">
 					<div class="flex items-center gap-2 sm:gap-3 mb-1 sm:mb-2">
-						<span class="px-2 py-1 text-sm font-medium rounded {getTypeColor(notice.data.type)}">
-							{notice.data.type}
+						<span class="px-2 py-1 text-sm font-medium rounded {getTypeColor(detail.data.notice.type)}">
+							{detail.data.notice.type}
 						</span>
 						<span class="text-base sm:text-lg font-medium text-neutral-600 dark:text-neutral-300">
-							{notice.data.subject}
+							{detail.data.notice.subject}
 						</span>
 					</div>
 					<h2 class="text-xl sm:text-2xl font-bold text-neutral-800 dark:text-neutral-200 sm:mb-1">
-						{notice.data.title}
+						{detail.data.notice.title}
 					</h2>
 					<p class="text-sm sm:text-base text-neutral-500 dark:text-neutral-400">
-						마감일: {formatDate(notice.data.dueDate)}
+						마감일: {formatDate(detail.data.notice.dueDate)}
 					</p>
 				</div>
 				
-				{#if notice.data.description && notice.data.description.trim()}
+				{#if html}
 					<div class="border-t border-neutral-200 dark:border-neutral-700 pt-4">
 						<div class="text-sm sm:text-base text-neutral-600 dark:text-neutral-300 leading-relaxed markdown-content">
-							{@html renderMarkdown(notice.data.description)}
+							{@html html.replaceAll('<img ', '<img loading="lazy" ')}
 						</div>
 					</div>
 				{/if}
 
-				{#if noticeFiles.data && noticeFiles.data.length > 0}
+				{#if detail.data.files && detail.data.files.length > 0}
 					<div class="border-t border-neutral-200 dark:border-neutral-700 pt-4 mt-6">
 						<h3 class="text-sm font-medium mb-3 text-neutral-600 dark:text-neutral-300">첨부 파일</h3>
 						<div class="space-y-2">
-							{#each noticeFiles.data as file}
+							{#each detail.data.files as file}
 								<div class="flex items-center gap-3 p-3 bg-neutral-50 dark:bg-neutral-700 border border-neutral-200 dark:border-neutral-600">
 									<div class="flex-shrink-0">
 										{#if file.type.startsWith('image/')}
@@ -166,9 +167,9 @@ function renderMarkdown(text: string) {
 					</div>
 				{/if}
 
-				{#if notice.data.createdAt}
+				{#if detail.data.notice.createdAt}
 					<div class="border-t border-neutral-200 dark:border-neutral-700 pt-4 mt-6 text-xs sm:text-sm text-neutral-500 dark:text-neutral-400">
-						등록일: {new Date(notice.data.createdAt).toLocaleString('ko-KR', { 
+						등록일: {new Date(detail.data.notice.createdAt).toLocaleString('ko-KR', { 
 							year: 'numeric', 
 							month: 'long', 
 							day: 'numeric', 
