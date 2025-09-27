@@ -35,13 +35,14 @@ function renderMarkdown(text: string) {
 		}
 	);
 	
-	return marked.parse(processedText) as string;
+	return marked.parse(processedText);
 }
 
 $effect(() => {
-	if (!html && detail.data?.notice?.description) {
-		const run = () => {
-			html = renderMarkdown(detail.data!.notice!.description);
+	if (detail.data?.notice?.description) {
+		const run = async () => {
+			const result = renderMarkdown(detail.data!.notice!.description);
+			html = typeof result === 'string' ? result : await result;
 		};
 		// Lazy render markdown when idle
 		if (typeof requestIdleCallback !== 'undefined') requestIdleCallback(run);

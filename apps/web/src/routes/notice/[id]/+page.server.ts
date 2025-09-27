@@ -21,10 +21,10 @@ export const load = (async ({ params }) => {
 					return `\n\n<div class="video-embed"><iframe src="https://www.youtube.com/embed/${videoId}${startParam}" frameborder="0" allowfullscreen></iframe></div>\n\n`;
 				}
 			);
-		return marked(processedText);
+		return marked.parse(processedText);
 	}
 
-	const prerenderedHtml = detail.notice?.description ? prerenderMarkdown(detail.notice.description) : null;
+	const prerenderedHtml = detail.notice?.description ? await prerenderMarkdown(detail.notice.description) : null;
 
 	return { ...detail, prerenderedHtml };
 }) satisfies PageServerLoad;

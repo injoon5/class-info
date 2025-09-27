@@ -1,4 +1,5 @@
 <script lang="ts">
+import { onMount } from 'svelte';
 import { useQuery } from 'convex-svelte';
 import { api } from "@class-info/backend/convex/_generated/api";
 import LoadingState from '../../components/LoadingState.svelte';
@@ -9,6 +10,23 @@ import type { PageData } from './$types.js';
 let { data }: { data: PageData } = $props();
 
 let selectedWeek: number = $state(0); // 0: this week, 1: next week
+
+// Scroll gradient state
+let scrollContainer = $state<HTMLDivElement>();
+let leftGradient = $state<HTMLDivElement>();
+let rightGradient = $state<HTMLDivElement>();
+let scrollLeft = $state(0);
+let scrollRight = $state(0);
+
+function updateGradients() {
+	if (!scrollContainer) return;
+	
+	const { scrollLeft: left, scrollWidth, clientWidth } = scrollContainer;
+	const hasOverflow = scrollWidth > clientWidth;
+	
+	scrollLeft = hasOverflow ? left : 0;
+	scrollRight = hasOverflow ? scrollWidth - clientWidth - left : 0;
+}
 
 const timetableQuery = useQuery(
 	(api as any).timetable.getByWeek,
@@ -31,6 +49,23 @@ function getPeriodLabel(period: number): string {
 	const label = times[period - 1];
 	return label ? label.replace(/^.*\(([^)]+)\)$/, '$1') : "?";
 }
+
+onMount(() => {
+	updateGradients();
+	
+	// Handle resize events
+	const resizeObserver = new ResizeObserver(() => {
+		updateGradients();
+	});
+	
+	if (scrollContainer) {
+		resizeObserver.observe(scrollContainer);
+	}
+	
+	return () => {
+		resizeObserver.disconnect();
+	};
+});
 </script>
 
 
@@ -94,8 +129,19 @@ function getPeriodLabel(period: number): string {
 	{:else if !timetableQuery.data}
 		<EmptyState />
 	{:else}
-		<div class="overflow-x-auto">
-			<table class="w-full min-w-[18rem] table-fixed border border-neutral-200 dark:border-neutral-700 border-collapse shadow-sm mx-auto">
+		<div class="relative">
+			<!-- Left gradient -->
+			<div class="absolute left-0 top-0 bottom-0 w-8 bg-gradient-to-r from-white dark:from-neutral-900 to-transparent z-10 pointer-events-none transition-opacity duration-200" 
+				 style="opacity: {scrollLeft > 0 ? 1 : 0};" 
+				 bind:this={leftGradient}></div>
+			
+			<!-- Right gradient -->
+			<div class="absolute right-0 top-0 bottom-0 w-8 bg-gradient-to-l from-white dark:from-neutral-900 to-transparent z-10 pointer-events-none transition-opacity duration-200"
+				 style="opacity: {scrollRight > 0 ? 1 : 0};"
+				 bind:this={rightGradient}></div>
+			
+			<div class="overflow-x-auto" bind:this={scrollContainer} onscroll={updateGradients}>
+				<table class="w-full min-w-[18rem] table-fixed border border-neutral-200 dark:border-neutral-700 border-collapse shadow-sm mx-auto">
 				<thead>
 					<tr class="bg-neutral-100 dark:bg-neutral-800">
 						<th class="px-1 py-3 text-center text-base sm:text-lg text-neutral-600 dark:text-neutral-300 border border-neutral-200 dark:border-neutral-700"> </th>
@@ -130,6 +176,7 @@ function getPeriodLabel(period: number): string {
 					{/each}
 				</tbody>
 			</table>
+			</div>
 		</div>
 		{#if timetableQuery.data}
 			<p class="mt-3 text-xs text-neutral-500 dark:text-neutral-400">

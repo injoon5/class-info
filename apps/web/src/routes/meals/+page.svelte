@@ -1,4 +1,5 @@
 <script lang="ts">
+import { onMount } from 'svelte';
 import { useQuery } from 'convex-svelte';
 import { api } from "@class-info/backend/convex/_generated/api";
 import LoadingState from '../../components/LoadingState.svelte';
@@ -27,6 +28,23 @@ function getNowInKst(): Date {
 
 let { data }: { data: PageData } = $props();
 
+// Scroll gradient state
+let scrollContainer = $state<HTMLDivElement>();
+let leftGradient = $state<HTMLDivElement>();
+let rightGradient = $state<HTMLDivElement>();
+let scrollLeft = $state(0);
+let scrollRight = $state(0);
+
+function updateGradients() {
+	if (!scrollContainer) return;
+	
+	const { scrollLeft: left, scrollWidth, clientWidth } = scrollContainer;
+	const hasOverflow = scrollWidth > clientWidth;
+	
+	scrollLeft = hasOverflow ? left : 0;
+	scrollRight = hasOverflow ? scrollWidth - clientWidth - left : 0;
+}
+
 const mealsQuery = useQuery(
   (api as any).meals.getTwoWeeks,
   () => ({}),
@@ -43,6 +61,23 @@ function formatDateKorean(dateStr: string): string {
   const weekday = date.toLocaleDateString('ko-KR', { weekday: 'short' });
   return `${m}/${d} (${weekday})`;
 }
+
+onMount(() => {
+	updateGradients();
+	
+	// Handle resize events
+	const resizeObserver = new ResizeObserver(() => {
+		updateGradients();
+	});
+	
+	if (scrollContainer) {
+		resizeObserver.observe(scrollContainer);
+	}
+	
+	return () => {
+		resizeObserver.disconnect();
+	};
+});
 </script>
 
 <svelte:head>
@@ -59,11 +94,22 @@ function formatDateKorean(dateStr: string): string {
   {:else if !mealsQuery.data || ((mealsQuery.data.thisWeek?.days ?? []).every((d: any) => d.meal === null) && (mealsQuery.data.nextWeek?.days ?? []).every((d: any) => d.meal === null))}
     <EmptyState />
   {:else}
-    <div class="overflow-x-auto relative">
-      {#each [
-        { days: mealsQuery.data.thisWeek.days, class: "" },
-        { days: mealsQuery.data.nextWeek.days, class: "mt-3" }
-      ] as week}
+    <div class="relative">
+      <!-- Left gradient -->
+      <div class="absolute left-0 top-0 bottom-0 w-8 bg-gradient-to-r from-white dark:from-neutral-900 to-transparent z-10 pointer-events-none transition-opacity duration-200" 
+           style="opacity: {scrollLeft > 0 ? 1 : 0};" 
+           bind:this={leftGradient}></div>
+      
+      <!-- Right gradient -->
+      <div class="absolute right-0 top-0 bottom-0 w-8 bg-gradient-to-l from-white dark:from-neutral-900 to-transparent z-10 pointer-events-none transition-opacity duration-200"
+           style="opacity: {scrollRight > 0 ? 1 : 0};"
+           bind:this={rightGradient}></div>
+      
+      <div class="overflow-x-auto relative" bind:this={scrollContainer} onscroll={updateGradients}>
+        {#each [
+          { days: mealsQuery.data.thisWeek.days, class: "" },
+          { days: mealsQuery.data.nextWeek.days, class: "mt-3" }
+        ] as week}
         <div class={`mb-4 grid grid-cols-5 sm:grid-cols-5 min-w-[37rem] divide-x divide-neutral-200 dark:divide-neutral-700 border border-neutral-200 dark:border-neutral-700 rounded-lg`}>
           {#each week.days as day}
             <div class="bg-white dark:bg-neutral-900 p-2 sm:px-3 sm:py-2 first:rounded-l-lg last:rounded-r-lg flex flex-col justify-between min-h-[8.5rem]">
@@ -89,8 +135,8 @@ function formatDateKorean(dateStr: string): string {
             </div>
           {/each}
         </div>
-      {/each}
-      
+        {/each}
+      </div>
     </div>
     <div class="block sm:hidden mt-1 text-center text-xs text-neutral-500 select-none pointer-events-none">
       좌우로 스크롤하세요 →
