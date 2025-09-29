@@ -204,7 +204,8 @@ function handleDrop(e: DragEvent) {
               <button
                 type="button"
                 onclick={() => copyMarkdownToClipboard(file)}
-                class="px-2 py-1 text-xs border border-neutral-300 dark:border-neutral-600 hover:bg-neutral-200 dark:hover:bg-neutral-500 text-neutral-600 dark:text-neutral-300 opacity-0 group-hover:opacity-100 transition-opacity"
+                class="px-3 py-2 text-sm border border-neutral-300 dark:border-neutral-600 hover:bg-neutral-200 dark:hover:bg-neutral-500 text-neutral-600 dark:text-neutral-300 transition-opacity
+                  opacity-100 sm:opacity-0 sm:group-hover:opacity-100"
                 title="마크다운 복사"
               >
                 복사
@@ -212,7 +213,8 @@ function handleDrop(e: DragEvent) {
               <button
                 type="button"
                 onclick={() => removeFile(file._id)}
-                class="px-2 py-1 text-xs bg-red-600 dark:bg-red-500 text-white hover:bg-red-700 dark:hover:bg-red-600 opacity-0 group-hover:opacity-100 transition-opacity"
+                class="px-3 py-2 text-sm bg-red-600 dark:bg-red-500 text-white hover:bg-red-700 dark:hover:bg-red-600 transition-opacity
+                  opacity-100 sm:opacity-0 sm:group-hover:opacity-100"
                 title="파일 삭제"
               >
                 삭제
@@ -221,7 +223,7 @@ function handleDrop(e: DragEvent) {
           </div>
         {/each}
       </div>
-      <p class="text-xs text-neutral-500 dark:text-neutral-400">
+      <p class="text-xs text-neutral-500 dark:text-neutral-400 hidden sm:block">
         파일에 마우스를 올리면 마크다운 복사 버튼이 나타납니다.
       </p>
     </div>

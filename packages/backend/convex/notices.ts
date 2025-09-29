@@ -63,6 +63,26 @@ type MinimalNotice = {
   summary: string;
 };
 
+function getUrlBasename(url: string): string {
+  try {
+    const withoutQuery = url.split("?")[0].split("#")[0];
+    const parts = withoutQuery.split("/");
+    return parts[parts.length - 1] || url;
+  } catch {
+    return url;
+  }
+}
+
+function summarizeDescription(description: string): string {
+  const firstLine = description.split("\n")[0] || "";
+  // Replace image markdown with filename: prefer alt text, fallback to URL basename
+  return firstLine.replace(/!\[([^\]]*)\]\(([^)]+)\)/g, (_m, alt, link) => {
+    const trimmedAlt = String(alt || "").trim();
+    if (trimmedAlt.length > 0) return trimmedAlt;
+    return getUrlBasename(String(link || "").trim());
+  });
+}
+
 function toMinimalNotice(n: any): MinimalNotice {
   return {
     _id: n._id,
@@ -73,7 +93,7 @@ function toMinimalNotice(n: any): MinimalNotice {
     updatedAt: n.updatedAt,
     createdAt: n.createdAt,
     hasFiles: Array.isArray(n.files) && n.files.length > 0,
-    summary: typeof n.description === 'string' ? (n.description as string).split('\n')[0] : '',
+    summary: typeof n.description === 'string' ? summarizeDescription(n.description as string) : '',
   };
 }
 

@@ -12,12 +12,13 @@ const typePillClass = $derived(`px-1 py-0.5  ${isPast ? 'text-xs' : 'text-sm'}  
 const subjectClass = $derived(`${isPast ? 'text-xs font-medium text-neutral-500 dark:text-neutral-400' : 'text-sm font-semibold text-neutral-600 dark:text-neutral-300'}`);
 const titleWrapClass = $derived(`flex items-center gap-1.5 mb-0.5 ${isPast ? '' : 'sm:mb-1'}`);
 const titleClass = $derived(`${isPast ? 'font-medium text-neutral-600 dark:text-neutral-300 text-xs sm:text-sm' : 'font-semibold text-neutral-800 dark:text-neutral-200 text-base sm:text-md'}`);
-const summaryClass = $derived(`${isPast ? 'text-neutral-500 dark:text-neutral-400 text-xs' : 'text-neutral-600 dark:text-neutral-300 text-xs sm:text-sm font-medium'} line-clamp-2`);
+// Add overflow-hidden and break-words to prevent overflow
+const summaryClass = $derived(`${isPast ? 'text-neutral-500 dark:text-neutral-400 text-xs' : 'text-neutral-600 dark:text-neutral-300 text-xs sm:text-sm font-medium'} line-clamp-2 overflow-hidden text-ellipsis break-all`);
 </script>
 
 <svelte:element this={isLink ? 'a' : 'div'} class={containerClass} href={isLink ? `/notice/${notice._id}` : undefined}>
 	<div class="flex items-start justify-between gap-2 sm:gap-4">
-		<div class="flex-1">
+		<div class="flex-1 min-w-0">
 			<div class={headerGapClass}>
 				<span class={typePillClass}>
 					{notice.type}
