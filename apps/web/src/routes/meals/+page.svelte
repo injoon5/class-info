@@ -112,7 +112,7 @@ onMount(() => {
         ] as week}
         <div class={`mb-4 grid grid-cols-5 sm:grid-cols-5 min-w-[37rem] divide-x divide-neutral-200 dark:divide-neutral-700 border border-neutral-200 dark:border-neutral-700 rounded-lg`}>
           {#each week.days as day}
-            <div class="bg-white dark:bg-neutral-900 p-2 sm:px-3 sm:py-2 first:rounded-l-lg last:rounded-r-lg flex flex-col justify-between min-h-[8.5rem]">
+            <div class="bg-white dark:bg-neutral-900 p-2 sm:px-3 sm:py-2 first:rounded-l-lg last:rounded-r-lg flex flex-col justify-between min-h-[15rem]">
               <div>
                 <div class="flex items-center justify-between">
                   <h2 class="text-base sm:text-lg font-bold text-neutral-800 dark:text-neutral-100">{formatDateKorean(day.date)}</h2>

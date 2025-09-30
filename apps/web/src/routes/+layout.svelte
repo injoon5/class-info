@@ -13,7 +13,9 @@
 	<!-- Global Header -->
 	<div class="max-w-4xl mx-auto px-4 pt-4 pb-2 sm:pb-3 w-full">
 		<div class="flex justify-between items-center gap-2 pb-2 sm:pb-3 border-b border-neutral-300 dark:border-neutral-600">
-			<h1 class="text-2xl sm:text-2xl font-bold text-neutral-800 dark:text-neutral-200 ios-text-optimized">3-4 안내</h1>
+			<a class="text-2xl sm:text-2xl font-bold text-neutral-800 dark:text-neutral-200" href="/" >
+				<h1>3-4 안내</h1>
+			</a>
 			<nav class="flex items-center gap-2 sm:gap-3 text-neutral-700 dark:text-neutral-300">
 				<a
 					href="/"
