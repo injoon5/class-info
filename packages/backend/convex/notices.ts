@@ -286,6 +286,12 @@ export const detail = query({
   },
 });
 
+export const getById = query({
+  args: { id: v.id("notices") },
+  handler: async (ctx, args) => {
+    return await ctx.db.get(args.id);
+  },
+});
 
 export const create = mutation({
   args: {
