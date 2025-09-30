@@ -179,7 +179,7 @@ onMount(() => {
 			</div>
 		</div>
 		{#if timetableQuery.data}
-			<p class="mt-3 text-xs text-neutral-500 dark:text-neutral-400">
+			<p class="mt-3 text-xs text-neutral-500 dark:text-neutral-400 pb-10">
 				업데이트: {new Date(timetableQuery.data.editedAt).toLocaleString('ko-KR', {
 					year: 'numeric',
 					month: 'long',

@@ -120,7 +120,7 @@ $effect(() => {
 				
 				{#if html}
 					<div class="border-t border-neutral-200 dark:border-neutral-700 pt-4">
-						<div class="text-sm sm:text-base text-neutral-600 dark:text-neutral-300 leading-relaxed markdown-content">
+						<div class="text-sm sm:text-base text-neutral-600 dark:text-neutral-300 leading-relaxed markdown-content break-words">
 							{@html html.replaceAll('<img ', '<img loading="lazy" ')}
 						</div>
 					</div>
@@ -128,7 +128,7 @@ $effect(() => {
 
 				{#if detail.data.files && detail.data.files.length > 0}
 					<div class="border-t border-neutral-200 dark:border-neutral-700 pt-4 mt-6">
-						<h3 class="text-sm font-medium mb-3 text-neutral-600 dark:text-neutral-300">첨부 파일</h3>
+						<h3 class="text-sm sm:text-base font-medium mb-3 text-neutral-600 dark:text-neutral-300">첨부 파일</h3>
 						<div class="space-y-2">
 							{#each detail.data.files as file}
 								<div class="flex items-center gap-3 p-3 bg-neutral-50 dark:bg-neutral-700 border border-neutral-200 dark:border-neutral-600">
@@ -156,12 +156,15 @@ $effect(() => {
 											{(file.size / 1024 / 1024).toFixed(2)} MB
 										</p>
 									</div>
-									<button
-										onclick={() => window.open(file.url, '_blank')}
-										class="px-3 py-1 text-xs border border-neutral-300 dark:border-neutral-600 hover:bg-neutral-100 dark:hover:bg-neutral-600 text-neutral-600 dark:text-neutral-300"
+									<a
+										href={file.url}
+										target="_blank"
+										role="button"
+										rel="noopener noreferrer"
+										class="px-5 py-2 text-sm border border-neutral-300 dark:border-neutral-600 hover:bg-neutral-100 dark:hover:bg-neutral-600 text-neutral-600 dark:text-neutral-300 font-semibold inline-flex items-center justify-center"
 									>
 										열기
-									</button>
+									</a>
 								</div>
 							{/each}
 						</div>

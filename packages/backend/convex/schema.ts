@@ -11,7 +11,8 @@ export default defineSchema({
     createdAt: v.number(),
     updatedAt: v.number(),
     files: v.optional(v.array(v.id("files"))),
-  }).index("by_due_date", ["dueDate"]),
+    slug: v.optional(v.string()),
+  }).index("by_due_date", ["dueDate"]).index("by_slug", ["slug"]),
   
   files: defineTable({
     name: v.string(),
