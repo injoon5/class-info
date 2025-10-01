@@ -4,7 +4,7 @@ import { getTypeColor } from '../lib/utils.js';
 let { notice, isPast = false }: { notice: any; isPast?: boolean } = $props();
 
 const isLink = $derived(Boolean((notice?.summary && String(notice.summary).trim()) || notice?.hasFiles));
-console.log(isLink)
+
 const containerClass = $derived(
     `${isPast ? 'bg-neutral-50 dark:bg-neutral-700 border-neutral-200 dark:border-neutral-700 opacity-75' : 'bg-white dark:bg-neutral-800 border-neutral-300 dark:border-neutral-600'} border p-2 sm:p-3 pressable-xl ${isLink ? (isPast ? 'hover:opacity-90 transition-opacity' : 'hover:border-neutral-400 dark:hover:border-neutral-500 transition-colors') : ''}`
 );
