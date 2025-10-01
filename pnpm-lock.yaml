@@ -10,7 +10,7 @@ importers:
     devDependencies:
       convex:
         specifier: ^1.27.3
-        version: 1.27.3
+        version: 1.27.3(react@19.1.1)
       turbo:
         specifier: ^2.5.4
         version: 2.5.6
@@ -71,10 +71,10 @@ importers:
     dependencies:
       '@convex-dev/r2':
         specifier: ^0.7.3
-        version: 0.7.3(convex-svelte@0.0.11)(convex@1.26.2)(react-dom@19.1.1)(react@19.1.1)(svelte@5.39.6)(typescript@5.9.2)
+        version: 0.7.3(convex-svelte@0.0.11)(convex@1.27.3)(react-dom@19.1.1)(react@19.1.1)(svelte@5.39.7)(typescript@5.9.2)
       convex:
-        specifier: ^1.25.4
-        version: 1.26.2(react@19.1.1)
+        specifier: ^1.27.3
+        version: 1.27.3(react@19.1.1)
     devDependencies:
       '@types/node':
         specifier: ^24.3.0
@@ -828,6 +828,14 @@ packages:
       convex: 1.26.2(react@19.1.1)
     dev: false
 
+  /@convex-dev/action-retrier@0.2.1(convex@1.27.3):
+    resolution: {integrity: sha512-yxc2ECtgFAAync8Yf1ykh1nzgXkXjrCA5mFYB0lRq/Dgx1TFyFuYfw10ECn7v9/aMUjzUpyJEJp9vRscrfFsng==}
+    peerDependencies:
+      convex: ~1.16.5 || >=1.17.0 <1.35.0
+    dependencies:
+      convex: 1.27.3(react@19.1.1)
+    dev: false
+
   /@convex-dev/r2@0.7.3(convex-svelte@0.0.11)(convex@1.26.2)(react-dom@19.1.1)(react@19.1.1)(svelte@5.38.7)(typescript@5.9.2)(zod@4.1.5):
     resolution: {integrity: sha512-IUqbzRqBc57spMN2RHWOL4+7j02DOPmMJd0duJj+aceaIM2pEcMQSvwbpOlnAZt3k7aW6ZEtbYeGszwR38bwJg==}
     peerDependencies:
@@ -857,7 +865,7 @@ packages:
       - zod
     dev: false
 
-  /@convex-dev/r2@0.7.3(convex-svelte@0.0.11)(convex@1.26.2)(react-dom@19.1.1)(react@19.1.1)(svelte@5.39.6)(typescript@5.9.2):
+  /@convex-dev/r2@0.7.3(convex-svelte@0.0.11)(convex@1.27.3)(react-dom@19.1.1)(react@19.1.1)(svelte@5.39.7)(typescript@5.9.2):
     resolution: {integrity: sha512-IUqbzRqBc57spMN2RHWOL4+7j02DOPmMJd0duJj+aceaIM2pEcMQSvwbpOlnAZt3k7aW6ZEtbYeGszwR38bwJg==}
     peerDependencies:
       convex: ~1.16.5 || >=1.17.0 <1.35.0
@@ -868,14 +876,14 @@ packages:
     dependencies:
       '@aws-sdk/client-s3': 3.726.1
       '@aws-sdk/s3-request-presigner': 3.884.0
-      '@convex-dev/action-retrier': 0.2.1(convex@1.26.2)
-      convex: 1.26.2(react@19.1.1)
-      convex-helpers: 0.1.104(convex@1.26.2)(react@19.1.1)(typescript@5.9.2)(zod@4.1.5)
-      convex-svelte: 0.0.11(convex@1.26.2)(svelte@5.39.6)
+      '@convex-dev/action-retrier': 0.2.1(convex@1.27.3)
+      convex: 1.27.3(react@19.1.1)
+      convex-helpers: 0.1.104(convex@1.27.3)(react@19.1.1)(typescript@5.9.2)
+      convex-svelte: 0.0.11(convex@1.27.3)(svelte@5.39.7)
       file-type: 20.5.0
       react: 19.1.1
       react-dom: 19.1.1(react@19.1.1)
-      svelte: 5.39.6
+      svelte: 5.39.7
       uuid: 11.1.0
     transitivePeerDependencies:
       - '@standard-schema/spec'
@@ -2392,6 +2400,33 @@ packages:
       zod: 4.1.5
     dev: false
 
+  /convex-helpers@0.1.104(convex@1.27.3)(react@19.1.1)(typescript@5.9.2):
+    resolution: {integrity: sha512-7CYvx7T3K6n+McDTK4ZQaQNNGBzq5aWezpjzsKbOxPXx7oNcTP9wrpef3JxeXWFzkByJv5hRCjseh9B7eNJ7Ig==}
+    hasBin: true
+    peerDependencies:
+      '@standard-schema/spec': ^1.0.0
+      convex: ^1.24.0
+      hono: ^4.0.5
+      react: ^17.0.2 || ^18.0.0 || ^19.0.0
+      typescript: ^5.5
+      zod: ^3.22.4 || ^4.0.15
+    peerDependenciesMeta:
+      '@standard-schema/spec':
+        optional: true
+      hono:
+        optional: true
+      react:
+        optional: true
+      typescript:
+        optional: true
+      zod:
+        optional: true
+    dependencies:
+      convex: 1.27.3(react@19.1.1)
+      react: 19.1.1
+      typescript: 5.9.2
+    dev: false
+
   /convex-svelte@0.0.11(convex@1.26.2)(svelte@5.38.7):
     resolution: {integrity: sha512-N/29gg5Zqy72vKL4xHSLk3jGwXVKIWXPs6xzq6KxGL84y/D6hG85pG2CPOzn08EzMmByts5FTkJ5p3var6yDng==}
     peerDependencies:
@@ -2402,14 +2437,14 @@ packages:
       svelte: 5.38.7
     dev: false
 
-  /convex-svelte@0.0.11(convex@1.26.2)(svelte@5.39.6):
+  /convex-svelte@0.0.11(convex@1.27.3)(svelte@5.39.7):
     resolution: {integrity: sha512-N/29gg5Zqy72vKL4xHSLk3jGwXVKIWXPs6xzq6KxGL84y/D6hG85pG2CPOzn08EzMmByts5FTkJ5p3var6yDng==}
     peerDependencies:
       convex: ^1.10.0
       svelte: ^5.0.0
     dependencies:
-      convex: 1.26.2(react@19.1.1)
-      svelte: 5.39.6
+      convex: 1.27.3(react@19.1.1)
+      svelte: 5.39.7
     dev: false
 
   /convex@1.26.2(react@19.1.1):
@@ -2434,7 +2469,7 @@ packages:
       react: 19.1.1
     dev: false
 
-  /convex@1.27.3:
+  /convex@1.27.3(react@19.1.1):
     resolution: {integrity: sha512-Ebr9lPgXkL7JO5IFr3bG+gYvHskyJjc96Fx0BBNkJUDXrR/bd9/uI4q8QszbglK75XfDu068vR0d/HK2T7tB9Q==}
     engines: {node: '>=18.0.0', npm: '>=7.0.0'}
     hasBin: true
@@ -2453,7 +2488,7 @@ packages:
       esbuild: 0.25.4
       jwt-decode: 4.0.0
       prettier: 3.6.2
-    dev: true
+      react: 19.1.1
 
   /cookie@0.6.0:
     resolution: {integrity: sha512-U71cyTamuh1CRNCfpGY6to28lxvNwPG4Guz/EVjgf3Jmzv0vlDp1atT9eS5dDjMYHucpHbWns6Lwf3BKz6svdw==}
@@ -2838,7 +2873,6 @@ packages:
   /react@19.1.1:
     resolution: {integrity: sha512-w8nqGImo45dmMIfljjMwOGtbmC/mk4CMYhWIicdSflH91J9TyCyczcPFXJzrZ/ZXcgGRFeP6BU0BEJTw6tZdfQ==}
     engines: {node: '>=0.10.0'}
-    dev: false
 
   /readdirp@4.1.2:
     resolution: {integrity: sha512-GDhwkLfywWL2s6vEjyhri+eXmfH6j1L7JE27WhqLeYzoh/A3DBaYGEj2H/HFZCn/kMfim73FXxEJTw06WtxQwg==}
@@ -2958,8 +2992,8 @@ packages:
       magic-string: 0.30.19
       zimmerframe: 1.1.2
 
-  /svelte@5.39.6:
-    resolution: {integrity: sha512-bOJXmuwLNaoqPCTWO8mPu/fwxI5peGE5Efe7oo6Cakpz/G60vsnVF6mxbGODaxMUFUKEnjm6XOwHEqOht6cbvw==}
+  /svelte@5.39.7:
+    resolution: {integrity: sha512-lfeYLzyl4AWqd5ysgIoZ6lsY2D8C151+hF8eOU3Gsq1OqYdn6LJBh5FA1cCSbf9/rxCg5ETta8jhM9acrfELZg==}
     engines: {node: '>=18'}
     dependencies:
       '@jridgewell/remapping': 2.3.5

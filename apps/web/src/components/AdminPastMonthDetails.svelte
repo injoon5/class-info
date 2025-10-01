@@ -1,11 +1,11 @@
 <script lang="ts">
 import { useQuery } from 'convex-svelte';
 import { api } from "@class-info/backend/convex/_generated/api";
+import { getTypeColor } from '../lib/utils.js';
 
 let { monthKey, onEdit, onDelete }: { monthKey: string; onEdit: (id: string) => void; onDelete: (id: string) => void } = $props();
 
 const groups = useQuery(api.notices.pastByMonth, { monthKey });
-
 
 </script>
 
@@ -26,7 +26,7 @@ const groups = useQuery(api.notices.pastByMonth, { monthKey });
                             <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
                                 <div class="flex-1 min-w-0">
                                     <div class="flex items-center gap-2 mb-1">
-                                        <span class="px-1.5 py-0.5 text-xs font-medium rounded bg-neutral-400 dark:bg-neutral-500 text-neutral-800 dark:text-neutral-200 opacity-75">
+                                        <span class="px-1.5 py-0.5 text-xs font-medium rounded opacity-75 ${getTypeColor(notice.type)}">
                                             {notice.type}
                                         </span>
                                         <span class="text-xs font-medium text-neutral-500 dark:text-neutral-400">
@@ -42,11 +42,11 @@ const groups = useQuery(api.notices.pastByMonth, { monthKey });
                                 <div class="flex gap-1">
                                     <button 
                                         onclick={() => onEdit(String(notice._id))}
-                                        class="px-2 py-1 text-xs border border-neutral-300 dark:border-neutral-600 hover:bg-neutral-100 dark:hover:bg-neutral-600 text-neutral-600 dark:text-neutral-300 opacity-75"
+                                        class="px-2 py-1 pressable text-xs border border-neutral-300 dark:border-neutral-600 hover:bg-neutral-100 dark:hover:bg-neutral-600 text-neutral-600 dark:text-neutral-300 opacity-75"
                                     >수정</button>
                                     <button 
                                         onclick={() => onDelete(String(notice._id))}
-                                        class="px-2 py-1 text-xs bg-neutral-600 dark:bg-neutral-400 text-white hover:bg-neutral-700 dark:hover:bg-neutral-300 opacity-75"
+                                        class="px-2 py-1 pressable text-xs bg-neutral-600 dark:bg-neutral-400 text-white hover:bg-neutral-700 dark:hover:bg-neutral-300 opacity-75"
                                     >삭제</button>
                                 </div>
                             </div>

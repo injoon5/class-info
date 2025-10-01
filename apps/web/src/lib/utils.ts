@@ -1,10 +1,7 @@
 export function getTypeColor(type: string) {
 	switch(type) {
-		case '수행평가': return 'bg-neutral-700 dark:bg-neutral-500 text-white';
-		case '숙제': return 'bg-neutral-600 dark:bg-neutral-400 text-white';
-		case '준비물': return 'bg-neutral-500 dark:bg-neutral-400 text-white';
-		case '기타': return 'bg-neutral-400 dark:bg-neutral-500 text-neutral-800 dark:text-neutral-200';
-		default: return 'bg-neutral-300 dark:bg-neutral-500 text-neutral-800 dark:text-neutral-200';
+		case '수행평가': return 'bg-neutral-700 dark:bg-neutral-600 text-white';
+		default: return 'bg-neutral-500 dark:bg-neutral-500 text-white dark:text-neutral-200';
 	}
 }
 

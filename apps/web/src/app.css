@@ -40,6 +40,37 @@ body {
     outline-offset: 2px;
 }
 
+@theme {
+	--default-border-width: 0.5px;
+}
+
+@layer utilities {
+	.pressable {
+		@apply transition-transform duration-75 ease-in-out;
+	}
+	.pressable:active {
+		@apply scale-[0.97];
+	}
+}
+
+@layer utilities {
+	.pressable-lg {
+		@apply transition-transform duration-75 ease-in-out;
+	}
+	.pressable-lg:active {
+		@apply scale-[0.98];
+	}
+}
+
+@layer utilities {
+	.pressable-xl {
+		@apply transition-transform duration-75 ease-in-out;
+	}
+	.pressable-xl:active {
+		@apply scale-[0.995];
+	}
+}
+
 /* Reduced motion: prefer non-animated or subtle transitions */
 @media (prefers-reduced-motion: reduce) {
     *, *::before, *::after {

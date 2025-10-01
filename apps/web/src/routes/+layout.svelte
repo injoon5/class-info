@@ -12,7 +12,7 @@
     <a href="#main" class="sr-only focus:not-sr-only focus:fixed focus:z-[1000] focus:top-2 focus:left-2 focus:bg-neutral-900 focus:text-white focus:px-3 focus:py-2 focus:rounded">Skip to content</a>
 	<!-- Global Header -->
 	<div class="max-w-4xl mx-auto px-4 pt-4 pb-2 sm:pb-3 w-full">
-		<div class="flex justify-between items-center gap-2 pb-2 sm:pb-3 border-b border-neutral-300 dark:border-neutral-600">
+		<div class="flex justify-between items-center gap-2 pb-2 sm:pb-3 border-b-1 border-neutral-300 dark:border-neutral-600">
 			<a class="text-2xl sm:text-2xl font-bold text-neutral-800 dark:text-neutral-200" href="/" >
 				<h1>3-4 안내</h1>
 			</a>

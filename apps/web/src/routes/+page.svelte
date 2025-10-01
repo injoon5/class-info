@@ -61,17 +61,14 @@ const overview = useQuery(api.notices.overview, {}, () => ({
             <div class="mt-6 sm:mt-8 pt-4 sm:pt-6 border-t border-neutral-200 dark:border-neutral-700">
                 <h2 class="text-base sm:text-lg font-medium mb-1 sm:mb-2 text-neutral-500 dark:text-neutral-400">지난 알림</h2>
                 {#each overview.data.pastMonths as month (month.monthKey)}
-                    <details class="mb-3 sm:mb-4 bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded" ontoggle={(e) => {
-                        const el = e.currentTarget as HTMLDetailsElement;
-                        if (el.open) {
-                            console.debug('[notices] details opened for month:', month.monthKey, month.monthName);
-                            openMonthKey = month.monthKey;
-                        } else if (openMonthKey === month.monthKey) {
-                            console.debug('[notices] details closed for month:', month.monthKey, month.monthName);
-                            openMonthKey = null;
-                        }
-                    }}>
-                        <summary class="rounded-t px-3 sm:px-4 py-2 sm:py-3 cursor-pointer hover:bg-neutral-50 dark:hover:bg-neutral-700 text-neutral-500 dark:text-neutral-400 font-medium text-sm sm:text-base">
+                    <details class="mb-1.5 sm:mb-2 bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded" open={openMonthKey === month.monthKey}>
+                        <summary 
+                            class="rounded-t px-3 sm:px-4 py-2 sm:p-3 cursor-pointer hover:bg-neutral-50 dark:hover:bg-neutral-700 text-neutral-500 dark:text-neutral-400 font-medium text-sm sm:text-base"
+                            onclick={(e) => {
+                                e.preventDefault();
+                                openMonthKey = openMonthKey === month.monthKey ? null : month.monthKey;
+                            }}
+                        >
                             {month.monthName} ({month.total}개)
                         </summary>
                         {#if openMonthKey === month.monthKey}

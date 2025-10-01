@@ -82,6 +82,9 @@ function weekdayKr(date: Date): string {
 function toDisplayDate(due: Date, today: Date): { displayDate: string; isToday: boolean } {
   const isToday = due.toDateString() === today.toDateString();
   if (isToday) return { displayDate: '오늘', isToday: true };
+  const tomorrow = new Date(today.getFullYear(), today.getMonth(), today.getDate() + 1);
+  const isTomorrow = due.toDateString() === tomorrow.toDateString();
+  if (isTomorrow) return { displayDate: '내일', isToday: false };
   return {
     displayDate: `${due.getMonth() + 1}/${due.getDate()} (${weekdayKr(due)})`,
     isToday: false,

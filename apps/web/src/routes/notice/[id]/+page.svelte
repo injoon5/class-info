@@ -81,7 +81,7 @@ $effect(() => {
 		<a
 			type="button"
 			href="/"
-			class="sm:mb-3 mb-2 py-1 sm:py-2 text-neutral-500 dark:text-neutral-400 hover:text-neutral-800 dark:hover:text-neutral-200 transition-colors"
+			class="sm:mb-3 mb-2 py-1 sm:py-2 text-neutral-500 dark:text-neutral-400 hover:text-neutral-800 dark:hover:text-neutral-200 transition-colors pressable"
 		>
 			← 뒤로
 		</a>

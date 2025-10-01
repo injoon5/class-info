@@ -181,7 +181,7 @@ const allGroupedNotices = $derived(overview.data?.currentGroups || []);
 				
 				<button 
 					type="submit"
-					class="w-full px-4 py-2 bg-neutral-800 dark:bg-neutral-300 font-semibold text-white dark:text-black text-sm hover:bg-neutral-700 dark:hover:bg-neutral-200"
+					class="pressable-lg w-full px-4 py-2 bg-neutral-800 dark:bg-neutral-300 font-semibold text-white dark:text-black text-sm hover:bg-neutral-700 dark:hover:bg-neutral-200"
 				>
 					로그인
 				</button>
@@ -201,13 +201,13 @@ const allGroupedNotices = $derived(overview.data?.currentGroups || []);
 			<div class="flex flex-col sm:flex-row gap-2">
 				<button 
 					onclick={() => showForm.set(!$showForm)}
-					class="px-3 sm:px-4 py-2 bg-neutral-800 dark:bg-neutral-300 text-white dark:text-neutral-950 text-sm hover:bg-neutral-700 dark:hover:bg-neutral-200 text-center"
+					class="px-3 pressable-lg sm:px-4 font-medium py-2 bg-neutral-800 dark:bg-neutral-300 text-white dark:text-neutral-950 text-sm hover:bg-neutral-700 dark:hover:bg-neutral-200 text-center"
 				>
 					{$showForm ? '취소' : '새 알림 추가'}
 				</button>
 
 				<form method="POST" action="?/logout" use:enhance class="inline">
-					<button type="submit" class="px-3 sm:px-4 py-2 border border-neutral-400 dark:border-neutral-500 text-sm hover:bg-neutral-100 dark:hover:bg-neutral-600 text-neutral-800 dark:text-neutral-200 text-center w-full sm:w-auto">
+					<button type="submit" class="px-3 pressable-lg font-medium sm:px-4 py-2 border border-neutral-400 dark:border-neutral-500 text-sm hover:bg-neutral-200 dark:hover:bg-neutral-600 text-neutral-800 dark:text-neutral-200 text-center w-full sm:w-auto">
 						로그아웃
 					</button>
 				</form>
@@ -221,14 +221,14 @@ const allGroupedNotices = $derived(overview.data?.currentGroups || []);
 					{$editingNotice ? '알림 수정' : '새 알림 추가'}
 				</h2>
 				
-				<div class="grid gap-3">
+				<div class="grid gap-3 ">
 					<div>
 						<label for="notice-title" class="block text-sm font-medium mb-1 text-neutral-600 dark:text-neutral-300">제목 *</label>
 						<input 
 							id="notice-title"
 							type="text" 
 							bind:value={$noticeForm.title}
-							class="w-full px-2 py-1.5 border border-neutral-400 dark:border-neutral-500 text-sm bg-white dark:bg-neutral-800 text-neutral-800 dark:text-neutral-200 break-words"
+							class="w-full px-2 py-1.5 border border-neutral-300 dark:border-neutral-600 text-sm bg-white dark:bg-neutral-800 text-neutral-800 dark:text-neutral-200 break-words"
 							placeholder="예: 수학 과제 제출"
 						/>
 					</div>
@@ -240,14 +240,14 @@ const allGroupedNotices = $derived(overview.data?.currentGroups || []);
 								id="notice-subject"
 								type="text" 
 								bind:value={$noticeForm.subject}
-								class="w-full px-2 py-1.5 border border-neutral-400 dark:border-neutral-500 text-sm bg-white dark:bg-neutral-800 text-neutral-800 dark:text-neutral-200 break-words"
+								class="w-full px-2 py-1.5 border border-neutral-300 dark:border-neutral-600 text-sm bg-white dark:bg-neutral-800 text-neutral-800 dark:text-neutral-200 break-words"
 								placeholder="예: 수학"
 							/>
 						</div>
 						
 						<div>
 							<label for="notice-type" class="block text-sm font-medium mb-1 text-neutral-600 dark:text-neutral-300">종류 *</label>
-							<select id="notice-type" bind:value={$noticeForm.type} class="w-full px-2 py-1.5 border border-neutral-400 dark:border-neutral-500 text-sm bg-white dark:bg-neutral-800 text-neutral-800 dark:text-neutral-200">
+							<select id="notice-type" bind:value={$noticeForm.type} class="w-full px-2 py-1.5 border border-neutral-300 dark:border-neutral-600 text-sm bg-white dark:bg-neutral-800 text-neutral-800 dark:text-neutral-200">
 								{#each noticeTypes as type}
 									<option value={type}>{type}</option>
 								{/each}
@@ -261,7 +261,7 @@ const allGroupedNotices = $derived(overview.data?.currentGroups || []);
 							id="notice-date"
 							type="date" 
 							bind:value={$noticeForm.dueDate}
-							class="w-full px-2 py-1.5 border border-neutral-400 dark:border-neutral-500 text-sm bg-white dark:bg-neutral-800 text-neutral-800 dark:text-neutral-200"
+							class="w-full px-2 py-1.5 border border-neutral-300 dark:border-neutral-600 text-sm bg-white dark:bg-neutral-800 text-neutral-800 dark:text-neutral-200"
 						/>
 					</div>
 					
@@ -271,7 +271,7 @@ const allGroupedNotices = $derived(overview.data?.currentGroups || []);
 							id="notice-description"
 							bind:value={$noticeForm.description}
 							rows="8"
-							class="w-full px-2 py-1.5 border border-neutral-400 dark:border-neutral-500 text-sm bg-white dark:bg-neutral-800 text-neutral-800 dark:text-neutral-200 font-mono resize-none break-words overflow-hidden"
+							class="w-full px-2 py-1.5 border border-neutral-300 dark:border-neutral-600 text-sm bg-white dark:bg-neutral-800 text-neutral-800 dark:text-neutral-200 font-mono resize-none break-words overflow-hidden"
 							placeholder="상세 설명 또는 준비물 목록&#10;&#10;마크다운 사용 가능:&#10;**굵게** *기울임* `코드`&#10;# 제목 ## 부제목&#10;- 목록 항목&#10;> 인용구&#10;![이미지](URL)&#10;유튜브 링크는 자동 변환됩니다"
 						></textarea>
 						<p class="text-xs text-neutral-500 dark:text-neutral-400 mt-1">마크다운 문법을 사용할 수 있습니다. 상세 페이지에서 형식화되어 표시됩니다.</p>
@@ -288,13 +288,13 @@ const allGroupedNotices = $derived(overview.data?.currentGroups || []);
 					<div class="flex flex-col sm:flex-row gap-2">
 						<button 
 							onclick={handleSubmit}
-							class="px-3 py-1.5 bg-neutral-800 dark:bg-neutral-300 text-white dark:text-neutral-950 text-sm hover:bg-neutral-700 dark:hover:bg-neutral-200"
+							class="px-4 pressable-lg font-medium sm:pressable py-2 bg-neutral-800 dark:bg-neutral-300 text-white dark:text-neutral-950 text-sm hover:bg-neutral-700 dark:hover:bg-neutral-200"
 						>
 							{$editingNotice ? '수정' : '추가'}
 						</button>
 						<button 
 							onclick={resetForm}
-							class="px-3 py-1.5 border border-neutral-400 dark:border-neutral-500 text-sm hover:bg-neutral-100 dark:hover:bg-neutral-600 text-neutral-800 dark:text-neutral-200"
+							class="px-4 py-2 pressable-lg sm:pressable font-medium border border-neutral-300 dark:border-neutral-500 text-sm hover:bg-neutral-100 dark:hover:bg-neutral-600 text-neutral-800 dark:text-neutral-200"
 						>
 							취소
 						</button>
@@ -315,52 +315,47 @@ const allGroupedNotices = $derived(overview.data?.currentGroups || []);
 						{group.displayDate}
 					</h3>
 					
-					<div class="grid gap-2">
-						{#each group.notices as notice}
-							<div class="bg-white dark:bg-neutral-800 border border-neutral-300 dark:border-neutral-600 p-3 overflow-hidden">
-								<div class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
-									<div class="flex-1 min-w-0">
-										<div class="flex items-center gap-2 mb-1.5">
-											<span class="px-2 py-1 text-xs font-medium rounded {getTypeColor(notice.type)}">
-												{notice.type}
-											</span>
-											<span class="text-sm font-medium text-neutral-600 dark:text-neutral-300">
-												{notice.subject}
-											</span>
-
-										</div>
-                                        <div class="flex items-center gap-1.5 mb-0.5">
-											<h4 class="font-semibold text-neutral-800 dark:text-neutral-200 break-words">
-												{notice.title}
-											</h4>
+                    <div class="grid gap-2">
+                        {#each group.notices as notice}
+                            <div class="bg-white dark:bg-neutral-800 border border-neutral-300 dark:border-neutral-600 p-3 overflow-hidden">
+                                <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
+                                    <div class="flex-1 min-w-0">
+                                        <div class="flex items-center gap-1.5 sm:gap-2 mb-1">
+                                            <span class="px-1.5 py-0.5 text-sm font-semibold rounded {getTypeColor(notice.type)}">
+                                                {notice.type}
+                                            </span>
+                                            <span class="text-sm font-semibold text-neutral-600 dark:text-neutral-300">
+                                                {notice.subject}
+                                            </span>
+                                        </div>
+                                        <div class="flex items-center gap-1.5 sm:mb-1 mb-0.5">
+                                            <h4 class="font-semibold text-neutral-800 dark:text-neutral-200 text-base sm:text-md break-words">
+                                                {notice.title}
+                                            </h4>
                                             {#if notice.hasFiles}
-												<svg class="w-3 h-3 text-neutral-400 dark:text-neutral-500 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
-													<path fill-rule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clip-rule="evenodd"/>
-												</svg>
-											{/if}
-										</div>
-                                        <p class="text-neutral-600 dark:text-neutral-300 text-sm line-clamp-2 break-words">
+                                                <svg class="w-3 h-3 text-neutral-400 dark:text-neutral-500 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                                                    <path fill-rule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 0 1 1.414 1.414l-3 3a1 1 0 0 1-1.414 0l-3-3a1 1 0 0 1 0-1.414z" clip-rule="evenodd"/>
+                                                </svg>
+                                            {/if}
+                                        </div>
+                                        <p class="text-neutral-600 dark:text-neutral-300 text-xs sm:text-sm font-medium line-clamp-2 overflow-hidden text-ellipsis break-all">
                                             {notice.summary}
-										</p>
-									</div>
-									<div class="flex gap-2 flex-shrink-0">
-										<button 
-											onclick={() => editNotice(notice)}
-											class="px-3 py-1 text-xs border border-neutral-400 dark:border-neutral-500 hover:bg-neutral-100 dark:hover:bg-neutral-600 text-neutral-800 dark:text-neutral-200"
-										>
-											수정
-										</button>
-										<button 
-											onclick={() => handleDelete(notice)}
-											class="px-3 py-1 text-xs bg-neutral-800 dark:bg-neutral-300 text-white dark:text-neutral-950 hover:bg-neutral-700 dark:hover:bg-neutral-200"
-										>
-											삭제
-										</button>
-									</div>
-								</div>
-							</div>
-						{/each}
-					</div>
+                                        </p>
+                                    </div>
+                                    <div class="flex gap-2 flex-shrink-0">
+                                        <button 
+                                            onclick={() => editNotice(notice)}
+                                            class="pressable px-2.5 py-1 sm:px-3 sm:py-1.5 text-sm border border-neutral-400 dark:border-neutral-500 hover:bg-neutral-100 dark:hover:bg-neutral-600 text-neutral-800 dark:text-neutral-200"
+                                        >수정</button>
+                                        <button 
+                                            onclick={() => handleDelete(notice)}
+                                            class="pressable px-2.5 py-1 sm:px-3 sm:py-1.5 text-sm bg-neutral-800 dark:bg-neutral-300 text-white dark:text-neutral-950 hover:bg-neutral-700 dark:hover:bg-neutral-200"
+                                        >삭제</button>
+                                    </div>
+                                </div>
+                            </div>
+                        {/each}
+                    </div>
 				</div>
             {/each}
             {:else}
@@ -371,20 +366,24 @@ const allGroupedNotices = $derived(overview.data?.currentGroups || []);
 			{#if overview.data?.pastMonths && overview.data.pastMonths.length > 0}
                 <div class="mt-6 pt-6 border-t border-neutral-200 dark:border-neutral-700">
                     <h3 class="text-base sm:text-lg font-medium mb-2 text-neutral-500 dark:text-neutral-400">지난 알림</h3>
-					{#each overview.data.pastMonths as m (m.monthKey)}
-                        <details class="mb-3 bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded" ontoggle={(e) => {
-                            const el = e.currentTarget as HTMLDetailsElement;
-                            openMonthKey = el.open ? m.monthKey : (openMonthKey === m.monthKey ? null : openMonthKey);
-                        }}>
-                            <summary class="px-4 py-3 cursor-pointer hover:bg-neutral-50 dark:hover:bg-neutral-700 text-neutral-500 dark:text-neutral-400 font-medium">
+                    {#each overview.data.pastMonths as m (m.monthKey)}
+                        <details class="mb-1.5 sm:mb-2 bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded" open={openMonthKey === m.monthKey}>
+                            <summary 
+                                class="rounded-t px-3 sm:px-4 py-2 sm:p-3 cursor-pointer hover:bg-neutral-50 dark:hover:bg-neutral-700 text-neutral-500 dark:text-neutral-400 font-medium text-sm sm:text-base"
+                                onclick={(e) => {
+                                    e.preventDefault();
+                                    openMonthKey = openMonthKey === m.monthKey ? null : m.monthKey;
+                                }}
+                            >
                                 {m.monthName} ({m.total}개)
                             </summary>
+
                             {#if openMonthKey === m.monthKey}
                                 {#key m.monthKey}
                                     <AdminPastMonthDetails 
                                         monthKey={m.monthKey}
                                         onEdit={(id: string) => {
-											const all: any[] = (overview.data?.currentGroups || []).flatMap((g: any) => g.notices || []);
+                                            const all: any[] = (overview.data?.currentGroups || []).flatMap((g: any) => g.notices || []);
                                             const found = all.find((n: any) => String(n?._id) === id);
                                             if (found) {
                                                 editNotice(found);

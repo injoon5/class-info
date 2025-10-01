@@ -91,25 +91,31 @@ export const fetchAndSave = internalAction({
     if (!res.ok) {
       throw new Error(`Failed to fetch meals: ${res.status} ${res.statusText}`);
     }
-    const data: ExternalMeal[] = await res.json();
+    const data = await res.json();
 
-    const meals = data
-      .filter((d) => d.MMEAL_SC_NM && d.DDISH_NM)
-      .map((d) => ({
-        date: d.MLSV_YMD,
-        mealType: d.MMEAL_SC_NM,
-        dishes: d.DDISH_NM.split("\n").map((s) => s.trim()).filter(Boolean),
-        originInfo: d.ORPLC_INFO ?? "",
-        calories: d.CAL_INFO ?? null,
-        nutrients: d.NTR_INFO ?? null,
-        schoolCode: d.SD_SCHUL_CODE,
-        schoolName: d.SCHUL_NM,
-        loadedAt: d.LOAD_DTM,
-      }));
+    // Ignore INFO-200 "해당하는 데이터가 없습니다." error response
+    if (Array.isArray(data.data)) {
+      const processedData: ExternalMeal[] = data;
+      const meals = processedData
+        .filter((d) => d.MMEAL_SC_NM && d.DDISH_NM)
+        .map((d) => ({
+          date: d.MLSV_YMD,
+          mealType: d.MMEAL_SC_NM,
+          dishes: d.DDISH_NM.split("\n").map((s) => s.trim()).filter(Boolean),
+          originInfo: d.ORPLC_INFO ?? "",
+          calories: d.CAL_INFO?.toLowerCase() ?? null,
+          nutrients: d.NTR_INFO ?? null,
+          schoolCode: d.SD_SCHUL_CODE,
+          schoolName: d.SCHUL_NM,
+          loadedAt: d.LOAD_DTM,
+        }));
 
-    if (meals.length > 0) {
-      await ctx.runMutation(internal.meals.upsertMany, { meals });
+      if (meals.length > 0) {
+        await ctx.runMutation(internal.meals.upsertMany, { meals });
+      }
     }
+    // console.log(data);
+    // else: ignore and finish (do nothing)
   },
 });
 

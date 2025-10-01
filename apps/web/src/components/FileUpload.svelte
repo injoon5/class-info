@@ -164,7 +164,7 @@ function handleDrop(e: DragEvent) {
         </p>
         <button 
           type="button"
-          class="px-4 py-2 border border-neutral-400 dark:border-neutral-500 text-sm hover:bg-neutral-100 dark:hover:bg-neutral-600 text-neutral-800 dark:text-neutral-200"
+          class="px-4 py-2 border pressable-lg sm:pressable border-neutral-400 dark:border-neutral-500 text-sm hover:bg-neutral-100 dark:hover:bg-neutral-600 text-neutral-800 dark:text-neutral-200"
           onclick={() => document.getElementById('file-upload')?.click()}
         >
           파일 추가
@@ -180,7 +180,7 @@ function handleDrop(e: DragEvent) {
       <div class="space-y-1">
         {#each uploadedFiles as file}
           <div 
-            class="flex items-center justify-between p-2 bg-neutral-50 dark:bg-neutral-700 border border-neutral-200 dark:border-neutral-600 hover:bg-neutral-100 dark:hover:bg-neutral-600 transition-colors group"
+            class="flex items-center justify-between p-2 bg-neutral-50 dark:bg-neutral-700 border border-neutral-200 dark:border-neutral-600 group"
             title="클릭하면 마크다운 코드를 복사할 수 있습니다"
           >
             <div class="flex items-center gap-2 flex-1 min-w-0">
@@ -200,12 +200,11 @@ function handleDrop(e: DragEvent) {
                 <p class="text-xs text-neutral-500 dark:text-neutral-400">{formatFileSize(file.size)}</p>
               </div>
             </div>
-            <div class="flex items-center gap-1 flex-shrink-0">
+            <div class="flex items-center gap-2 flex-shrink-0">
               <button
                 type="button"
                 onclick={() => copyMarkdownToClipboard(file)}
-                class="px-3 py-2 text-sm border border-neutral-300 dark:border-neutral-600 hover:bg-neutral-200 dark:hover:bg-neutral-500 text-neutral-600 dark:text-neutral-300 transition-opacity
-                  opacity-100 sm:opacity-0 sm:group-hover:opacity-100"
+                class="pressable px-3 py-2 text-sm border border-neutral-300 dark:border-neutral-600 hover:bg-neutral-200 dark:hover:bg-neutral-500 text-neutral-600 dark:text-neutral-300"
                 title="마크다운 복사"
               >
                 복사
@@ -213,8 +212,7 @@ function handleDrop(e: DragEvent) {
               <button
                 type="button"
                 onclick={() => removeFile(file._id)}
-                class="px-3 py-2 text-sm bg-red-600 dark:bg-red-500 text-white hover:bg-red-700 dark:hover:bg-red-600 transition-opacity
-                  opacity-100 sm:opacity-0 sm:group-hover:opacity-100"
+                class="pressable px-3 py-2 text-sm bg-red-600 dark:bg-red-500 text-white hover:bg-red-700 dark:hover:bg-red-600"
                 title="파일 삭제"
               >
                 삭제
