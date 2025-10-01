@@ -338,9 +338,11 @@ const allGroupedNotices = $derived(overview.data?.currentGroups || []);
                                                 </svg>
                                             {/if}
                                         </div>
+										{#if notice.summary}
                                         <p class="text-neutral-600 dark:text-neutral-300 text-xs sm:text-sm font-medium line-clamp-2 overflow-hidden text-ellipsis break-all">
                                             {notice.summary}
                                         </p>
+										{/if}
                                     </div>
                                     <div class="flex gap-2 flex-shrink-0">
                                         <button 
