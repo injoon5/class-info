@@ -34,7 +34,7 @@ async function loadFiles() {
     const results = await Promise.all(filePromises);
     uploadedFiles = results.filter((file): file is UploadedFile => file !== null);
   } catch (error) {
-    console.error('Error loading files:', error);
+    // console.error('Error loading files:', error);
     uploadedFiles = [];
   }
 }
@@ -78,7 +78,7 @@ async function handleFileUpload(fileList: FileList) {
     const updatedFiles = [...files, ...newFileIds];
     onFilesChange(updatedFiles);
   } catch (error) {
-    console.error('Upload error:', error);
+    // console.error('Upload error:', error);
     alert('파일 업로드 중 오류가 발생했습니다.');
   } finally {
     isUploading = false;
@@ -93,7 +93,7 @@ async function removeFile(fileId: string) {
     // Also update the local uploadedFiles array immediately
     uploadedFiles = uploadedFiles.filter(file => file._id !== fileId);
   } catch (error) {
-    console.error('Error removing file:', error);
+    // console.error('Error removing file:', error);
     alert('파일 삭제 중 오류가 발생했습니다.');
   }
 }
