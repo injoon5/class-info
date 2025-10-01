@@ -40,9 +40,7 @@ body {
     outline-offset: 2px;
 }
 
-@theme {
-	--default-border-width: 0.5px;
-}
+
 
 @layer utilities {
 	.pressable {

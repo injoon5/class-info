@@ -115,7 +115,9 @@ function getUrlBasename(url: string): string {
 }
 
 function summarizeDescription(description: string): string {
-  const firstLine = description.split("\n")[0] || "";
+  let firstLine = description.split("\n")[0] || "";
+  // Remove leading markdown '#' (and any following spaces)
+  firstLine = firstLine.replace(/^#+\s*/, "");
   // Replace image markdown with filename: prefer alt text, fallback to URL basename
   return firstLine.replace(/!\[([^\]]*)\]\(([^)]+)\)/g, (_m, alt, link) => {
     const trimmedAlt = String(alt || "").trim();
