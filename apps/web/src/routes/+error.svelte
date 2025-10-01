@@ -2,7 +2,7 @@
     import { page } from '$app/state';
 
     let { status, error } = $props();
-    console.log(status, error);
+    // console.log(status, error);
 </script>
 
 <svelte:head>

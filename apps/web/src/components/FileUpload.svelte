@@ -61,7 +61,7 @@ async function handleFileUpload(fileList: FileList) {
       
       // Upload file using the useUploadFile hook
       const storageId = await uploadFile(file);
-      console.log('Upload result (storageId):', storageId);
+      // console.log('Upload result (storageId):', storageId);
       
       // Update file metadata using storage ID and get the file ID back
       const fileId = await client.mutation(api.files.updateFileMetadataByStorageId, {

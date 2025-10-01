@@ -12,9 +12,7 @@ import type { PageData } from './$types.js';
 let { data }: { data: PageData } = $props();
 let openMonthKey = $state<string | null>(null);
 
-$effect(() => {
-    console.debug('[notices] openMonthKey changed:', openMonthKey);
-});
+
 
 const overview = useQuery(api.notices.overview, {}, () => ({
     initialData: data,

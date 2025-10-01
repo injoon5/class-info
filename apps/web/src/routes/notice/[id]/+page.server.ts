@@ -7,7 +7,8 @@ import { marked } from 'marked';
 export const load = (async ({ params }) => {
 	const client = new ConvexHttpClient(PUBLIC_CONVEX_URL!);
 	const { id } = params;
-	console.log(id);
+
+	// console.log(id);
 
 	const detail = await client.query(api.notices.detail, { id: id as any });
 

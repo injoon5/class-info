@@ -25,7 +25,7 @@ export const load: PageServerLoad = async ({ cookies, fetch }) => {
 			}
 		}
 	} catch (error) {
-		console.error('PIN validation failed:', error);
+		// console.error('PIN validation failed:', error);
 	}
 	
 	// Invalid PIN, clear cookie and redirect
@@ -64,7 +64,7 @@ export const actions: Actions = {
 				}
 			}
 		} catch (error) {
-			console.error('PIN verification failed:', error);
+			// console.error('PIN verification failed:', error);
 		}
 
 		return { success: false, error: '잘못된 PIN입니다' };

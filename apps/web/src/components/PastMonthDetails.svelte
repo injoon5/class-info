@@ -7,9 +7,6 @@ let { monthKey }: { monthKey: string } = $props();
 
 const groups = useQuery(api.notices.pastByMonth, { monthKey });
 
-$effect(() => {
-    console.debug('[notices] PastMonthDetails effect monthKey:', monthKey, 'loading:', groups.isLoading, 'error:', groups.error, 'len:', Array.isArray(groups.data) ? groups.data.length : 'n/a');
-});
 </script>
 
 <div class="px-3 sm:px-4 py-2 pb-3 sm:pb-4">
