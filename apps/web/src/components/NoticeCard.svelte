@@ -14,7 +14,7 @@ const subjectClass = $derived(`${isPast ? 'text-xs font-medium text-neutral-500 
 const titleWrapClass = $derived(`flex items-center gap-1.5`);
 const titleClass = $derived(`${isPast ? 'font-medium text-neutral-600 dark:text-neutral-300 text-xs sm:text-sm' : 'font-semibold text-neutral-800 dark:text-neutral-200 text-base sm:text-md'}`);
 // Add overflow-hidden and break-words to prevent overflow
-const summaryClass = $derived(`${isPast ? 'text-neutral-500 dark:text-neutral-400 text-xs' : 'text-neutral-600 sm:mt-1 dark:text-neutral-300 text-xs sm:text-sm font-medium'} mt-0.5 line-clamp-2 overflow-hidden text-ellipsis break-all`);
+const summaryClass = $derived(`${isPast ? 'text-neutral-500 dark:text-neutral-400 text-xs' : 'text-neutral-600 sm:mt-1 dark:text-neutral-300 text-xs sm:text-sm font-medium'} mt-0.5 line-clamp-2 overflow-hidden text-ellipsis`);
 </script>
 
 <svelte:element this={isLink ? 'a' : 'div'} class={containerClass} href={isLink ? `/notice/${notice.slug || notice._id}` : undefined}>
