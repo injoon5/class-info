@@ -6,7 +6,7 @@ let { notice, isPast = false }: { notice: any; isPast?: boolean } = $props();
 const isLink = $derived(Boolean((notice?.summary && String(notice.summary).trim()) || notice?.hasFiles));
 
 const containerClass = $derived(
-    `${isPast ? 'bg-neutral-50 dark:bg-neutral-700 border-neutral-200 dark:border-neutral-700 opacity-75' : 'bg-white dark:bg-neutral-800 border-neutral-300 dark:border-neutral-600'} border p-2 sm:p-3 pressable-xl ${isLink ? (isPast ? 'hover:opacity-90 transition-opacity' : 'hover:border-neutral-400 dark:hover:border-neutral-500 transition-colors') : ''}`
+    `${isPast ? 'bg-neutral-50 dark:bg-neutral-700 border-neutral-200 dark:border-neutral-700 opacity-75' : 'bg-white dark:bg-neutral-800 border-neutral-300 dark:border-neutral-600'} border p-2 sm:p-3${isLink ? ' pressable-xl' : ''} ${isLink ? (isPast ? 'hover:opacity-90 transition-opacity' : 'hover:border-neutral-400 dark:hover:border-neutral-500 transition-colors') : ''}`
 );
 const headerGapClass = $derived(`flex items-center gap-1.5 sm:gap-2 ${isPast ? 'mb-0.5 sm:mb-1' : 'mb-0.5 sm:mb-1'}`);
 const typePillClass = $derived(`px-1.5 py-0.5  ${isPast ? 'text-xs' : 'text-sm'}  font-semibold rounded ${getTypeColor(notice.type)} ${isPast ? 'opacity-75' : ''}`);
