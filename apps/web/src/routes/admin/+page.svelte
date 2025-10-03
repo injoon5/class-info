@@ -130,22 +130,21 @@ const allGroupedNotices = $derived(overview.data?.currentGroups || []);
 </script>
 
 <svelte:head>
-	<title>관리자 페이지 - 학급 공지</title>
-	<meta name="description" content="학급 공지 관리자 페이지입니다. 공지사항을 작성하고 관리할 수 있습니다." />
+	<title>관리자 페이지 - 3-4 학급 공지</title>
+	<meta name="description" content="3-4 학급 공지 관리자 페이지입니다. " />
 
 	<!-- Open Graph -->
-	<meta property="og:title" content="관리자 페이지 - 학급 공지" />
-	<meta property="og:description" content="학급 공지 관리자 페이지입니다. 공지사항을 작성하고 관리할 수 있습니다." />
+	<meta property="og:title" content="관리자 페이지 - 3-4 학급 공지" />
+	<meta property="og:description" content="3-4 학급 공지 관리자 페이지입니다. " />
 	<meta property="og:type" content="website" />
-	<meta property="og:site_name" content="학급 공지" />
+	<meta property="og:site_name" content="TimeforSchool" />
 	
 	<!-- Twitter Card -->
 	<meta name="twitter:card" content="summary_large_image" />
-	<meta name="twitter:title" content="관리자 페이지 - 학급 공지" />
-	<meta name="twitter:description" content="학급 공지 관리자 페이지입니다. 공지사항을 작성하고 관리할 수 있습니다." />
+	<meta name="twitter:title" content="관리자 페이지 - 3-4 학급 공지" />
+	<meta name="twitter:description" content="3-4 학급 공지 관리자 페이지입니다. " />
 	
-	<!-- Additional meta tags -->
-	<meta name="keywords" content="학급, 관리자, 공지사항, 작성" />
+	<!-- Additional meta tags -->	
 	<meta name="robots" content="noindex, nofollow" />
 	
 	<!-- Theme colors for iOS Safari -->

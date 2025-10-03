@@ -71,11 +71,11 @@ onMount(() => {
 
 <svelte:head>
 	<title>시간표 - 3학년 4반</title>
-	<meta name="description" content="3학년 4반 학급 시간표입니다. 변경된 일정까지 한 번에 확인하세요. " />
+	<meta name="description" content="정확한 시간표를 변경사항까지 한 번에 확인하세요. " />
 
 	<!-- Open Graph -->
 	<meta property="og:title" content="시간표 - 3학년 4반" />
-	<meta property="og:description" content="3학년 4반 학급 시간표입니다. 변경된 일정까지 한 번에 확인하세요. " />
+	<meta property="og:description" content="정확한 시간표를 변경사항까지 한 번에 확인하세요. " />
 	<meta property="og:url" content="https://timefor.school" />
 	<meta property="og:type" content="website" />
 	<meta property="og:site_name" content="학급 공지사항" />
@@ -83,7 +83,7 @@ onMount(() => {
 	<!-- Twitter Card -->
 	<meta name="twitter:card" content="summary_large_image" />
 	<meta name="twitter:title" content="시간표 - 3학년 4반" />
-	<meta name="twitter:description" content="3학년 4반 학급 시간표입니다. 변경된 일정까지 한 번에 확인하세요. " />
+	<meta name="twitter:description" content="정확한 시간표를 변경사항까지 한 번에 확인하세요. " />
 	<meta name="robots" content="noindex" />
 </svelte:head>
 

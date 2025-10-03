@@ -60,7 +60,7 @@ $effect(() => {
 		<meta property="og:title" content="{detail.data.notice.subject} {detail.data.notice.title} | 3-4 학급 공지" />
 		<meta property="og:description" content="{getFirstLine(detail.data.notice.description) || '공지 내용을 확인하세요!'}" />
 		<meta property="og:type" content="article" />
-		<meta property="og:site_name" content="학급 공지" />
+		<meta property="og:site_name" content="TimeforSchool" />
 		
 		<!-- Twitter Card -->
 		<meta name="twitter:card" content="summary_large_image" />
