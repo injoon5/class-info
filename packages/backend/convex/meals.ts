@@ -71,8 +71,10 @@ export const upsertMany = internalMutation({
 
       if (existing) {
         await ctx.db.patch(existing._id, { ...meal, editedAt: Date.now() });
+        console.log(`Updated meal ${meal.date} ${meal.mealType}`);
       } else {
         await ctx.db.insert("meals", { ...meal, editedAt: Date.now() });
+        console.log(`Inserted meal ${meal.date} ${meal.mealType}`);
       }
     }
   },
@@ -93,8 +95,10 @@ export const fetchAndSave = internalAction({
     }
     const data = await res.json();
 
+    console.log(`Fetched ${data} meals`);
+
     // Ignore INFO-200 "해당하는 데이터가 없습니다." error response
-    if (Array.isArray(data.data)) {
+    if (Array.isArray(data)) {
       const processedData: ExternalMeal[] = data;
       const meals = processedData
         .filter((d) => d.MMEAL_SC_NM && d.DDISH_NM)
