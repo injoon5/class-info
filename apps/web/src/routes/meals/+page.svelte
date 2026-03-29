@@ -57,6 +57,10 @@ let hasDinner = $derived(
   (mealsQuery.data?.availableMealTypes ?? []).includes("석식")
 );
 
+function mealKey(type: string): string {
+  return type === '중식' ? 'lunch' : 'dinner';
+}
+
 // no client-side grouping; server returns normalized Mon-Fri days
 
 function formatDateKorean(dateStr: string): string {
@@ -109,7 +113,7 @@ onMount(() => {
     <LoadingState />
   {:else if mealsQuery.error}
     <ErrorState error={mealsQuery.error} />
-  {:else if !mealsQuery.data || ((mealsQuery.data.thisWeek?.days ?? []).every((d: any) => d[selectedMealType] === null) && (mealsQuery.data.nextWeek?.days ?? []).every((d: any) => d[selectedMealType] === null))}
+  {:else if !mealsQuery.data || ((mealsQuery.data.thisWeek?.days ?? []).every((d: any) => d[mealKey(selectedMealType)] === null) && (mealsQuery.data.nextWeek?.days ?? []).every((d: any) => d[mealKey(selectedMealType)] === null))}
     <EmptyState />
   {:else}
     {#if hasDinner}
@@ -160,9 +164,9 @@ onMount(() => {
                 <div class="flex items-center justify-between">
                   <h2 class="text-base sm:text-lg font-bold text-neutral-800 dark:text-neutral-100">{formatDateKorean(day.date)}</h2>
                 </div>
-                {#if (day as any)[selectedMealType]}
+                {#if (day as any)[mealKey(selectedMealType)]}
                   <ul class="mt-2 space-y-1 text-neutral-800 dark:text-neutral-200">
-                    {#each (day as any)[selectedMealType].dishes as dish}
+                    {#each (day as any)[mealKey(selectedMealType)].dishes as dish}
                       <li class="text-sm sm:text-base truncate max-w-full overflow-hidden whitespace-nowrap" title={dish}>{dish}</li>
                     {/each}
                   </ul>
@@ -171,8 +175,8 @@ onMount(() => {
                 {/if}
               </div>
               <div class="mt-2 min-h-[1.5rem] flex items-end">
-                {#if (day as any)[selectedMealType]?.calories}
-                  <p class="text-sm sm:text-base text-neutral-500">{(day as any)[selectedMealType].calories}</p>
+                {#if (day as any)[mealKey(selectedMealType)]?.calories}
+                  <p class="text-sm sm:text-base text-neutral-500">{(day as any)[mealKey(selectedMealType)].calories}</p>
                 {/if}
               </div>
             </div>
