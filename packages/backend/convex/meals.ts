@@ -213,13 +213,14 @@ export const getTwoWeeks = query({
         .query("meals")
         .withIndex("by_date", (q) => q.gte("date", startdate).lte("date", enddate))
         .collect();
-      const meals = rows.filter((m) => m.mealType === "중식").sort((a, b) => a.date.localeCompare(b.date));
-      const days: { date: string; meal: typeof meals[number] | null }[] = [];
+
+      const days: { date: string; 중식: typeof rows[number] | null; 석식: typeof rows[number] | null }[] = [];
       const d = new Date(start);
       while (d <= end) {
         const yyyymmdd = formatAsYyyymmddKst(d);
-        const meal = meals.find((m) => m.date === yyyymmdd) ?? null;
-        days.push({ date: yyyymmdd, meal });
+        const lunch = rows.find((m) => m.date === yyyymmdd && m.mealType === "중식") ?? null;
+        const dinner = rows.find((m) => m.date === yyyymmdd && m.mealType === "석식") ?? null;
+        days.push({ date: yyyymmdd, 중식: lunch, 석식: dinner });
         d.setDate(d.getDate() + 1);
       }
       return { startdate, enddate, days };
@@ -227,7 +228,13 @@ export const getTwoWeeks = query({
 
     const thisWeek = await buildWeek(0);
     const nextWeek = await buildWeek(1);
-    return { thisWeek, nextWeek };
+
+    const allDays = [...thisWeek.days, ...nextWeek.days];
+    const availableMealTypes: string[] = [];
+    if (allDays.some((d) => d["중식"] !== null)) availableMealTypes.push("중식");
+    if (allDays.some((d) => d["석식"] !== null)) availableMealTypes.push("석식");
+
+    return { thisWeek, nextWeek, availableMealTypes };
   },
 });
 

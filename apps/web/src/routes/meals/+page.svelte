@@ -28,6 +28,8 @@ function getNowInKst(): Date {
 
 let { data }: { data: PageData } = $props();
 
+let selectedMealType = $state("중식");
+
 // Scroll gradient state
 let scrollContainer = $state<HTMLDivElement>();
 let leftGradient = $state<HTMLDivElement>();
@@ -49,6 +51,10 @@ const mealsQuery = useQuery(
   (api as any).meals.getTwoWeeks,
   () => ({}),
   () => ({ initialData: data.twoWeeks, keepPreviousData: true })
+);
+
+let hasDinner = $derived(
+  (mealsQuery.data?.availableMealTypes ?? []).includes("석식")
 );
 
 // no client-side grouping; server returns normalized Mon-Fri days
@@ -103,9 +109,34 @@ onMount(() => {
     <LoadingState />
   {:else if mealsQuery.error}
     <ErrorState error={mealsQuery.error} />
-  {:else if !mealsQuery.data || ((mealsQuery.data.thisWeek?.days ?? []).every((d: any) => d.meal === null) && (mealsQuery.data.nextWeek?.days ?? []).every((d: any) => d.meal === null))}
+  {:else if !mealsQuery.data || ((mealsQuery.data.thisWeek?.days ?? []).every((d: any) => d[selectedMealType] === null) && (mealsQuery.data.nextWeek?.days ?? []).every((d: any) => d[selectedMealType] === null))}
     <EmptyState />
   {:else}
+    {#if hasDinner}
+      <div class="flex justify-center mb-3">
+        <div class="relative flex w-full rounded-xl bg-neutral-200 dark:bg-neutral-800 p-1 shadow-inner transition h-9 sm:h-11 text-sm sm:text-base">
+          <div
+            class="absolute top-1 h-7 sm:h-9 w-[calc(50%-0.25rem)] rounded-lg bg-white dark:bg-neutral-700 shadow transition-transform duration-300 ease-in-out z-0"
+            style="transform: translateX({selectedMealType === '중식' ? 0 : 100}%);"
+            aria-hidden="true"
+          ></div>
+          <button
+            class="flex-1 relative z-10 px-3 py-1 rounded-lg font-medium transition
+              {selectedMealType === '중식' ? 'text-neutral-900 dark:text-neutral-100' : 'text-neutral-600 dark:text-neutral-300'}"
+            onclick={() => selectedMealType = '중식'}
+            aria-pressed={selectedMealType === '중식'}
+            type="button"
+          >중식</button>
+          <button
+            class="flex-1 relative z-10 px-3 py-1 rounded-lg font-medium transition
+              {selectedMealType === '석식' ? 'text-neutral-900 dark:text-neutral-100' : 'text-neutral-600 dark:text-neutral-300'}"
+            onclick={() => selectedMealType = '석식'}
+            aria-pressed={selectedMealType === '석식'}
+            type="button"
+          >석식</button>
+        </div>
+      </div>
+    {/if}
     <div class="relative">
       <!-- Left gradient -->
       <div class="absolute left-0 top-0 bottom-0 w-8 bg-gradient-to-r from-white dark:from-neutral-900 to-transparent z-10 pointer-events-none transition-opacity duration-200" 
@@ -129,9 +160,9 @@ onMount(() => {
                 <div class="flex items-center justify-between">
                   <h2 class="text-base sm:text-lg font-bold text-neutral-800 dark:text-neutral-100">{formatDateKorean(day.date)}</h2>
                 </div>
-                {#if day.meal}
+                {#if (day as any)[selectedMealType]}
                   <ul class="mt-2 space-y-1 text-neutral-800 dark:text-neutral-200">
-                    {#each day.meal.dishes as dish}
+                    {#each (day as any)[selectedMealType].dishes as dish}
                       <li class="text-sm sm:text-base truncate max-w-full overflow-hidden whitespace-nowrap" title={dish}>{dish}</li>
                     {/each}
                   </ul>
@@ -140,8 +171,8 @@ onMount(() => {
                 {/if}
               </div>
               <div class="mt-2 min-h-[1.5rem] flex items-end">
-                {#if day.meal && day.meal.calories}
-                  <p class="text-sm sm:text-base text-neutral-500">{day.meal.calories}</p>
+                {#if (day as any)[selectedMealType]?.calories}
+                  <p class="text-sm sm:text-base text-neutral-500">{(day as any)[selectedMealType].calories}</p>
                 {/if}
               </div>
             </div>
