@@ -91,11 +91,11 @@ onMount(() => {
 </script>
 
 <svelte:head>
-	<title>급식 - 3학년 4반</title>
+	<title>급식 - 1학년 3반</title>
 	<meta name="description" content="정확한 급식을 한 눈에 확인하세요. " />
 
 	<!-- Open Graph -->
-	<meta property="og:title" content="급식 - 3학년 4반" />
+	<meta property="og:title" content="급식 - 1학년 3반" />
 	<meta property="og:description" content="정확한 급식을 한 눈에 확인하세요. " />
 	<meta property="og:url" content="https://timefor.school" />
 	<meta property="og:type" content="website" />
@@ -103,7 +103,7 @@ onMount(() => {
 
 	<!-- Twitter Card -->
 	<meta name="twitter:card" content="summary_large_image" />
-	<meta name="twitter:title" content="급식 - 3학년 4반" />
+	<meta name="twitter:title" content="급식 - 1학년 3반" />
 	<meta name="twitter:description" content="정확한 급식을 한 눈에 확인하세요. " />
 	<meta name="robots" content="noindex" />
 </svelte:head>

@@ -53,21 +53,21 @@ $effect(() => {
 
 <svelte:head>
 	{#if detail.data?.notice}
-		<title>{detail.data.notice.subject} {detail.data.notice.title} | 3-4 학급 공지</title>
+		<title>{detail.data.notice.subject} {detail.data.notice.title} | 1-3 학급 공지</title>
 		<meta name="description" content="{getFirstLine(detail.data.notice.description) || '공지 내용을 확인하세요!'}" />
-		
+
 		<!-- Open Graph -->
-		<meta property="og:title" content="{detail.data.notice.subject} {detail.data.notice.title} | 3-4 학급 공지" />
+		<meta property="og:title" content="{detail.data.notice.subject} {detail.data.notice.title} | 1-3 학급 공지" />
 		<meta property="og:description" content="{getFirstLine(detail.data.notice.description) || '공지 내용을 확인하세요!'}" />
 		<meta property="og:type" content="article" />
 		<meta property="og:site_name" content="TimeforSchool" />
-		
+
 		<!-- Twitter Card -->
 		<meta name="twitter:card" content="summary_large_image" />
-		<meta name="twitter:title" content="{detail.data.notice.subject} {detail.data.notice.title} | 3-4 학급 공지" />
+		<meta name="twitter:title" content="{detail.data.notice.subject} {detail.data.notice.title} | 1-3 학급 공지" />
 		<meta name="twitter:description" content="{getFirstLine(detail.data.notice.description) || '공지 내용을 확인하세요!'}" />
 	{:else}
-		<title>공지 상세 - 3-4 학급 공지</title>
+		<title>공지 상세 - 1-3 학급 공지</title>
 		<meta name="description" content="학급 공지의 상세 내용을 확인하세요." />
 		<meta property="og:title" content="공지 상세 - 학급 공지" />
 		<meta property="og:description" content="학급 공지의 상세 내용을 확인하세요." />
