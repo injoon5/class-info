@@ -13,29 +13,15 @@ export const load = (async ({ cookies, fetch }) => {
   const kstNow = getNowInKst();
   const year = kstNow.getFullYear();
 
-  const startdate = `${year}0101`;
-  const enddate = `${year}1231`;
+  const client = new ConvexHttpClient(PUBLIC_CONVEX_URL!);
 
   let schoolEvents: any[] = [];
-  try {
-    const res = await fetch(
-      `https://api.timefor.school/schedule?startdate=${startdate}&enddate=${enddate}&schoolcode=7010208`
-    );
-    if (res.ok) {
-      const data = await res.json();
-      if (Array.isArray(data)) {
-        schoolEvents = data;
-      }
-    }
-  } catch {}
-
-  const client = new ConvexHttpClient(PUBLIC_CONVEX_URL!);
   let customEvents: any[] = [];
   try {
-    customEvents = await client.query(
-      (api as any).schedule.getCustomEventsByYear,
-      { year: String(year) }
-    );
+    [schoolEvents, customEvents] = await Promise.all([
+      client.query((api as any).schedule.getSchoolEventsByYear, { year: String(year) }),
+      client.query((api as any).schedule.getCustomEventsByYear, { year: String(year) }),
+    ]);
   } catch {}
 
   const adminPin = cookies.get('admin_pin');

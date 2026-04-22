@@ -31,6 +31,13 @@ crons.hourly(
   { schoolcode: "7010208" }
 );
 
+crons.daily(
+  "fetch schedule window",
+  { hourUTC: 3, minuteUTC: 0 },
+  internal.schedule.fetchScheduleWindow,
+  { schoolcode: "7010208" }
+);
+
 export default crons;
 
 

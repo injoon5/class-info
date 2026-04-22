@@ -36,25 +36,12 @@ const todayStr = toYyyymmdd(nowKst.getFullYear(), nowKst.getMonth(), nowKst.getD
 let displayYear = $state(data.year as number);
 let displayMonth = $state(nowKst.getMonth()); // 0-11
 
-// School events (SSR-loaded, refreshable client-side for other years)
-let schoolEvents = $state<any[]>(data.schoolEvents as any[]);
-let schoolEventsYear = $state(data.year as number);
-
-async function fetchSchoolEventsForYear(year: number) {
-  schoolEvents = [];
-  try {
-    const res = await fetch(
-      `https://api.timefor.school/schedule?startdate=${year}0101&enddate=${year}1231&schoolcode=7010208`
-    );
-    if (res.ok) {
-      const d = await res.json();
-      if (Array.isArray(d)) {
-        schoolEvents = d;
-        schoolEventsYear = year;
-      }
-    }
-  } catch {}
-}
+// School events from Convex (real-time, reactive to year)
+const schoolEventsQuery = useQuery(
+  (api as any).schedule.getSchoolEventsByYear,
+  () => ({ year: String(displayYear) }),
+  () => ({ initialData: data.schoolEvents, keepPreviousData: true })
+);
 
 // Custom events from Convex (real-time)
 const customEventsQuery = useQuery(
@@ -63,25 +50,27 @@ const customEventsQuery = useQuery(
   () => ({ initialData: data.customEvents, keepPreviousData: true })
 );
 
-// Month navigation
+// Pagination bounds: Dec of last year → Feb of next year
+const minYear = nowKst.getFullYear() - 1;
+const minMonth = 11; // December
+const maxYear = nowKst.getFullYear() + 1;
+const maxMonth = 1; // February
+
+function canNavigate(direction: number): boolean {
+  let m = displayMonth + direction;
+  let y = displayYear;
+  if (m < 0) { m = 11; y--; }
+  else if (m > 11) { m = 0; y++; }
+  return (y * 12 + m) >= (minYear * 12 + minMonth) && (y * 12 + m) <= (maxYear * 12 + maxMonth);
+}
+
 function navigate(direction: number) {
+  if (!canNavigate(direction)) return;
   let newMonth = displayMonth + direction;
   let newYear = displayYear;
-
-  if (newMonth < 0) {
-    newMonth = 11;
-    newYear--;
-  } else if (newMonth > 11) {
-    newMonth = 0;
-    newYear++;
-  }
-
-  if (newYear !== displayYear) {
-    displayYear = newYear;
-    if (newYear !== schoolEventsYear) {
-      fetchSchoolEventsForYear(newYear);
-    }
-  }
+  if (newMonth < 0) { newMonth = 11; newYear--; }
+  else if (newMonth > 11) { newMonth = 0; newYear++; }
+  displayYear = newYear;
   displayMonth = newMonth;
 }
 
@@ -113,10 +102,10 @@ const calendarWeeks = $derived(getCalendarWeeks(displayYear, displayMonth));
 
 // Group events by date
 const schoolEventsByDate = $derived(
-  (schoolEvents || []).reduce((acc: Record<string, any[]>, event: any) => {
-    if (event.EVENT_NM === '토요휴업일') return acc;
-    if (!acc[event.AA_YMD]) acc[event.AA_YMD] = [];
-    acc[event.AA_YMD].push(event);
+  (schoolEventsQuery.data || []).reduce((acc: Record<string, any[]>, event: any) => {
+    if (event.eventName === '토요휴업일') return acc;
+    if (!acc[event.date]) acc[event.date] = [];
+    acc[event.date].push(event);
     return acc;
   }, {} as Record<string, any[]>)
 );
@@ -130,9 +119,9 @@ const customEventsByDate = $derived(
 );
 
 // Color helpers
-function getSchoolEventClass(sbtrDdScNm: string): string {
-  if (sbtrDdScNm === '공휴일') return 'bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300';
-  if (sbtrDdScNm === '휴업일') return 'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300';
+function getSchoolEventClass(eventType: string): string {
+  if (eventType === '공휴일') return 'bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300';
+  if (eventType === '휴업일') return 'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300';
   return 'bg-sky-100 text-sky-700 dark:bg-sky-900/40 dark:text-sky-300';
 }
 
@@ -243,9 +232,14 @@ const dayNames = ['일','월','화','수','목','금','토'];
   <div class="flex items-center justify-between mb-3">
     <button
       onclick={() => navigate(-1)}
-      class="pressable w-9 h-9 sm:w-11 sm:h-11 flex items-center justify-center rounded-xl bg-neutral-200 dark:bg-neutral-800 text-neutral-700 dark:text-neutral-200 hover:bg-neutral-300 dark:hover:bg-neutral-700 transition-colors text-xl font-light"
+      disabled={!canNavigate(-1)}
+      class="pressable w-9 h-9 sm:w-10 sm:h-10 flex items-center justify-center rounded-full bg-neutral-100 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-300 hover:bg-neutral-200 dark:hover:bg-neutral-700 border border-neutral-200 dark:border-neutral-700 transition-colors disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:bg-neutral-100 dark:disabled:hover:bg-neutral-800"
       aria-label="이전 달"
-    >‹</button>
+    >
+      <svg viewBox="0 0 20 20" fill="currentColor" class="w-4 h-4 sm:w-5 sm:h-5">
+        <path fill-rule="evenodd" d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z" clip-rule="evenodd"/>
+      </svg>
+    </button>
 
     <h2 class="text-base sm:text-lg font-semibold text-neutral-800 dark:text-neutral-200 tabular-nums">
       {displayYear}년 {monthNames[displayMonth]}
@@ -253,9 +247,14 @@ const dayNames = ['일','월','화','수','목','금','토'];
 
     <button
       onclick={() => navigate(1)}
-      class="pressable w-9 h-9 sm:w-11 sm:h-11 flex items-center justify-center rounded-xl bg-neutral-200 dark:bg-neutral-800 text-neutral-700 dark:text-neutral-200 hover:bg-neutral-300 dark:hover:bg-neutral-700 transition-colors text-xl font-light"
+      disabled={!canNavigate(1)}
+      class="pressable w-9 h-9 sm:w-10 sm:h-10 flex items-center justify-center rounded-full bg-neutral-100 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-300 hover:bg-neutral-200 dark:hover:bg-neutral-700 border border-neutral-200 dark:border-neutral-700 transition-colors disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:bg-neutral-100 dark:disabled:hover:bg-neutral-800"
       aria-label="다음 달"
-    >›</button>
+    >
+      <svg viewBox="0 0 20 20" fill="currentColor" class="w-4 h-4 sm:w-5 sm:h-5">
+        <path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clip-rule="evenodd"/>
+      </svg>
+    </button>
   </div>
 
   <!-- Calendar -->
@@ -275,7 +274,7 @@ const dayNames = ['일','월','화','수','목','금','토'];
       bind:this={scrollContainer}
       onscroll={updateGradients}
     >
-      <div class="min-w-[21rem] border border-neutral-200 dark:border-neutral-700 rounded-lg overflow-hidden shadow-sm">
+      <div class="min-w-[26rem] border border-neutral-200 dark:border-neutral-700 rounded-lg overflow-hidden shadow-sm">
 
         <!-- Day name header -->
         <div class="grid grid-cols-7 bg-neutral-100 dark:bg-neutral-800 border-b border-neutral-200 dark:border-neutral-700">
@@ -310,12 +309,12 @@ const dayNames = ['일','월','화','수','목','금','토'];
                     <span
                       class="leading-none tabular-nums
                         {isToday
-                          ? 'w-5 h-5 sm:w-6 sm:h-6 flex items-center justify-center rounded-full bg-neutral-800 dark:bg-neutral-200 text-white dark:text-neutral-900 text-xs font-bold'
+                          ? 'w-6 h-6 sm:w-7 sm:h-7 flex items-center justify-center rounded-full bg-neutral-800 dark:bg-neutral-200 text-white dark:text-neutral-900 text-sm font-bold'
                           : isSun
-                            ? 'text-xs ' + (isPast ? 'text-red-300 dark:text-red-800' : 'text-red-500 dark:text-red-400')
+                            ? 'text-sm ' + (isPast ? 'text-red-300 dark:text-red-800' : 'text-red-500 dark:text-red-400')
                             : isSat
-                              ? 'text-xs ' + (isPast ? 'text-blue-300 dark:text-blue-800' : 'text-blue-500 dark:text-blue-400')
-                              : 'text-xs ' + (isPast ? 'text-neutral-400 dark:text-neutral-600' : 'text-neutral-700 dark:text-neutral-300')}"
+                              ? 'text-sm ' + (isPast ? 'text-blue-300 dark:text-blue-800' : 'text-blue-500 dark:text-blue-400')
+                              : 'text-sm ' + (isPast ? 'text-neutral-400 dark:text-neutral-600' : 'text-neutral-700 dark:text-neutral-300')}"
                     >{cell.day}</span>
 
                     <!-- Admin: add event button (visible on cell hover) -->
@@ -336,9 +335,9 @@ const dayNames = ['일','월','화','수','목','금','토'];
                   <!-- School events -->
                   {#each (schoolEventsByDate[cell.yyyymmdd!] || []) as event}
                     <div
-                      class="text-xs rounded px-1 py-0.5 mb-0.5 truncate leading-tight {getSchoolEventClass(event.SBTR_DD_SC_NM)}"
-                      title={event.EVENT_NM}
-                    >{event.EVENT_NM}</div>
+                      class="text-xs rounded px-1 py-0.5 mb-0.5 truncate leading-tight {getSchoolEventClass(event.eventType)}"
+                      title={event.eventName}
+                    >{event.eventName}</div>
                   {/each}
 
                   <!-- Custom events -->
