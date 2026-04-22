@@ -1,5 +1,6 @@
 <script lang="ts">
 import { onMount } from 'svelte';
+import { fade, fly } from 'svelte/transition';
 import { useQuery, useConvexClient } from 'convex-svelte';
 import { api } from "@class-info/backend/convex/_generated/api";
 import type { PageData } from './$types.js';
@@ -321,7 +322,7 @@ const dayNames = ['일','월','화','수','목','금','토'];
                     {#if isAuthenticated}
                       <button
                         onclick={() => openAddForm(cell.yyyymmdd!)}
-                        class="opacity-50 sm:opacity-0 sm:group-hover:opacity-100 w-4 h-4 sm:w-5 sm:h-5 flex items-center justify-center rounded text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-200 hover:bg-neutral-100 dark:hover:bg-neutral-700 transition-opacity flex-shrink-0"
+                        class="relative opacity-50 sm:opacity-0 sm:group-hover:opacity-100 w-4 h-4 sm:w-5 sm:h-5 flex items-center justify-center rounded text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-200 hover:bg-neutral-100 dark:hover:bg-neutral-700 transition-opacity flex-shrink-0 after:absolute after:top-1/2 after:left-1/2 after:-translate-x-1/2 after:-translate-y-1/2 after:w-8 after:h-8"
                         title="일정 추가"
                         aria-label="일정 추가"
                       >
@@ -350,7 +351,7 @@ const dayNames = ['일','월','화','수','목','금','토'];
                       {#if isAuthenticated}
                         <button
                           onclick={() => handleDeleteCustomEvent(event._id)}
-                          class="absolute right-0.5 top-1/2 -translate-y-1/2 opacity-0 group-hover/ev:opacity-100 text-xs leading-none hover:text-red-600 dark:hover:text-red-400 transition-opacity"
+                          class="absolute right-0 top-1/2 -translate-y-1/2 p-1 opacity-0 group-hover/ev:opacity-100 text-xs leading-none hover:text-red-600 dark:hover:text-red-400 transition-opacity"
                           title="삭제"
                           aria-label="삭제"
                         >×</button>
@@ -388,12 +389,14 @@ const dayNames = ['일','월','화','수','목','금','토'];
 <!-- Add event modal (admin) -->
 {#if addingToDate}
   <div
+    transition:fade={{duration: 150}}
     role="presentation"
     class="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4"
     onclick={closeAddForm}
     onkeydown={(e) => e.key === 'Escape' && closeAddForm()}
   >
     <div
+      transition:fly={{y: 10, duration: 200, opacity: 0}}
       role="dialog"
       aria-modal="true"
       aria-labelledby="event-form-title"
@@ -424,7 +427,7 @@ const dayNames = ['일','월','화','수','목','금','토'];
           {#each CUSTOM_COLORS as color}
             <button
               onclick={() => (newEventColor = color.id)}
-              class="pressable w-6 h-6 rounded-full {color.bgClass} transition-all
+              class="pressable w-6 h-6 rounded-full {color.bgClass} transition-[transform,box-shadow]
                 {newEventColor === color.id ? 'ring-2 ring-offset-2 ring-neutral-500 dark:ring-neutral-400 scale-110' : ''}"
               title={color.id}
               aria-label={color.id}
