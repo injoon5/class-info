@@ -38,14 +38,14 @@ let displayMonth = $state(nowKst.getMonth()); // 0-11
 
 // School events from Convex (real-time, reactive to year)
 const schoolEventsQuery = useQuery(
-  (api as any).schedule.getSchoolEventsByYear,
+  api.schedule.getSchoolEventsByYear,
   () => ({ year: String(displayYear) }),
   () => ({ initialData: data.schoolEvents, keepPreviousData: true })
 );
 
 // Custom events from Convex (real-time)
 const customEventsQuery = useQuery(
-  (api as any).schedule.getCustomEventsByYear,
+  api.schedule.getCustomEventsByYear,
   () => ({ year: String(displayYear) }),
   () => ({ initialData: data.customEvents, keepPreviousData: true })
 );
@@ -165,7 +165,7 @@ async function handleAddEvent() {
   if (!newEventTitle.trim() || !addingToDate || isSaving) return;
   isSaving = true;
   try {
-    await client.mutation((api as any).schedule.createCustomEvent, {
+    await client.mutation(api.schedule.createCustomEvent, {
       date: addingToDate,
       title: newEventTitle.trim(),
       color: newEventColor,
@@ -181,7 +181,7 @@ async function handleAddEvent() {
 async function handleDeleteCustomEvent(id: string) {
   if (!confirm('이 일정을 삭제하시겠습니까?')) return;
   try {
-    await client.mutation((api as any).schedule.deleteCustomEvent, { id });
+    await client.mutation(api.schedule.deleteCustomEvent, { id });
   } catch {
     alert('삭제 중 오류가 발생했습니다.');
   }

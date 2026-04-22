@@ -24,7 +24,7 @@ export const upsertManySchoolEvents = internalMutation({
   },
   handler: async (ctx, { events, startdate, enddate }) => {
     const existing = await ctx.db
-      .query("schoolScheduleEvents")
+      .query("schoolEvents")
       .withIndex("by_date", (q) => q.gte("date", startdate).lte("date", enddate))
       .collect();
 
@@ -32,7 +32,7 @@ export const upsertManySchoolEvents = internalMutation({
       await ctx.db.delete(ev._id);
     }
     for (const ev of events) {
-      await ctx.db.insert("schoolScheduleEvents", { ...ev, editedAt: Date.now() });
+      await ctx.db.insert("schoolEvents", { ...ev, editedAt: Date.now() });
     }
   },
 });
@@ -79,7 +79,7 @@ export const getSchoolEventsByYear = query({
   args: { year: v.string() },
   handler: async (ctx, { year }) => {
     return await ctx.db
-      .query("schoolScheduleEvents")
+      .query("schoolEvents")
       .withIndex("by_date", (q) =>
         q.gte("date", `${year}0101`).lte("date", `${year}1231`)
       )
@@ -91,7 +91,7 @@ export const getCustomEventsByYear = query({
   args: { year: v.string() },
   handler: async (ctx, { year }) => {
     return await ctx.db
-      .query("customScheduleEvents")
+      .query("customEvents")
       .withIndex("by_date", (q) =>
         q.gte("date", `${year}0101`).lte("date", `${year}1231`)
       )
@@ -106,7 +106,7 @@ export const createCustomEvent = mutation({
     color: v.string(),
   },
   handler: async (ctx, args) => {
-    return await ctx.db.insert("customScheduleEvents", {
+    return await ctx.db.insert("customEvents", {
       ...args,
       createdAt: Date.now(),
       updatedAt: Date.now(),
@@ -115,7 +115,7 @@ export const createCustomEvent = mutation({
 });
 
 export const deleteCustomEvent = mutation({
-  args: { id: v.id("customScheduleEvents") },
+  args: { id: v.id("customEvents") },
   handler: async (ctx, { id }) => {
     await ctx.db.delete(id);
   },

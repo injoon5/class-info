@@ -70,7 +70,7 @@ export default defineSchema({
     .index("by_date", ["date"]) // query by day/week
     .index("by_date_type", ["date", "mealType"]),
 
-  customScheduleEvents: defineTable({
+  customEvents: defineTable({
     date: v.string(), // YYYYMMDD
     title: v.string(),
     color: v.string(), // "blue" | "green" | "purple" | "orange" | "pink" | "teal"
@@ -78,7 +78,7 @@ export default defineSchema({
     updatedAt: v.number(),
   }).index("by_date", ["date"]),
 
-  schoolScheduleEvents: defineTable({
+  schoolEvents: defineTable({
     date: v.string(), // YYYYMMDD
     eventName: v.string(), // EVENT_NM
     eventType: v.string(), // SBTR_DD_SC_NM
