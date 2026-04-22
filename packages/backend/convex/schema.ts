@@ -69,4 +69,12 @@ export default defineSchema({
   })
     .index("by_date", ["date"]) // query by day/week
     .index("by_date_type", ["date", "mealType"]),
+
+  customScheduleEvents: defineTable({
+    date: v.string(), // YYYYMMDD
+    title: v.string(),
+    color: v.string(), // "blue" | "green" | "purple" | "orange" | "pink" | "teal"
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  }).index("by_date", ["date"]),
 });
