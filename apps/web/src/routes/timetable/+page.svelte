@@ -154,8 +154,8 @@ onMount(() => {
 					{#each Array(getMaxPeriods()) as _, i}
 						<tr>
 							<td class=" py-3 sm:py-6 border border-neutral-200 dark:border-neutral-700 text-neutral-700 dark:text-neutral-200 whitespace-nowrap text-center bg-neutral-100 dark:bg-neutral-800">
-								<div class="text-base sm:text-lg font-medium tabular-nums">{i + 1}교시</div>
-								<div class="text-sm sm:text-lg text-neutral-500 dark:text-neutral-400 tabular-nums">{getPeriodLabel(i + 1)}</div>
+								<div class="text-base sm:text-lg font-medium">{i + 1}교시</div>
+								<div class="text-sm sm:text-lg text-neutral-500 dark:text-neutral-400">{getPeriodLabel(i + 1)}</div>
 							</td>
 							{#each (timetableQuery.data?.timetable || []) as day}
 								<td class="border border-neutral-200 dark:border-neutral-700 py-3 sm:py-6 text-center {day[i]?.replaced ? 'bg-yellow-100 dark:bg-yellow-900/20' : 'bg-neutral-50 dark:bg-neutral-900'}">

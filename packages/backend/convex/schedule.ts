@@ -24,15 +24,24 @@ export const upsertManySchoolEvents = internalMutation({
   },
   handler: async (ctx, { events, startdate, enddate }) => {
     const existing = await ctx.db
-      .query("schoolScheduleEvents")
+      .query("schedules")
       .withIndex("by_date", (q) => q.gte("date", startdate).lte("date", enddate))
       .collect();
 
     for (const ev of existing) {
-      await ctx.db.delete(ev._id);
+      if (ev.source === "school") await ctx.db.delete(ev._id);
     }
+    const now = Date.now();
     for (const ev of events) {
-      await ctx.db.insert("schoolScheduleEvents", { ...ev, editedAt: Date.now() });
+      await ctx.db.insert("schedules", {
+        date: ev.date,
+        title: ev.eventName,
+        source: "school",
+        eventType: ev.eventType,
+        schoolCode: ev.schoolCode,
+        createdAt: now,
+        updatedAt: now,
+      });
     }
   },
 });
@@ -78,24 +87,26 @@ export const fetchScheduleWindow = internalAction({
 export const getSchoolEventsByYear = query({
   args: { year: v.string() },
   handler: async (ctx, { year }) => {
-    return await ctx.db
-      .query("schoolScheduleEvents")
+    const all = await ctx.db
+      .query("schedules")
       .withIndex("by_date", (q) =>
         q.gte("date", `${year}0101`).lte("date", `${year}1231`)
       )
       .collect();
+    return all.filter((e) => e.source === "school");
   },
 });
 
 export const getCustomEventsByYear = query({
   args: { year: v.string() },
   handler: async (ctx, { year }) => {
-    return await ctx.db
-      .query("customScheduleEvents")
+    const all = await ctx.db
+      .query("schedules")
       .withIndex("by_date", (q) =>
         q.gte("date", `${year}0101`).lte("date", `${year}1231`)
       )
       .collect();
+    return all.filter((e) => e.source === "custom");
   },
 });
 
@@ -106,16 +117,18 @@ export const createCustomEvent = mutation({
     color: v.string(),
   },
   handler: async (ctx, args) => {
-    return await ctx.db.insert("customScheduleEvents", {
+    const now = Date.now();
+    return await ctx.db.insert("schedules", {
       ...args,
-      createdAt: Date.now(),
-      updatedAt: Date.now(),
+      source: "custom",
+      createdAt: now,
+      updatedAt: now,
     });
   },
 });
 
 export const deleteCustomEvent = mutation({
-  args: { id: v.id("customScheduleEvents") },
+  args: { id: v.id("schedules") },
   handler: async (ctx, { id }) => {
     await ctx.db.delete(id);
   },
