@@ -118,21 +118,21 @@ onMount(() => {
   {:else}
     {#if hasDinner}
       <div class="flex justify-center mb-3">
-        <div class="relative flex w-full rounded-xl bg-neutral-200 dark:bg-neutral-800 p-1 shadow-inner transition h-9 sm:h-11 text-sm sm:text-base">
+        <div class="relative flex w-full rounded-xl bg-neutral-200 dark:bg-neutral-800 p-1 shadow-inner transition-colors h-9 sm:h-11 text-sm sm:text-base">
           <div
             class="absolute top-1 h-7 sm:h-9 w-[calc(50%-0.25rem)] rounded-lg bg-white dark:bg-neutral-700 shadow transition-transform duration-300 ease-in-out z-0"
             style="transform: translateX({selectedMealType === '중식' ? 0 : 100}%);"
             aria-hidden="true"
           ></div>
           <button
-            class="flex-1 relative z-10 px-3 py-1 rounded-lg font-medium transition
+            class="flex-1 relative z-10 px-3 py-1 rounded-lg font-medium transition-colors
               {selectedMealType === '중식' ? 'text-neutral-900 dark:text-neutral-100' : 'text-neutral-600 dark:text-neutral-300'}"
             onclick={() => selectedMealType = '중식'}
             aria-pressed={selectedMealType === '중식'}
             type="button"
           >중식</button>
           <button
-            class="flex-1 relative z-10 px-3 py-1 rounded-lg font-medium transition
+            class="flex-1 relative z-10 px-3 py-1 rounded-lg font-medium transition-colors
               {selectedMealType === '석식' ? 'text-neutral-900 dark:text-neutral-100' : 'text-neutral-600 dark:text-neutral-300'}"
             onclick={() => selectedMealType = '석식'}
             aria-pressed={selectedMealType === '석식'}
@@ -176,7 +176,7 @@ onMount(() => {
               </div>
               <div class="mt-2 min-h-[1.5rem] flex items-end">
                 {#if (day as any)[mealKey(selectedMealType)]?.calories}
-                  <p class="text-sm sm:text-base text-neutral-500">{(day as any)[mealKey(selectedMealType)].calories}</p>
+                  <p class="text-sm sm:text-base text-neutral-500 tabular-nums">{(day as any)[mealKey(selectedMealType)].calories}</p>
                 {/if}
               </div>
             </div>

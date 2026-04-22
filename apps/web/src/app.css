@@ -47,25 +47,21 @@ body {
 		@apply transition-transform duration-75 ease-in-out;
 	}
 	.pressable:active {
-		@apply scale-[0.97];
+		@apply scale-[0.96];
 	}
-}
 
-@layer utilities {
 	.pressable-lg {
 		@apply transition-transform duration-75 ease-in-out;
 	}
 	.pressable-lg:active {
-		@apply scale-[0.98];
+		@apply scale-[0.97];
 	}
-}
 
-@layer utilities {
 	.pressable-xl {
 		@apply transition-transform duration-75 ease-in-out;
 	}
 	.pressable-xl:active {
-		@apply scale-[0.995];
+		@apply scale-[0.98];
 	}
 }
 
@@ -77,6 +73,14 @@ body {
         transition-duration: 0.001ms !important;
         scroll-behavior: auto !important;
     }
+}
+
+h1, h2, h3, h4, h5, h6 {
+    text-wrap: balance;
+}
+
+p {
+    text-wrap: pretty;
 }
 
 /* Heading anchor offset to avoid being hidden under sticky headers */
