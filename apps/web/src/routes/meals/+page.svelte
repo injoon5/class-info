@@ -176,7 +176,7 @@ onMount(() => {
               </div>
               <div class="mt-2 min-h-[1.5rem] flex items-end">
                 {#if (day as any)[mealKey(selectedMealType)]?.calories}
-                  <p class="text-sm sm:text-base text-neutral-500 tabular-nums">{(day as any)[mealKey(selectedMealType)].calories}</p>
+                  <p class="text-sm sm:text-base text-neutral-500">{(day as any)[mealKey(selectedMealType)].calories}</p>
                 {/if}
               </div>
             </div>

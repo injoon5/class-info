@@ -242,7 +242,7 @@ const dayNames = ['일','월','화','수','목','금','토'];
       </svg>
     </button>
 
-    <h2 class="text-base sm:text-lg font-semibold text-neutral-800 dark:text-neutral-200 tabular-nums">
+    <h2 class="text-base sm:text-lg font-semibold text-neutral-800 dark:text-neutral-200">
       {displayYear}년 {monthNames[displayMonth]}
     </h2>
 
@@ -308,7 +308,7 @@ const dayNames = ['일','월','화','수','목','금','토'];
                   <!-- Date number row -->
                   <div class="flex items-start justify-between mb-0.5">
                     <span
-                      class="text-sm leading-none tabular-nums w-6 h-6 sm:w-7 sm:h-7 flex items-center justify-center flex-shrink-0
+                      class="text-sm leading-none w-6 h-6 sm:w-7 sm:h-7 flex items-center justify-center flex-shrink-0
                         {isToday
                           ? 'rounded-full bg-neutral-800 dark:bg-neutral-200 text-white dark:text-neutral-900 font-bold'
                           : isSun
