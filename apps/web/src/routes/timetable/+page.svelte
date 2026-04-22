@@ -90,7 +90,7 @@ onMount(() => {
 <div class="max-w-4xl mx-auto px-4 py-1 sm:py-0 sm:px-4">
 	<!-- Header: Week Selector -->
 	<div class="flex justify-center mb-3">
-		<div class="relative flex w-full rounded-xl bg-neutral-200 dark:bg-neutral-800 p-1 shadow-inner transition h-9 sm:h-11 text-sm sm:text-base">
+		<div class="relative flex w-full rounded-xl bg-neutral-200 dark:bg-neutral-800 p-1 shadow-inner transition-colors h-9 sm:h-11 text-sm sm:text-base">
 			<!-- Sliding indicator -->
 			<div
 				class="absolute top-1 h-7 sm:h-9 w-[calc(50%-0.25rem)] rounded-lg bg-white dark:bg-neutral-700 shadow transition-transform duration-300 ease-in-out z-0"
@@ -98,8 +98,8 @@ onMount(() => {
 				aria-hidden="true"
 			></div>
 			<button
-				class="flex-1 relative z-10 px-3 py-1 rounded-lg font-medium transition
-					{selectedWeek === 0 
+				class="flex-1 relative z-10 px-3 py-1 rounded-lg font-medium transition-colors
+					{selectedWeek === 0
 						? 'text-neutral-900 dark:text-neutral-100'
 						: 'text-neutral-600 dark:text-neutral-300'}"
 				onclick={() => selectedWeek = 0}
@@ -109,8 +109,8 @@ onMount(() => {
 				이번 주
 			</button>
 			<button
-				class="flex-1 relative z-10 px-3 py-1 rounded-lg font-medium transition
-					{selectedWeek === 1 
+				class="flex-1 relative z-10 px-3 py-1 rounded-lg font-medium transition-colors
+					{selectedWeek === 1
 						? 'text-neutral-900 dark:text-neutral-100'
 						: 'text-neutral-600 dark:text-neutral-300'}"
 				onclick={() => selectedWeek = 1}
@@ -154,8 +154,8 @@ onMount(() => {
 					{#each Array(getMaxPeriods()) as _, i}
 						<tr>
 							<td class=" py-3 sm:py-6 border border-neutral-200 dark:border-neutral-700 text-neutral-700 dark:text-neutral-200 whitespace-nowrap text-center bg-neutral-100 dark:bg-neutral-800">
-								<div class="text-base sm:text-lg font-medium">{i + 1}교시</div>
-								<div class="text-sm sm:text-lg text-neutral-500 dark:text-neutral-400">{getPeriodLabel(i + 1)}</div>
+								<div class="text-base sm:text-lg font-medium tabular-nums">{i + 1}교시</div>
+								<div class="text-sm sm:text-lg text-neutral-500 dark:text-neutral-400 tabular-nums">{getPeriodLabel(i + 1)}</div>
 							</td>
 							{#each (timetableQuery.data?.timetable || []) as day}
 								<td class="border border-neutral-200 dark:border-neutral-700 py-3 sm:py-6 text-center {day[i]?.replaced ? 'bg-yellow-100 dark:bg-yellow-900/20' : 'bg-neutral-50 dark:bg-neutral-900'}">

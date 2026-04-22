@@ -100,7 +100,7 @@ $effect(() => {
 		{:else if !detail.data?.notice}
 			<div class="text-center py-8 text-neutral-500 dark:text-neutral-400">알림을 찾을 수 없습니다.</div>
 		{:else}
-			<div class="mb-4 mt-2 sm:mt-3 bg-white dark:bg-neutral-800 border border-neutral-300 dark:border-neutral-600 p-4 sm:p-6">
+			<div class="mb-4 mt-2 sm:mt-3 bg-white dark:bg-neutral-800 border border-neutral-300 dark:border-neutral-600 rounded-lg p-4 sm:p-6">
 				<div class="mb-4">
 					<div class="flex items-center gap-2 sm:gap-3 mb-1 sm:mb-2">
 						<span class="px-2 py-1 text-sm font-medium rounded {getTypeColor(detail.data.notice.type)}">
@@ -131,7 +131,7 @@ $effect(() => {
 						<h3 class="text-sm sm:text-base font-medium mb-3 text-neutral-600 dark:text-neutral-300">첨부 파일</h3>
 						<div class="space-y-2">
 							{#each detail.data.files as file}
-								<div class="flex items-center gap-3 p-3 bg-neutral-50 dark:bg-neutral-700 border border-neutral-200 dark:border-neutral-600">
+								<div class="flex items-center gap-3 p-3 bg-neutral-50 dark:bg-neutral-700 border border-neutral-200 dark:border-neutral-600 rounded-md">
 									<div class="flex-shrink-0">
 										{#if file.type.startsWith('image/')}
 											<svg class="w-5 h-5 text-neutral-500" fill="currentColor" viewBox="0 0 20 20">
@@ -161,7 +161,7 @@ $effect(() => {
 										target="_blank"
 										role="button"
 										rel="noopener noreferrer"
-										class="px-5 py-2 text-sm border border-neutral-300 dark:border-neutral-600 hover:bg-neutral-100 dark:hover:bg-neutral-600 text-neutral-600 dark:text-neutral-300 font-semibold inline-flex items-center justify-center"
+										class="px-5 py-2 text-sm border border-neutral-300 dark:border-neutral-600 hover:bg-neutral-100 dark:hover:bg-neutral-600 text-neutral-600 dark:text-neutral-300 font-semibold inline-flex items-center justify-center rounded pressable transition-colors"
 									>
 										열기
 									</a>
