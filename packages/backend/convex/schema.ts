@@ -77,4 +77,12 @@ export default defineSchema({
     createdAt: v.number(),
     updatedAt: v.number(),
   }).index("by_date", ["date"]),
+
+  schoolScheduleEvents: defineTable({
+    date: v.string(), // YYYYMMDD
+    eventName: v.string(), // EVENT_NM
+    eventType: v.string(), // SBTR_DD_SC_NM
+    schoolCode: v.string(),
+    editedAt: v.number(),
+  }).index("by_date", ["date"]),
 });

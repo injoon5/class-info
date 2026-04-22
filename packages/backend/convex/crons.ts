@@ -31,6 +31,20 @@ crons.hourly(
   { schoolcode: "7010208" }
 );
 
+crons.daily(
+  "fetch schedule - this year",
+  { hourUTC: 3, minuteUTC: 0 },
+  internal.schedule.fetchThisYear,
+  { schoolcode: "7010208" }
+);
+
+crons.daily(
+  "fetch schedule - next year",
+  { hourUTC: 3, minuteUTC: 1 },
+  internal.schedule.fetchNextYear,
+  { schoolcode: "7010208" }
+);
+
 export default crons;
 
 
