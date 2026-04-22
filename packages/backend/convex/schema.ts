@@ -70,19 +70,14 @@ export default defineSchema({
     .index("by_date", ["date"]) // query by day/week
     .index("by_date_type", ["date", "mealType"]),
 
-  customScheduleEvents: defineTable({
+  schedules: defineTable({
     date: v.string(), // YYYYMMDD
     title: v.string(),
-    color: v.string(), // "blue" | "green" | "purple" | "orange" | "pink" | "teal"
+    source: v.union(v.literal("school"), v.literal("custom")),
+    eventType: v.optional(v.string()), // SBTR_DD_SC_NM — school only
+    schoolCode: v.optional(v.string()), // school only
+    color: v.optional(v.string()), // "blue"|"green"|"purple"|"orange"|"pink"|"teal" — custom only
     createdAt: v.number(),
     updatedAt: v.number(),
-  }).index("by_date", ["date"]),
-
-  schoolScheduleEvents: defineTable({
-    date: v.string(), // YYYYMMDD
-    eventName: v.string(), // EVENT_NM
-    eventType: v.string(), // SBTR_DD_SC_NM
-    schoolCode: v.string(),
-    editedAt: v.number(),
   }).index("by_date", ["date"]),
 });

@@ -103,7 +103,7 @@ const calendarWeeks = $derived(getCalendarWeeks(displayYear, displayMonth));
 // Group events by date
 const schoolEventsByDate = $derived(
   (schoolEventsQuery.data || []).reduce((acc: Record<string, any[]>, event: any) => {
-    if (event.eventName === '토요휴업일') return acc;
+    if (event.title === '토요휴업일') return acc;
     if (!acc[event.date]) acc[event.date] = [];
     acc[event.date].push(event);
     return acc;
@@ -307,21 +307,21 @@ const dayNames = ['일','월','화','수','목','금','토'];
                   <!-- Date number row -->
                   <div class="flex items-start justify-between mb-0.5">
                     <span
-                      class="leading-none tabular-nums
+                      class="text-sm leading-none tabular-nums w-6 h-6 sm:w-7 sm:h-7 flex items-center justify-center flex-shrink-0
                         {isToday
-                          ? 'w-6 h-6 sm:w-7 sm:h-7 flex items-center justify-center rounded-full bg-neutral-800 dark:bg-neutral-200 text-white dark:text-neutral-900 text-sm font-bold'
+                          ? 'rounded-full bg-neutral-800 dark:bg-neutral-200 text-white dark:text-neutral-900 font-bold'
                           : isSun
-                            ? 'text-sm ' + (isPast ? 'text-red-300 dark:text-red-800' : 'text-red-500 dark:text-red-400')
+                            ? (isPast ? 'text-red-300 dark:text-red-800' : 'text-red-500 dark:text-red-400')
                             : isSat
-                              ? 'text-sm ' + (isPast ? 'text-blue-300 dark:text-blue-800' : 'text-blue-500 dark:text-blue-400')
-                              : 'text-sm ' + (isPast ? 'text-neutral-400 dark:text-neutral-600' : 'text-neutral-700 dark:text-neutral-300')}"
+                              ? (isPast ? 'text-blue-300 dark:text-blue-800' : 'text-blue-500 dark:text-blue-400')
+                              : (isPast ? 'text-neutral-400 dark:text-neutral-600' : 'text-neutral-700 dark:text-neutral-300')}"
                     >{cell.day}</span>
 
-                    <!-- Admin: add event button (visible on cell hover) -->
+                    <!-- Admin: add event button (always visible on mobile, hover on desktop) -->
                     {#if isAuthenticated}
                       <button
                         onclick={() => openAddForm(cell.yyyymmdd!)}
-                        class="opacity-0 group-hover:opacity-100 w-4 h-4 sm:w-5 sm:h-5 flex items-center justify-center rounded text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-200 hover:bg-neutral-100 dark:hover:bg-neutral-700 transition-opacity flex-shrink-0"
+                        class="opacity-50 sm:opacity-0 sm:group-hover:opacity-100 w-4 h-4 sm:w-5 sm:h-5 flex items-center justify-center rounded text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-200 hover:bg-neutral-100 dark:hover:bg-neutral-700 transition-opacity flex-shrink-0"
                         title="일정 추가"
                         aria-label="일정 추가"
                       >
@@ -336,8 +336,8 @@ const dayNames = ['일','월','화','수','목','금','토'];
                   {#each (schoolEventsByDate[cell.yyyymmdd!] || []) as event}
                     <div
                       class="text-xs rounded px-1 py-0.5 mb-0.5 truncate leading-tight {getSchoolEventClass(event.eventType)}"
-                      title={event.eventName}
-                    >{event.eventName}</div>
+                      title={event.title}
+                    >{event.title}</div>
                   {/each}
 
                   <!-- Custom events -->
