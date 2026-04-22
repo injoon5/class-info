@@ -22,7 +22,7 @@
 					class="hover:underline p-1 sm:px-2 sm:py-1 {(page.url.pathname === '/' || page.url.pathname.startsWith('/notice')) ? 'underline' : ''}"
 					aria-current={(page.url.pathname === '/' || page.url.pathname.startsWith('/notice')) ? 'page' : undefined}
 				>
-					공지사항
+					공지
 				</a>
 				<a href="/timetable" class="hover:underline p-1 sm:px-2 sm:py-1 {(page.url.pathname.startsWith('/timetable')) ? 'underline' : ''}" aria-current={(page.url.pathname.startsWith('/timetable')) ? 'page' : undefined}>시간표</a>
 				<a href="/meals" class="hover:underline p-1 sm:px-2 sm:py-1 {(page.url.pathname.startsWith('/meals')) ? 'underline' : ''}" aria-current={(page.url.pathname.startsWith('/meals')) ? 'page' : undefined}>급식</a>
