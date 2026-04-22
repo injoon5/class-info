@@ -50,19 +50,26 @@ const customEventsQuery = useQuery(
   () => ({ initialData: data.customEvents, keepPreviousData: true })
 );
 
-// Month navigation
+// Pagination bounds: Dec of last year → Feb of next year
+const minYear = nowKst.getFullYear() - 1;
+const minMonth = 11; // December
+const maxYear = nowKst.getFullYear() + 1;
+const maxMonth = 1; // February
+
+function canNavigate(direction: number): boolean {
+  let m = displayMonth + direction;
+  let y = displayYear;
+  if (m < 0) { m = 11; y--; }
+  else if (m > 11) { m = 0; y++; }
+  return (y * 12 + m) >= (minYear * 12 + minMonth) && (y * 12 + m) <= (maxYear * 12 + maxMonth);
+}
+
 function navigate(direction: number) {
+  if (!canNavigate(direction)) return;
   let newMonth = displayMonth + direction;
   let newYear = displayYear;
-
-  if (newMonth < 0) {
-    newMonth = 11;
-    newYear--;
-  } else if (newMonth > 11) {
-    newMonth = 0;
-    newYear++;
-  }
-
+  if (newMonth < 0) { newMonth = 11; newYear--; }
+  else if (newMonth > 11) { newMonth = 0; newYear++; }
   displayYear = newYear;
   displayMonth = newMonth;
 }
@@ -225,7 +232,8 @@ const dayNames = ['일','월','화','수','목','금','토'];
   <div class="flex items-center justify-between mb-3">
     <button
       onclick={() => navigate(-1)}
-      class="pressable w-9 h-9 sm:w-10 sm:h-10 flex items-center justify-center rounded-full bg-neutral-100 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-300 hover:bg-neutral-200 dark:hover:bg-neutral-700 border border-neutral-200 dark:border-neutral-700 transition-colors"
+      disabled={!canNavigate(-1)}
+      class="pressable w-9 h-9 sm:w-10 sm:h-10 flex items-center justify-center rounded-full bg-neutral-100 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-300 hover:bg-neutral-200 dark:hover:bg-neutral-700 border border-neutral-200 dark:border-neutral-700 transition-colors disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:bg-neutral-100 dark:disabled:hover:bg-neutral-800"
       aria-label="이전 달"
     >
       <svg viewBox="0 0 20 20" fill="currentColor" class="w-4 h-4 sm:w-5 sm:h-5">
@@ -239,7 +247,8 @@ const dayNames = ['일','월','화','수','목','금','토'];
 
     <button
       onclick={() => navigate(1)}
-      class="pressable w-9 h-9 sm:w-10 sm:h-10 flex items-center justify-center rounded-full bg-neutral-100 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-300 hover:bg-neutral-200 dark:hover:bg-neutral-700 border border-neutral-200 dark:border-neutral-700 transition-colors"
+      disabled={!canNavigate(1)}
+      class="pressable w-9 h-9 sm:w-10 sm:h-10 flex items-center justify-center rounded-full bg-neutral-100 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-300 hover:bg-neutral-200 dark:hover:bg-neutral-700 border border-neutral-200 dark:border-neutral-700 transition-colors disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:bg-neutral-100 dark:disabled:hover:bg-neutral-800"
       aria-label="다음 달"
     >
       <svg viewBox="0 0 20 20" fill="currentColor" class="w-4 h-4 sm:w-5 sm:h-5">

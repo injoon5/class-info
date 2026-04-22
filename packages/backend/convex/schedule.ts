@@ -19,14 +19,13 @@ export const upsertManySchoolEvents = internalMutation({
         schoolCode: v.string(),
       })
     ),
-    year: v.string(),
+    startdate: v.string(), // YYYYMMDD — range to clear before re-inserting
+    enddate: v.string(),
   },
-  handler: async (ctx, { events, year }) => {
+  handler: async (ctx, { events, startdate, enddate }) => {
     const existing = await ctx.db
       .query("schoolScheduleEvents")
-      .withIndex("by_date", (q) =>
-        q.gte("date", `${year}0101`).lte("date", `${year}1231`)
-      )
+      .withIndex("by_date", (q) => q.gte("date", startdate).lte("date", enddate))
       .collect();
 
     for (const ev of existing) {
@@ -39,9 +38,9 @@ export const upsertManySchoolEvents = internalMutation({
 });
 
 export const fetchAndSaveSchoolSchedule = internalAction({
-  args: { year: v.string(), schoolcode: v.string() },
-  handler: async (ctx, { year, schoolcode }) => {
-    const url = `https://api.timefor.school/schedule?startdate=${year}0101&enddate=${year}1231&schoolcode=${encodeURIComponent(schoolcode)}`;
+  args: { startdate: v.string(), enddate: v.string(), schoolcode: v.string() },
+  handler: async (ctx, { startdate, enddate, schoolcode }) => {
+    const url = `https://api.timefor.school/schedule?startdate=${encodeURIComponent(startdate)}&enddate=${encodeURIComponent(enddate)}&schoolcode=${encodeURIComponent(schoolcode)}`;
     const res = await fetch(url, { headers: { Accept: "application/json" } });
     if (!res.ok) {
       throw new Error(`Failed to fetch schedule: ${res.status} ${res.statusText}`);
@@ -58,25 +57,21 @@ export const fetchAndSaveSchoolSchedule = internalAction({
         schoolCode: d.SD_SCHUL_CODE ?? schoolcode,
       }));
 
-    await ctx.runMutation(internal.schedule.upsertManySchoolEvents, { events, year });
+    await ctx.runMutation(internal.schedule.upsertManySchoolEvents, { events, startdate, enddate });
   },
 });
 
-export const fetchThisYear = internalAction({
+// Fetches last December through next February — the window shown to users.
+export const fetchScheduleWindow = internalAction({
   args: { schoolcode: v.string() },
   handler: async (ctx, { schoolcode }) => {
     const now = new Date();
-    const year = String(now.getUTCFullYear() + (now.getUTCMonth() >= 3 ? 0 : 0));
-    await ctx.runAction(internal.schedule.fetchAndSaveSchoolSchedule, { year, schoolcode });
-  },
-});
-
-export const fetchNextYear = internalAction({
-  args: { schoolcode: v.string() },
-  handler: async (ctx, { schoolcode }) => {
-    const now = new Date();
-    const year = String(now.getUTCFullYear() + 1);
-    await ctx.runAction(internal.schedule.fetchAndSaveSchoolSchedule, { year, schoolcode });
+    const y = now.getUTCFullYear();
+    const startdate = `${y - 1}1201`;
+    const nextFebYear = y + 1;
+    const isLeap = (nextFebYear % 4 === 0 && nextFebYear % 100 !== 0) || nextFebYear % 400 === 0;
+    const enddate = `${nextFebYear}02${isLeap ? "29" : "28"}`;
+    await ctx.runAction(internal.schedule.fetchAndSaveSchoolSchedule, { startdate, enddate, schoolcode });
   },
 });
 
