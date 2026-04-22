@@ -26,6 +26,7 @@
 				</a>
 				<a href="/timetable" class="hover:underline p-1 sm:px-2 sm:py-1 {(page.url.pathname.startsWith('/timetable')) ? 'underline' : ''}" aria-current={(page.url.pathname.startsWith('/timetable')) ? 'page' : undefined}>시간표</a>
 				<a href="/meals" class="hover:underline p-1 sm:px-2 sm:py-1 {(page.url.pathname.startsWith('/meals')) ? 'underline' : ''}" aria-current={(page.url.pathname.startsWith('/meals')) ? 'page' : undefined}>급식</a>
+				<a href="/calendar" class="hover:underline p-1 sm:px-2 sm:py-1 {(page.url.pathname.startsWith('/calendar')) ? 'underline' : ''}" aria-current={(page.url.pathname.startsWith('/calendar')) ? 'page' : undefined}>일정</a>
 			</nav>
 
 		</div>
