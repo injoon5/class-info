@@ -275,7 +275,7 @@ const dayNames = ['일','월','화','수','목','금','토'];
       bind:this={scrollContainer}
       onscroll={updateGradients}
     >
-      <div class="min-w-[26rem] border border-neutral-200 dark:border-neutral-700 rounded-lg overflow-hidden shadow-sm">
+      <div class="min-w-[36rem] border border-neutral-200 dark:border-neutral-700 rounded-lg overflow-hidden shadow-sm">
 
         <!-- Day name header -->
         <div class="grid grid-cols-7 bg-neutral-100 dark:bg-neutral-800 border-b border-neutral-200 dark:border-neutral-700">
