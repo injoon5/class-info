@@ -351,7 +351,7 @@ const dayNames = ['일','월','화','수','목','금','토'];
                       {#if isAuthenticated}
                         <button
                           onclick={() => handleDeleteCustomEvent(event._id)}
-                          class="absolute right-0 top-1/2 -translate-y-1/2 p-1 opacity-0 group-hover/ev:opacity-100 text-xs leading-none hover:text-red-600 dark:hover:text-red-400 transition-opacity"
+                          class="absolute right-0 top-1/2 -translate-y-1/2 p-1 opacity-50 sm:opacity-0 sm:group-hover/ev:opacity-100 text-xs leading-none hover:text-red-600 dark:hover:text-red-400 transition-opacity"
                           title="삭제"
                           aria-label="삭제"
                         >×</button>
