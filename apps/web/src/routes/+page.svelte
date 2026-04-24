@@ -132,7 +132,7 @@ function isToday(dateStr: string): boolean {
 					href="/timetable"
 					class="text-sm text-neutral-400 dark:text-neutral-500 hover:text-neutral-600 dark:hover:text-neutral-300 transition-colors duration-100"
 					aria-label="전체 시간표 보기"
-				>전체 →</a>
+				>모두 보기 →</a>
 			</div>
 			<div class="bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl p-4">
 			{#if isWeekend || !data.timetable || todaySchedule.length === 0}
@@ -160,7 +160,7 @@ function isToday(dateStr: string): boolean {
 					href="/meals"
 					class="text-sm text-neutral-400 dark:text-neutral-500 hover:text-neutral-600 dark:hover:text-neutral-300 transition-colors duration-100"
 					aria-label="전체 급식 보기"
-				>전체 →</a>
+				>모두 보기 →</a>
 			</div>
 			<div class="bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl p-4">
 			<!-- Always show both columns, with empty state if no data -->
@@ -258,7 +258,7 @@ function isToday(dateStr: string): boolean {
 				<a
 					href="/calendar"
 					class="text-sm text-neutral-400 dark:text-neutral-500 hover:text-neutral-600 dark:hover:text-neutral-300 transition-colors duration-100"
-				>달력 →</a>
+				>모두 보기 →</a>
 			</div>
 			{#if upcomingEvents.length === 0}
 				<div class="bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl px-4 py-6 text-center">
