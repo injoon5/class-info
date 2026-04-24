@@ -6,6 +6,7 @@ import LoadingState from '../../components/LoadingState.svelte';
 import ErrorState from '../../components/ErrorState.svelte';
 import EmptyState from '../../components/EmptyState.svelte';
 import type { PageData } from './$types.js';
+import { BLUR_TRANSITION_MS, BLUR_TIMER_MS } from '$lib/animation';
 
 type MealDoc = {
   _id: string;
@@ -39,7 +40,7 @@ $effect(() => {
   if (!effectMounted) { effectMounted = true; return; }
   gridBlurred = true;
   if (blurTimerId !== null) clearTimeout(blurTimerId);
-  blurTimerId = setTimeout(() => { gridBlurred = false; blurTimerId = null; }, 200);
+  blurTimerId = setTimeout(() => { gridBlurred = false; blurTimerId = null; }, BLUR_TIMER_MS);
   return () => { if (blurTimerId !== null) { clearTimeout(blurTimerId); blurTimerId = null; } };
 });
 
@@ -170,7 +171,7 @@ onMount(() => {
            bind:this={rightGradient}></div>
       
       <div class="overflow-x-auto relative" bind:this={scrollContainer} onscroll={updateGradients}
-        style="transition: filter 150ms ease, opacity 150ms ease; {gridBlurred ? 'filter: blur(4px); opacity: 0.7;' : ''}">
+        style="transition: filter {BLUR_TRANSITION_MS}ms ease, opacity {BLUR_TRANSITION_MS}ms ease; {gridBlurred ? 'filter: blur(4px); opacity: 0.7;' : ''}">
         {#each [
           { days: mealsQuery.data.thisWeek.days, class: "" },
           { days: mealsQuery.data.nextWeek.days, class: "mt-3" }

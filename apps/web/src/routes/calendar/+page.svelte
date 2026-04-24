@@ -4,6 +4,7 @@ import { fade, fly } from 'svelte/transition';
 import { useQuery, useConvexClient } from 'convex-svelte';
 import { api } from "@class-info/backend/convex/_generated/api";
 import type { PageData } from './$types.js';
+import { BLUR_TRANSITION_MS, BLUR_TIMER_MS } from '$lib/animation';
 
 let { data }: { data: PageData } = $props();
 const client = useConvexClient();
@@ -36,6 +37,19 @@ const todayStr = toYyyymmdd(nowKst.getFullYear(), nowKst.getMonth(), nowKst.getD
 
 let displayYear = $state(data.year as number);
 let displayMonth = $state(nowKst.getMonth()); // 0-11
+
+let gridBlurred = $state(false);
+let blurTimerId: ReturnType<typeof setTimeout> | null = null;
+let blurEffectMounted = false;
+
+$effect(() => {
+  displayYear; displayMonth;
+  if (!blurEffectMounted) { blurEffectMounted = true; return; }
+  gridBlurred = true;
+  if (blurTimerId !== null) clearTimeout(blurTimerId);
+  blurTimerId = setTimeout(() => { gridBlurred = false; blurTimerId = null; }, BLUR_TIMER_MS);
+  return () => { if (blurTimerId !== null) { clearTimeout(blurTimerId); blurTimerId = null; } };
+});
 
 // School events from Convex (real-time, reactive to year)
 const schoolEventsQuery = useQuery(
@@ -278,6 +292,7 @@ const dayNames = ['일','월','화','수','목','금','토'];
       class="overflow-x-auto"
       bind:this={scrollContainer}
       onscroll={updateGradients}
+      style="transition: filter {BLUR_TRANSITION_MS}ms ease, opacity {BLUR_TRANSITION_MS}ms ease; {gridBlurred ? 'filter: blur(4px); opacity: 0.7;' : ''}"
     >
       <div class="min-w-[40rem] border border-neutral-200 dark:border-neutral-700 rounded-lg overflow-hidden shadow-sm">
 
