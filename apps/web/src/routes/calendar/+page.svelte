@@ -4,6 +4,7 @@ import { fade, fly } from 'svelte/transition';
 import { useQuery, useConvexClient } from 'convex-svelte';
 import { api } from "@class-info/backend/convex/_generated/api";
 import type { PageData } from './$types.js';
+import { BLUR_TRANSITION_MS, BLUR_TIMER_MS } from '$lib/animation';
 
 let { data }: { data: PageData } = $props();
 const client = useConvexClient();
@@ -37,6 +38,9 @@ const todayStr = toYyyymmdd(nowKst.getFullYear(), nowKst.getMonth(), nowKst.getD
 let displayYear = $state(data.year as number);
 let displayMonth = $state(nowKst.getMonth()); // 0-11
 
+let gridBlurred = $state(false);
+let blurTimerId: ReturnType<typeof setTimeout> | null = null;
+
 // School events from Convex (real-time, reactive to year)
 const schoolEventsQuery = useQuery(
   (api as any).schedule.getSchoolEventsByYear,
@@ -50,6 +54,14 @@ const customEventsQuery = useQuery(
   () => ({ year: String(displayYear) }),
   () => ({ initialData: data.customEvents, keepPreviousData: true })
 );
+
+// Unblur when Convex delivers new data (cross-year nav); fallback timer handles same-year nav
+$effect(() => {
+  schoolEventsQuery.data;
+  customEventsQuery.data;
+  gridBlurred = false;
+  if (blurTimerId !== null) { clearTimeout(blurTimerId); blurTimerId = null; }
+});
 
 // Pagination bounds: Dec of last year → Feb of next year
 const minYear = nowKst.getFullYear() - 1;
@@ -71,6 +83,9 @@ function navigate(direction: number) {
   let newYear = displayYear;
   if (newMonth < 0) { newMonth = 11; newYear--; }
   else if (newMonth > 11) { newMonth = 0; newYear++; }
+  gridBlurred = true;
+  if (blurTimerId !== null) clearTimeout(blurTimerId);
+  blurTimerId = setTimeout(() => { gridBlurred = false; blurTimerId = null; }, BLUR_TIMER_MS);
   displayYear = newYear;
   displayMonth = newMonth;
 }
@@ -278,6 +293,7 @@ const dayNames = ['일','월','화','수','목','금','토'];
       class="overflow-x-auto"
       bind:this={scrollContainer}
       onscroll={updateGradients}
+      style="transition: filter {BLUR_TRANSITION_MS}ms ease, opacity {BLUR_TRANSITION_MS}ms ease; {gridBlurred ? 'filter: blur(4px); opacity: 0.7;' : ''}"
     >
       <div class="min-w-[40rem] border border-neutral-200 dark:border-neutral-700 rounded-lg overflow-hidden shadow-sm">
 
