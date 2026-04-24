@@ -118,6 +118,8 @@ onMount(() => {
 				onclick={() => selectedWeek = 0}
 				aria-pressed={selectedWeek === 0}
 				type="button"
+				data-s-event="Week Toggle"
+				data-s-event-props="week=this"
 			>
 				이번 주
 			</button>
@@ -129,6 +131,8 @@ onMount(() => {
 				onclick={() => selectedWeek = 1}
 				aria-pressed={selectedWeek === 1}
 				type="button"
+				data-s-event="Week Toggle"
+				data-s-event-props="week=next"
 			>
 				다음 주
 			</button>

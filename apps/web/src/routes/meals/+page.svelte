@@ -143,6 +143,8 @@ onMount(() => {
             onclick={() => selectedMealType = '중식'}
             aria-pressed={selectedMealType === '중식'}
             type="button"
+            data-s-event="Meal Type Toggle"
+            data-s-event-props="type=lunch"
           >중식</button>
           <button
             class="flex-1 relative z-10 px-3 py-1 rounded-lg font-medium transition-colors
@@ -150,6 +152,8 @@ onMount(() => {
             onclick={() => selectedMealType = '석식'}
             aria-pressed={selectedMealType === '석식'}
             type="button"
+            data-s-event="Meal Type Toggle"
+            data-s-event-props="type=dinner"
           >석식</button>
         </div>
       </div>
