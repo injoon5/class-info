@@ -150,7 +150,7 @@ function isToday(dateStr: string): boolean {
 						<li class="flex items-start gap-2.5">
 							<span class="text-xs tabular-nums text-neutral-400 dark:text-neutral-500 w-4 shrink-0 pt-0.5 leading-snug">{slot.period}</span>
 							<div class="min-w-0">
-								<span class="text-base font-medium text-neutral-800 dark:text-neutral-200 leading-snug block truncate">{slot.subject}</span>
+								<span class="text-lg font-semibold text-neutral-800 dark:text-neutral-200 leading-snug block truncate">{slot.subject}</span>
 								{#if slot.replaced}
 									<span class="text-xs text-amber-600 dark:text-amber-400 font-medium">변경</span>
 								{:else}
@@ -174,47 +174,41 @@ function isToday(dateStr: string): boolean {
 				>전체 →</a>
 			</div>
 
-			{#if !data.meals}
-				<div class="flex items-center justify-center py-8">
-					<p class="text-sm text-neutral-400 dark:text-neutral-500 text-center">정보 없음</p>
-				</div>
-			{:else if !todayLunch && !todayDinner}
-				<div class="flex items-center justify-center py-8">
-					<p class="text-sm text-neutral-400 dark:text-neutral-500 text-center">
-						{isWeekend ? '주말이에요' : '급식 없음'}
-					</p>
-				</div>
-			{:else}
-				<!-- 2-col grid inside: lunch | dinner -->
-				<div class="grid grid-cols-2 gap-4">
-					{#if todayLunch}
-						<div>
-							<p class="text-xs font-semibold text-neutral-400 dark:text-neutral-500 uppercase tracking-widest mb-2">중식</p>
-							<ul class="space-y-1.5">
-								{#each todayLunch.dishes as dish}
-									<li class="text-base text-neutral-700 dark:text-neutral-300 leading-snug">{dish}</li>
-								{/each}
-							</ul>
-							{#if todayLunch.calories}
-								<p class="mt-2 text-xs text-neutral-400 dark:text-neutral-500 tabular-nums">{todayLunch.calories}</p>
-							{/if}
-						</div>
-					{/if}
-					{#if todayDinner}
-						<div>
-							<p class="text-xs font-semibold text-neutral-400 dark:text-neutral-500 uppercase tracking-widest mb-2">석식</p>
-							<ul class="space-y-1.5">
-								{#each todayDinner.dishes as dish}
-									<li class="text-base text-neutral-700 dark:text-neutral-300 leading-snug">{dish}</li>
-								{/each}
-							</ul>
-							{#if todayDinner.calories}
-								<p class="mt-2 text-xs text-neutral-400 dark:text-neutral-500 tabular-nums">{todayDinner.calories}</p>
-							{/if}
-						</div>
+			<!-- Always show both columns, with empty state if no data -->
+			<div class="grid grid-cols-2 gap-4">
+				<!-- Lunch -->
+				<div>
+					<p class="text-xs font-semibold text-neutral-400 dark:text-neutral-500 uppercase tracking-widest mb-2">중식</p>
+					{#if !data.meals || !todayLunch}
+						<p class="text-sm text-neutral-400 dark:text-neutral-500">{isWeekend ? '주말이에요' : '정보 없음'}</p>
+					{:else}
+						<ul class="space-y-1.5">
+							{#each todayLunch.dishes as dish}
+								<li class="text-base text-neutral-700 dark:text-neutral-300 leading-snug">{dish}</li>
+							{/each}
+						</ul>
+						{#if todayLunch.calories}
+							<p class="mt-2 text-xs text-neutral-400 dark:text-neutral-500 tabular-nums">{todayLunch.calories}</p>
+						{/if}
 					{/if}
 				</div>
-			{/if}
+				<!-- Dinner -->
+				<div>
+					<p class="text-xs font-semibold text-neutral-400 dark:text-neutral-500 uppercase tracking-widest mb-2">석식</p>
+					{#if !data.meals || !todayDinner}
+						<p class="text-sm text-neutral-400 dark:text-neutral-500">{isWeekend ? '주말이에요' : '정보 없음'}</p>
+					{:else}
+						<ul class="space-y-1.5">
+							{#each todayDinner.dishes as dish}
+								<li class="text-base text-neutral-700 dark:text-neutral-300 leading-snug">{dish}</li>
+							{/each}
+						</ul>
+						{#if todayDinner.calories}
+							<p class="mt-2 text-xs text-neutral-400 dark:text-neutral-500 tabular-nums">{todayDinner.calories}</p>
+						{/if}
+					{/if}
+				</div>
+			</div>
 		</div>
 
 	</div>
