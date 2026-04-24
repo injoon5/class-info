@@ -126,16 +126,16 @@ function isToday(dateStr: string): boolean {
 	<div class="grid grid-cols-1 sm:grid-cols-4 gap-3 mb-6">
 
 		<!-- Timetable: col-span-1 -->
-		<div class="sm:col-span-1 bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl p-4">
-			<div class="flex items-center justify-between mb-3">
-				<h2 class="text-sm font-semibold text-neutral-400 dark:text-neutral-500 uppercase tracking-widest">시간표</h2>
+		<div class="sm:col-span-1">
+			<div class="flex items-center justify-between mb-2.5">
+				<h2 class="text-base font-semibold text-neutral-600 dark:text-neutral-300">시간표</h2>
 				<a
 					href="/timetable"
-					class="text-sm text-neutral-400 dark:text-neutral-500 hover:text-neutral-600 dark:hover:text-neutral-300 transition-colors duration-100 pressable"
+					class="text-sm text-neutral-400 dark:text-neutral-500 hover:text-neutral-600 dark:hover:text-neutral-300 transition-colors duration-100"
 					aria-label="전체 시간표 보기"
 				>전체 →</a>
 			</div>
-
+			<div class="bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl p-4">
 			{#if isWeekend}
 				<div class="flex items-center justify-center py-8">
 					<p class="text-sm text-neutral-400 dark:text-neutral-500 text-center">주말이에요</p>
@@ -161,19 +161,20 @@ function isToday(dateStr: string): boolean {
 					{/each}
 				</ol>
 			{/if}
+			</div>
 		</div>
 
 		<!-- Meal: col-span-3 -->
-		<div class="sm:col-span-3 bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl p-4">
-			<div class="flex items-center justify-between mb-3">
-				<h2 class="text-sm font-semibold text-neutral-400 dark:text-neutral-500 uppercase tracking-widest">급식</h2>
+		<div class="sm:col-span-3">
+			<div class="flex items-center justify-between mb-2.5">
+				<h2 class="text-base font-semibold text-neutral-600 dark:text-neutral-300">급식</h2>
 				<a
 					href="/meals"
-					class="text-sm text-neutral-400 dark:text-neutral-500 hover:text-neutral-600 dark:hover:text-neutral-300 transition-colors duration-100 pressable"
+					class="text-sm text-neutral-400 dark:text-neutral-500 hover:text-neutral-600 dark:hover:text-neutral-300 transition-colors duration-100"
 					aria-label="전체 급식 보기"
 				>전체 →</a>
 			</div>
-
+			<div class="bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl p-4">
 			<!-- Always show both columns, with empty state if no data -->
 			<div class="grid grid-cols-2 gap-4">
 				<!-- Lunch -->
@@ -209,6 +210,7 @@ function isToday(dateStr: string): boolean {
 					{/if}
 				</div>
 			</div>
+			</div>
 		</div>
 
 	</div>
@@ -222,7 +224,7 @@ function isToday(dateStr: string): boolean {
 				<h2 class="text-base font-semibold text-neutral-600 dark:text-neutral-300">공지</h2>
 				<a
 					href="/notices"
-					class="text-xs text-neutral-400 dark:text-neutral-500 hover:text-neutral-600 dark:hover:text-neutral-300 transition-colors duration-100"
+					class="text-sm text-neutral-400 dark:text-neutral-500 hover:text-neutral-600 dark:hover:text-neutral-300 transition-colors duration-100"
 				>모두 보기 →</a>
 			</div>
 
@@ -267,7 +269,7 @@ function isToday(dateStr: string): boolean {
 				<h2 class="text-base font-semibold text-neutral-600 dark:text-neutral-300">일정</h2>
 				<a
 					href="/calendar"
-					class="text-xs text-neutral-400 dark:text-neutral-500 hover:text-neutral-600 dark:hover:text-neutral-300 transition-colors duration-100"
+					class="text-sm text-neutral-400 dark:text-neutral-500 hover:text-neutral-600 dark:hover:text-neutral-300 transition-colors duration-100"
 				>달력 →</a>
 			</div>
 			{#if upcomingEvents.length === 0}
@@ -286,7 +288,7 @@ function isToday(dateStr: string): boolean {
 							<span class="text-sm tabular-nums text-neutral-400 dark:text-neutral-500 w-16 shrink-0">
 								{isToday(event.date) ? '오늘' : formatEventDate(event.date)}
 							</span>
-							<span class="text-base text-neutral-800 dark:text-neutral-200 font-medium flex-1 min-w-0 truncate">{event.title}</span>
+							<span class="text-base text-neutral-800 dark:text-neutral-200 font-medium flex-1 min-w-0 truncate text-right">{event.title}</span>
 						</div>
 					{/each}
 				</div>
