@@ -29,7 +29,7 @@ export const upsertManySchoolEvents = internalMutation({
       .collect();
 
     for (const ev of existing) {
-      if (ev.source === "school") await ctx.db.delete(ev._id);
+      if (ev.source !== "custom") await ctx.db.delete(ev._id);
     }
     const now = Date.now();
     for (const ev of events) {
