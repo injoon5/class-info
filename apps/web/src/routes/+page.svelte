@@ -113,7 +113,7 @@ function isToday(dateStr: string): boolean {
 	<!-- ── Date banner ─────────────────────────────────────────────────────── -->
 	<div class="mb-5 sm:mb-6">
 		<div class="flex items-baseline gap-2.5">
-			<h1 class="text-3xl sm:text-4xl font-bold text-neutral-900 dark:text-neutral-100 tabular-nums" style="text-wrap: balance">
+			<h1 class="text-3xl sm:text-4xl font-bold text-neutral-900 dark:text-neutral-100" style="text-wrap: balance">
 				{todayMonth}월 {todayDate}일
 			</h1>
 			<span class="text-xl sm:text-2xl font-medium text-neutral-400 dark:text-neutral-500">{todayWeekday}요일</span>
@@ -177,7 +177,7 @@ function isToday(dateStr: string): boolean {
 							{/each}
 						</ul>
 						{#if todayLunch.calories}
-							<p class="mt-2 text-sm text-neutral-400 dark:text-neutral-500 tabular-nums">{todayLunch.calories}</p>
+							<p class="mt-2 text-sm text-neutral-400 dark:text-neutral-500">{todayLunch.calories}</p>
 						{/if}
 					{/if}
 				</div>
@@ -193,7 +193,7 @@ function isToday(dateStr: string): boolean {
 							{/each}
 						</ul>
 						{#if todayDinner.calories}
-							<p class="mt-2 text-sm text-neutral-400 dark:text-neutral-500 tabular-nums">{todayDinner.calories}</p>
+							<p class="mt-2 text-sm text-neutral-400 dark:text-neutral-500">{todayDinner.calories}</p>
 						{/if}
 					{/if}
 				</div>
@@ -273,7 +273,7 @@ function isToday(dateStr: string): boolean {
 								style="background-color: {eventDotColor(event)}"
 								aria-hidden="true"
 							></span>
-							<span class="text-base tabular-nums text-neutral-800 dark:text-neutral-200 w-16 shrink-0">
+							<span class="text-base text-neutral-800 dark:text-neutral-200 w-16 shrink-0">
 								{isToday(event.date) ? '오늘' : formatEventDate(event.date)}
 							</span>
 							<span class="text-base text-neutral-800 dark:text-neutral-200 font-medium flex-1 min-w-0 truncate text-right">{event.title}</span>
