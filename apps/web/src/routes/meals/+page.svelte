@@ -30,6 +30,19 @@ let { data }: { data: PageData } = $props();
 
 let selectedMealType = $state("중식");
 
+let gridBlurred = $state(false);
+let blurTimerId: ReturnType<typeof setTimeout> | null = null;
+let effectMounted = false;
+
+$effect(() => {
+  selectedMealType;
+  if (!effectMounted) { effectMounted = true; return; }
+  gridBlurred = true;
+  if (blurTimerId !== null) clearTimeout(blurTimerId);
+  blurTimerId = setTimeout(() => { gridBlurred = false; blurTimerId = null; }, 200);
+  return () => { if (blurTimerId !== null) { clearTimeout(blurTimerId); blurTimerId = null; } };
+});
+
 // Scroll gradient state
 let scrollContainer = $state<HTMLDivElement>();
 let leftGradient = $state<HTMLDivElement>();
@@ -152,7 +165,8 @@ onMount(() => {
            style="opacity: {scrollRight > 0 ? 1 : 0};"
            bind:this={rightGradient}></div>
       
-      <div class="overflow-x-auto relative" bind:this={scrollContainer} onscroll={updateGradients}>
+      <div class="overflow-x-auto relative" bind:this={scrollContainer} onscroll={updateGradients}
+        style="transition: filter 150ms ease, opacity 150ms ease; {gridBlurred ? 'filter: blur(4px); opacity: 0.7;' : ''}">
         {#each [
           { days: mealsQuery.data.thisWeek.days, class: "" },
           { days: mealsQuery.data.nextWeek.days, class: "mt-3" }
