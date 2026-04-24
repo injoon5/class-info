@@ -273,10 +273,10 @@ function isToday(dateStr: string): boolean {
 								style="background-color: {eventDotColor(event)}"
 								aria-hidden="true"
 							></span>
-							<span class="text-base text-neutral-800 dark:text-neutral-200 w-16 shrink-0">
+							<span class="text-base text-neutral-800 dark:text-neutral-200 font-medium flex-1 min-w-0 truncate">{event.title}</span>
+							<span class="text-base text-neutral-400 dark:text-neutral-500 w-16 shrink-0 text-right">
 								{isToday(event.date) ? '오늘' : formatEventDate(event.date)}
 							</span>
-							<span class="text-base text-neutral-800 dark:text-neutral-200 font-medium flex-1 min-w-0 truncate text-right">{event.title}</span>
 						</div>
 					{/each}
 				</div>
