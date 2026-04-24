@@ -173,7 +173,7 @@ function isToday(dateStr: string): boolean {
 				<div>
 					<p class="text-xs font-semibold text-neutral-400 dark:text-neutral-500 uppercase tracking-widest mb-2">중식</p>
 					{#if !data.meals || !todayLunch}
-						<p class="text-base text-neutral-800 dark:text-neutral-200">급식 정보가 없습니다</p>
+						<p class="text-base text-neutral-800 dark:text-neutral-200">급식 정보가 없어요</p>
 					{:else}
 						<ul class="space-y-1.5">
 							{#each todayLunch.dishes as dish}
@@ -189,7 +189,7 @@ function isToday(dateStr: string): boolean {
 				<div>
 					<p class="text-xs font-semibold text-neutral-400 dark:text-neutral-500 uppercase tracking-widest mb-2">석식</p>
 					{#if !data.meals || !todayDinner}
-						<p class="text-base text-neutral-800 dark:text-neutral-200">급식 정보가 없습니다</p>
+						<p class="text-base text-neutral-800 dark:text-neutral-200">급식 정보가 없어요</p>
 					{:else}
 						<ul class="space-y-1.5">
 							{#each todayDinner.dishes as dish}
