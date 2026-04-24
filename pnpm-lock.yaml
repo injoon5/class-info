@@ -35,6 +35,9 @@ importers:
       marked:
         specifier: ^16.2.1
         version: 16.2.1
+      onedollarstats:
+        specifier: ^0.0.19
+        version: 0.0.19
       zod:
         specifier: ^4.0.17
         version: 4.1.5
@@ -2615,6 +2618,10 @@ packages:
     engines: {node: ^10 || ^12 || ^13.7 || ^14 || >=15.0.1}
     hasBin: true
     dev: true
+
+  /onedollarstats@0.0.19:
+    resolution: {integrity: sha512-aO/EHiaKSGPnlinNBOeaOGcsw3vC/uw1tgYfj+5MIN1NBI0uutJFi2sZlRmQG6/ko+j/ZOxgo39OAHX/oi0XOw==}
+    dev: false
 
   /path-expression-matcher@1.5.0:
     resolution: {integrity: sha512-cbrerZV+6rvdQrrD+iGMcZFEiiSrbv9Tfdkvnusy6y0x0GKBXREFg/Y65GhIfm0tnLntThhzCnfKwp1WRjeCyQ==}

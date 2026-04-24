@@ -23,16 +23,12 @@ export const upsertManySchoolEvents = internalMutation({
     enddate: v.string(),
   },
   handler: async (ctx, { events, startdate, enddate }) => {
-    console.log(`[upsertManySchoolEvents] startdate=${startdate} enddate=${enddate} incomingEvents=${events.length}`);
-
     const existing = await ctx.db
       .query("schedules")
       .withIndex("by_date", (q) => q.gte("date", startdate).lte("date", enddate))
       .collect();
 
     const toDelete = existing.filter((ev) => ev.source !== "custom");
-    const kept = existing.filter((ev) => ev.source === "custom");
-    console.log(`[upsertManySchoolEvents] existing in range=${existing.length} deleting=${toDelete.length} keeping(custom)=${kept.length}`);
 
     for (const ev of toDelete) {
       await ctx.db.delete(ev._id);
@@ -50,7 +46,7 @@ export const upsertManySchoolEvents = internalMutation({
         updatedAt: now,
       });
     }
-    console.log(`[upsertManySchoolEvents] inserted=${events.length} done`);
+    console.log(`[schedule.upsertManySchoolEvents] range=${startdate}–${enddate} deleted=${toDelete.length} inserted=${events.length}`);
   },
 });
 
@@ -58,27 +54,16 @@ export const fetchAndSaveSchoolSchedule = internalAction({
   args: { startdate: v.string(), enddate: v.string(), schoolcode: v.string() },
   handler: async (ctx, { startdate, enddate, schoolcode }) => {
     const url = `https://api.timefor.school/schedule?startdate=${encodeURIComponent(startdate)}&enddate=${encodeURIComponent(enddate)}&schoolcode=${encodeURIComponent(schoolcode)}`;
-    console.log(`[fetchAndSaveSchoolSchedule] requesting url=${url}`);
 
     const res = await fetch(url, { headers: { Accept: "application/json" } });
-    console.log(`[fetchAndSaveSchoolSchedule] response status=${res.status} ok=${res.ok}`);
     if (!res.ok) {
       throw new Error(`Failed to fetch schedule: ${res.status} ${res.statusText}`);
     }
 
     const data = await res.json();
-    console.log(`[fetchAndSaveSchoolSchedule] raw response isArray=${Array.isArray(data)} length=${Array.isArray(data) ? data.length : "n/a"}`);
     if (!Array.isArray(data)) {
-      console.log(`[fetchAndSaveSchoolSchedule] unexpected response shape:`, JSON.stringify(data).slice(0, 500));
       return;
     }
-
-    const today = new Date().toISOString().slice(0, 10).replace(/-/g, "");
-    const rawDates = (data as ExternalScheduleEvent[]).map((d) => d.AA_YMD).sort();
-    console.log(`[fetchAndSaveSchoolSchedule] today=${today} raw date range: first=${rawDates[0]} last=${rawDates[rawDates.length - 1]}`);
-
-    const futureRaw = (data as ExternalScheduleEvent[]).filter((d) => d.AA_YMD > today);
-    console.log(`[fetchAndSaveSchoolSchedule] events after today in raw response: ${futureRaw.length}`);
 
     const events = (data as ExternalScheduleEvent[])
       .filter((d) => d.AA_YMD && d.EVENT_NM)
@@ -89,12 +74,49 @@ export const fetchAndSaveSchoolSchedule = internalAction({
         schoolCode: d.SD_SCHUL_CODE ?? schoolcode,
       }));
 
-    const eventDates = events.map((e) => e.date).sort();
-    console.log(`[fetchAndSaveSchoolSchedule] events after filter: count=${events.length} first=${eventDates[0]} last=${eventDates[eventDates.length - 1]}`);
-
+    console.log(`[schedule.fetchAndSaveSchoolSchedule] range=${startdate}–${enddate} events=${events.length}`);
     await ctx.runMutation(internal.schedule.upsertManySchoolEvents, { events, startdate, enddate });
   },
 });
+
+function splitInto3MonthChunks(startdate: string, enddate: string) {
+  const chunks: { start: string; end: string }[] = [];
+
+  let curYear = parseInt(startdate.slice(0, 4));
+  let curMonth = parseInt(startdate.slice(4, 6));
+  let curStart = startdate;
+
+  while (curStart <= enddate) {
+    let endMonth = curMonth + 2;
+    let endYear = curYear;
+    if (endMonth > 12) {
+      endMonth -= 12;
+      endYear++;
+    }
+
+    const lastDay = new Date(Date.UTC(endYear, endMonth, 0)).getUTCDate();
+    const pad = (n: number) => String(n).padStart(2, "0");
+    const chunkEnd = `${endYear}${pad(endMonth)}${pad(lastDay)}`;
+    const actualEnd = chunkEnd < enddate ? chunkEnd : enddate;
+
+    chunks.push({ start: curStart, end: actualEnd });
+
+    if (actualEnd >= enddate) break;
+
+    let nextMonth = endMonth + 1;
+    let nextYear = endYear;
+    if (nextMonth > 12) {
+      nextMonth = 1;
+      nextYear++;
+    }
+
+    curYear = nextYear;
+    curMonth = nextMonth;
+    curStart = `${nextYear}${pad(nextMonth)}01`;
+  }
+
+  return chunks;
+}
 
 // Fetches last December through next February — the window shown to users.
 export const fetchScheduleWindow = internalAction({
@@ -107,10 +129,15 @@ export const fetchScheduleWindow = internalAction({
     const nextFebYear = m <= 2 ? y : y + 1;
     const isLeap = (nextFebYear % 4 === 0 && nextFebYear % 100 !== 0) || nextFebYear % 400 === 0;
     const enddate = `${nextFebYear}02${isLeap ? "29" : "28"}`;
-    console.log(`[fetchScheduleWindow] now=${now.toISOString()} utcYear=${y} utcMonth=${m} schoolcode=${schoolcode}`);
-    console.log(`[fetchScheduleWindow] startdate=${startdate} enddate=${enddate} nextFebYear=${nextFebYear} isLeap=${isLeap}`);
-    await ctx.runAction(internal.schedule.fetchAndSaveSchoolSchedule, { startdate, enddate, schoolcode });
-    console.log(`[fetchScheduleWindow] done`);
+
+    const chunks = splitInto3MonthChunks(startdate, enddate);
+    for (const chunk of chunks) {
+      await ctx.runAction(internal.schedule.fetchAndSaveSchoolSchedule, {
+        startdate: chunk.start,
+        enddate: chunk.end,
+        schoolcode,
+      });
+    }
   },
 });
 

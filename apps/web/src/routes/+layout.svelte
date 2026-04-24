@@ -5,9 +5,17 @@
 	import { page } from '$app/state';
 	import { onMount } from 'svelte';
 	import { browser } from '$app/environment';
+	import { configure } from 'onedollarstats';
 
 	const { children } = $props();
 	setupConvex(PUBLIC_CONVEX_URL);
+
+	onMount(() => {
+		configure({
+			collectorUrl: 'https://collector.onedollarstats.com/events',
+			autocollect: true,
+		});
+	});
 </script>
     <a href="#main" class="sr-only focus:not-sr-only focus:fixed focus:z-[1000] focus:top-2 focus:left-2 focus:bg-neutral-900 focus:text-white focus:px-3 focus:py-2 focus:rounded">Skip to content</a>
 	<!-- Global Header -->

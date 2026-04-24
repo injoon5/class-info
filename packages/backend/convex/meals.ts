@@ -63,6 +63,7 @@ export const upsertMany = internalMutation({
     ),
   },
   handler: async (ctx, { meals }) => {
+    let updated = 0, inserted = 0;
     for (const meal of meals) {
       const existing = await ctx.db
         .query("meals")
@@ -71,12 +72,13 @@ export const upsertMany = internalMutation({
 
       if (existing) {
         await ctx.db.patch(existing._id, { ...meal, editedAt: Date.now() });
-        console.log(`Updated meal ${meal.date} ${meal.mealType}`);
+        updated++;
       } else {
         await ctx.db.insert("meals", { ...meal, editedAt: Date.now() });
-        console.log(`Inserted meal ${meal.date} ${meal.mealType}`);
+        inserted++;
       }
     }
+    console.log(`[meals.upsertMany] updated=${updated} inserted=${inserted}`);
   },
 });
 
@@ -95,8 +97,6 @@ export const fetchAndSave = internalAction({
     }
     const data = await res.json();
 
-    console.log(`Fetched ${data} meals`);
-
     // Ignore INFO-200 "해당하는 데이터가 없습니다." error response
     if (Array.isArray(data)) {
       const processedData: ExternalMeal[] = data;
@@ -114,12 +114,11 @@ export const fetchAndSave = internalAction({
           loadedAt: d.LOAD_DTM,
         }));
 
+      console.log(`[meals.fetchAndSave] range=${startdate}–${enddate} fetched=${meals.length}`);
       if (meals.length > 0) {
         await ctx.runMutation(internal.meals.upsertMany, { meals });
       }
     }
-    // console.log(data);
-    // else: ignore and finish (do nothing)
   },
 });
 

@@ -162,6 +162,7 @@ $effect(() => {
 										role="button"
 										rel="noopener noreferrer"
 										class="px-5 py-2 text-sm border border-neutral-300 dark:border-neutral-600 hover:bg-neutral-100 dark:hover:bg-neutral-600 text-neutral-600 dark:text-neutral-300 font-semibold inline-flex items-center justify-center rounded pressable transition-colors"
+										data-s-event="Open File"
 									>
 										열기
 									</a>

@@ -34,10 +34,13 @@ export const upsert = internalMutation({
 
     if (existing) {
       await ctx.db.patch(existing._id, { day_time, timetable, update_date, week, editedAt: Date.now() });
+      console.log(`[timetable.upsert] updated week=${week}`);
       return existing._id;
     }
 
-    return await ctx.db.insert("timetables", { day_time, timetable, update_date, week, editedAt: Date.now() });
+    const id = await ctx.db.insert("timetables", { day_time, timetable, update_date, week, editedAt: Date.now() });
+    console.log(`[timetable.upsert] inserted week=${week}`);
+    return id;
   },
 });
 
@@ -81,6 +84,7 @@ export const fetchAndSave = internalAction({
       throw new Error("Unexpected timetable payload shape");
     }
 
+    console.log(`[timetable.fetchAndSave] grade=${grade} class=${classno} week=${week}`);
     const id = await ctx.runMutation(internal.timetable.upsert, {
       week,
       day_time: data.day_time,
