@@ -40,16 +40,6 @@ let displayMonth = $state(nowKst.getMonth()); // 0-11
 
 let gridBlurred = $state(false);
 let blurTimerId: ReturnType<typeof setTimeout> | null = null;
-let blurEffectMounted = false;
-
-$effect(() => {
-  displayYear; displayMonth;
-  if (!blurEffectMounted) { blurEffectMounted = true; return; }
-  gridBlurred = true;
-  if (blurTimerId !== null) clearTimeout(blurTimerId);
-  blurTimerId = setTimeout(() => { gridBlurred = false; blurTimerId = null; }, BLUR_TIMER_MS);
-  return () => { if (blurTimerId !== null) { clearTimeout(blurTimerId); blurTimerId = null; } };
-});
 
 // School events from Convex (real-time, reactive to year)
 const schoolEventsQuery = useQuery(
@@ -64,6 +54,14 @@ const customEventsQuery = useQuery(
   () => ({ year: String(displayYear) }),
   () => ({ initialData: data.customEvents, keepPreviousData: true })
 );
+
+// Unblur when Convex delivers new data (cross-year nav); fallback timer handles same-year nav
+$effect(() => {
+  schoolEventsQuery.data;
+  customEventsQuery.data;
+  gridBlurred = false;
+  if (blurTimerId !== null) { clearTimeout(blurTimerId); blurTimerId = null; }
+});
 
 // Pagination bounds: Dec of last year → Feb of next year
 const minYear = nowKst.getFullYear() - 1;
@@ -85,6 +83,9 @@ function navigate(direction: number) {
   let newYear = displayYear;
   if (newMonth < 0) { newMonth = 11; newYear--; }
   else if (newMonth > 11) { newMonth = 0; newYear++; }
+  gridBlurred = true;
+  if (blurTimerId !== null) clearTimeout(blurTimerId);
+  blurTimerId = setTimeout(() => { gridBlurred = false; blurTimerId = null; }, BLUR_TIMER_MS);
   displayYear = newYear;
   displayMonth = newMonth;
 }
