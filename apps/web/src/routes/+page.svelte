@@ -24,8 +24,7 @@ function yyyymmdd(d: Date): string {
 
 const kst = getNowInKst();
 const todayYyyymmdd = yyyymmdd(kst);
-// JS getDay(): 0=Sun, 1=Mon … 6=Sat → timetable index: Mon=0 … Fri=4
-const jsDay = kst.getDay();
+const jsDay = kst.getDay(); // 0=Sun … 6=Sat
 const todayDayIndex = jsDay >= 1 && jsDay <= 5 ? jsDay - 1 : -1;
 const isWeekend = todayDayIndex === -1;
 
@@ -44,15 +43,21 @@ const todaySchedule = $derived(
 	}>
 );
 
-const todayMeal = $derived(
-	(data.meals?.thisWeek?.days ?? []).find((d: any) => d.date === todayYyyymmdd)?.lunch ?? null
+const todayDay = $derived(
+	(data.meals?.thisWeek?.days ?? []).find((d: any) => d.date === todayYyyymmdd) ?? null
 );
+const todayLunch = $derived(todayDay?.lunch ?? null);
+const todayDinner = $derived(todayDay?.dinner ?? null);
 
-// Upcoming events: today through next 7 days, sorted by date
+// Upcoming events: today → +7 days, excluding 토요휴업일 clutter
 const in7days = yyyymmdd(new Date(kst.getTime() + 7 * 24 * 60 * 60 * 1000));
 const upcomingEvents = $derived(
 	[...(data.schoolEvents ?? []), ...(data.customEvents ?? [])]
-		.filter((e: any) => e.date >= todayYyyymmdd && e.date <= in7days)
+		.filter((e: any) =>
+			e.date >= todayYyyymmdd &&
+			e.date <= in7days &&
+			e.title !== '토요휴업일'
+		)
 		.sort((a: any, b: any) => a.date.localeCompare(b.date))
 );
 
@@ -60,7 +65,6 @@ const upcomingEvents = $derived(
 const noticePreview = $derived(
 	(noticesQuery.data?.currentGroups ?? []).slice(0, 3)
 );
-
 const hasNotices = $derived(noticePreview.length > 0);
 
 function formatPeriodTime(periodNum: number): string {
@@ -108,7 +112,7 @@ function isToday(dateStr: string): boolean {
 
 	<!-- ── Date banner ─────────────────────────────────────────────────────── -->
 	<div class="mb-5 sm:mb-6">
-		<p class="text-[11px] font-semibold text-neutral-400 dark:text-neutral-500 uppercase tracking-widest mb-1">오늘</p>
+		<p class="text-xs font-semibold text-neutral-400 dark:text-neutral-500 uppercase tracking-widest mb-1">오늘</p>
 		<div class="flex items-baseline gap-2.5">
 			<h1 class="text-3xl sm:text-4xl font-bold text-neutral-900 dark:text-neutral-100 tabular-nums" style="text-wrap: balance">
 				{todayMonth}월 {todayDate}일
@@ -118,36 +122,39 @@ function isToday(dateStr: string): boolean {
 	</div>
 
 	<!-- ── Quick info: timetable + meal ───────────────────────────────────── -->
-	<div class="grid grid-cols-2 gap-3 mb-6">
+	<!-- 1-col on mobile, 2-col on sm+ -->
+	<div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-6">
 
 		<!-- Timetable -->
-		<div class="bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl p-3.5 sm:p-4">
+		<div class="bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl p-4">
 			<div class="flex items-center justify-between mb-3">
-				<h2 class="text-[11px] font-semibold text-neutral-400 dark:text-neutral-500 uppercase tracking-widest">시간표</h2>
+				<h2 class="text-xs font-semibold text-neutral-400 dark:text-neutral-500 uppercase tracking-widest">시간표</h2>
 				<a
 					href="/timetable"
-					class="text-[11px] text-neutral-400 dark:text-neutral-500 hover:text-neutral-600 dark:hover:text-neutral-300 transition-colors duration-100 pressable"
+					class="text-xs text-neutral-400 dark:text-neutral-500 hover:text-neutral-600 dark:hover:text-neutral-300 transition-colors duration-100 pressable"
 					aria-label="전체 시간표 보기"
 				>전체 →</a>
 			</div>
 
 			{#if isWeekend}
-				<p class="text-sm text-neutral-400 dark:text-neutral-500 py-1">주말이에요</p>
-			{:else if !data.timetable}
-				<p class="text-sm text-neutral-400 dark:text-neutral-500 py-1">정보 없음</p>
-			{:else if todaySchedule.length === 0}
-				<p class="text-sm text-neutral-400 dark:text-neutral-500 py-1">수업 없음</p>
+				<div class="flex items-center justify-center py-8">
+					<p class="text-sm text-neutral-400 dark:text-neutral-500 text-center">주말이에요</p>
+				</div>
+			{:else if !data.timetable || todaySchedule.length === 0}
+				<div class="flex items-center justify-center py-8">
+					<p class="text-sm text-neutral-400 dark:text-neutral-500 text-center">시간표 없음</p>
+				</div>
 			{:else}
-				<ol class="space-y-2">
+				<ol class="space-y-2.5">
 					{#each todaySchedule as slot}
-						<li class="flex items-start gap-2">
-							<span class="text-[11px] tabular-nums text-neutral-400 dark:text-neutral-500 w-4 shrink-0 pt-px leading-tight">{slot.period}</span>
+						<li class="flex items-start gap-2.5">
+							<span class="text-xs tabular-nums text-neutral-400 dark:text-neutral-500 w-4 shrink-0 pt-0.5 leading-snug">{slot.period}</span>
 							<div class="min-w-0">
-								<span class="text-sm font-medium text-neutral-800 dark:text-neutral-200 leading-tight block truncate">{slot.subject}</span>
+								<span class="text-base font-medium text-neutral-800 dark:text-neutral-200 leading-snug block truncate">{slot.subject}</span>
 								{#if slot.replaced}
-									<span class="text-[10px] text-amber-600 dark:text-amber-400 font-medium">변경</span>
+									<span class="text-xs text-amber-600 dark:text-amber-400 font-medium">변경</span>
 								{:else}
-									<span class="text-[11px] text-neutral-400 dark:text-neutral-500">{formatPeriodTime(slot.period)}</span>
+									<span class="text-xs text-neutral-400 dark:text-neutral-500">{formatPeriodTime(slot.period)}</span>
 								{/if}
 							</div>
 						</li>
@@ -157,31 +164,55 @@ function isToday(dateStr: string): boolean {
 		</div>
 
 		<!-- Meal -->
-		<div class="bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl p-3.5 sm:p-4">
+		<div class="bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl p-4">
 			<div class="flex items-center justify-between mb-3">
-				<h2 class="text-[11px] font-semibold text-neutral-400 dark:text-neutral-500 uppercase tracking-widest">급식</h2>
+				<h2 class="text-xs font-semibold text-neutral-400 dark:text-neutral-500 uppercase tracking-widest">급식</h2>
 				<a
 					href="/meals"
-					class="text-[11px] text-neutral-400 dark:text-neutral-500 hover:text-neutral-600 dark:hover:text-neutral-300 transition-colors duration-100 pressable"
+					class="text-xs text-neutral-400 dark:text-neutral-500 hover:text-neutral-600 dark:hover:text-neutral-300 transition-colors duration-100 pressable"
 					aria-label="전체 급식 보기"
 				>전체 →</a>
 			</div>
 
 			{#if !data.meals}
-				<p class="text-sm text-neutral-400 dark:text-neutral-500 py-1">정보 없음</p>
-			{:else if !todayMeal}
-				<p class="text-sm text-neutral-400 dark:text-neutral-500 py-1">
-					{isWeekend ? '주말이에요' : '급식 없음'}
-				</p>
+				<div class="flex items-center justify-center py-8">
+					<p class="text-sm text-neutral-400 dark:text-neutral-500 text-center">정보 없음</p>
+				</div>
+			{:else if !todayLunch && !todayDinner}
+				<div class="flex items-center justify-center py-8">
+					<p class="text-sm text-neutral-400 dark:text-neutral-500 text-center">
+						{isWeekend ? '주말이에요' : '급식 없음'}
+					</p>
+				</div>
 			{:else}
-				<ul class="space-y-1.5">
-					{#each todayMeal.dishes as dish}
-						<li class="text-sm text-neutral-700 dark:text-neutral-300 leading-tight">{dish}</li>
-					{/each}
-				</ul>
-				{#if todayMeal.calories}
-					<p class="mt-2.5 text-[11px] text-neutral-400 dark:text-neutral-500 tabular-nums">{todayMeal.calories}</p>
-				{/if}
+				<div class="space-y-4">
+					{#if todayLunch}
+						<div>
+							<p class="text-xs font-semibold text-neutral-400 dark:text-neutral-500 uppercase tracking-widest mb-2">중식</p>
+							<ul class="space-y-1.5">
+								{#each todayLunch.dishes as dish}
+									<li class="text-base text-neutral-700 dark:text-neutral-300 leading-snug">{dish}</li>
+								{/each}
+							</ul>
+							{#if todayLunch.calories}
+								<p class="mt-2 text-xs text-neutral-400 dark:text-neutral-500 tabular-nums">{todayLunch.calories}</p>
+							{/if}
+						</div>
+					{/if}
+					{#if todayDinner}
+						<div class="{todayLunch ? 'border-t border-neutral-100 dark:border-neutral-700 pt-4' : ''}">
+							<p class="text-xs font-semibold text-neutral-400 dark:text-neutral-500 uppercase tracking-widest mb-2">석식</p>
+							<ul class="space-y-1.5">
+								{#each todayDinner.dishes as dish}
+									<li class="text-base text-neutral-700 dark:text-neutral-300 leading-snug">{dish}</li>
+								{/each}
+							</ul>
+							{#if todayDinner.calories}
+								<p class="mt-2 text-xs text-neutral-400 dark:text-neutral-500 tabular-nums">{todayDinner.calories}</p>
+							{/if}
+						</div>
+					{/if}
+				</div>
 			{/if}
 		</div>
 
@@ -191,7 +222,7 @@ function isToday(dateStr: string): boolean {
 	{#if upcomingEvents.length > 0}
 		<div class="mb-6">
 			<div class="flex items-center justify-between mb-2.5">
-				<h2 class="text-sm font-semibold text-neutral-600 dark:text-neutral-300">다가오는 일정</h2>
+				<h2 class="text-base font-semibold text-neutral-600 dark:text-neutral-300">다가오는 일정</h2>
 				<a
 					href="/calendar"
 					class="text-xs text-neutral-400 dark:text-neutral-500 hover:text-neutral-600 dark:hover:text-neutral-300 transition-colors duration-100"
@@ -199,16 +230,16 @@ function isToday(dateStr: string): boolean {
 			</div>
 			<div class="bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl overflow-hidden">
 				{#each upcomingEvents as event, i (event._id ?? i)}
-					<div class="flex items-center gap-3 px-4 py-2.5 {i > 0 ? 'border-t border-neutral-100 dark:border-neutral-700' : ''}">
+					<div class="flex items-center gap-3 px-4 py-3 {i > 0 ? 'border-t border-neutral-100 dark:border-neutral-700' : ''}">
 						<span
-							class="w-1.5 h-1.5 rounded-full shrink-0"
+							class="w-2 h-2 rounded-full shrink-0"
 							style="background-color: {eventDotColor(event)}"
 							aria-hidden="true"
 						></span>
-						<span class="text-xs tabular-nums text-neutral-400 dark:text-neutral-500 w-16 shrink-0">
+						<span class="text-sm tabular-nums text-neutral-400 dark:text-neutral-500 w-16 shrink-0">
 							{isToday(event.date) ? '오늘' : formatEventDate(event.date)}
 						</span>
-						<span class="text-sm text-neutral-800 dark:text-neutral-200 font-medium flex-1 min-w-0 truncate">{event.title}</span>
+						<span class="text-base text-neutral-800 dark:text-neutral-200 font-medium flex-1 min-w-0 truncate">{event.title}</span>
 					</div>
 				{/each}
 			</div>
@@ -218,7 +249,7 @@ function isToday(dateStr: string): boolean {
 	<!-- ── Upcoming notices ───────────────────────────────────────────────── -->
 	<div>
 		<div class="flex items-center justify-between mb-2.5">
-			<h2 class="text-sm font-semibold text-neutral-600 dark:text-neutral-300">다가오는 알림</h2>
+			<h2 class="text-base font-semibold text-neutral-600 dark:text-neutral-300">다가오는 알림</h2>
 			<a
 				href="/notices"
 				class="text-xs text-neutral-400 dark:text-neutral-500 hover:text-neutral-600 dark:hover:text-neutral-300 transition-colors duration-100"
