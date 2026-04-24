@@ -27,11 +27,14 @@
 			<nav class="flex items-center gap-2 sm:gap-3 text-neutral-700 dark:text-neutral-300">
 				<a
 					href="/"
-					class="hover:underline p-1 sm:px-2 sm:py-1 {(page.url.pathname === '/' || page.url.pathname.startsWith('/notice')) ? 'underline' : ''}"
-					aria-current={(page.url.pathname === '/' || page.url.pathname.startsWith('/notice')) ? 'page' : undefined}
-				>
-					공지
-				</a>
+					class="hover:underline p-1 sm:px-2 sm:py-1 {page.url.pathname === '/' ? 'underline' : ''}"
+					aria-current={page.url.pathname === '/' ? 'page' : undefined}
+				>오늘</a>
+				<a
+					href="/notices"
+					class="hover:underline p-1 sm:px-2 sm:py-1 {(page.url.pathname.startsWith('/notices') || page.url.pathname.startsWith('/notice/')) ? 'underline' : ''}"
+					aria-current={(page.url.pathname.startsWith('/notices') || page.url.pathname.startsWith('/notice/')) ? 'page' : undefined}
+				>공지</a>
 				<a href="/timetable" class="hover:underline p-1 sm:px-2 sm:py-1 {(page.url.pathname.startsWith('/timetable')) ? 'underline' : ''}" aria-current={(page.url.pathname.startsWith('/timetable')) ? 'page' : undefined}>시간표</a>
 				<a href="/meals" class="hover:underline p-1 sm:px-2 sm:py-1 {(page.url.pathname.startsWith('/meals')) ? 'underline' : ''}" aria-current={(page.url.pathname.startsWith('/meals')) ? 'page' : undefined}>급식</a>
 				<a href="/calendar" class="hover:underline p-1 sm:px-2 sm:py-1 {(page.url.pathname.startsWith('/calendar')) ? 'underline' : ''}" aria-current={(page.url.pathname.startsWith('/calendar')) ? 'page' : undefined}>일정</a>
