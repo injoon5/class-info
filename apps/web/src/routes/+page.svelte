@@ -223,11 +223,11 @@ function isToday(dateStr: string): boolean {
 	{#if upcomingEvents.length > 0}
 		<div class="mb-6">
 			<div class="flex items-center justify-between mb-2.5">
-				<h2 class="text-base font-semibold text-neutral-600 dark:text-neutral-300">다가오는 일정</h2>
+				<h2 class="text-base font-semibold text-neutral-600 dark:text-neutral-300">일정</h2>
 				<a
 					href="/calendar"
 					class="text-xs text-neutral-400 dark:text-neutral-500 hover:text-neutral-600 dark:hover:text-neutral-300 transition-colors duration-100"
-				>달력 →</a>
+				>일정 →</a>
 			</div>
 			<div class="bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl overflow-hidden">
 				{#each upcomingEvents as event, i (event._id ?? i)}
@@ -250,7 +250,7 @@ function isToday(dateStr: string): boolean {
 	<!-- ── Upcoming notices ───────────────────────────────────────────────── -->
 	<div>
 		<div class="flex items-center justify-between mb-2.5">
-			<h2 class="text-base font-semibold text-neutral-600 dark:text-neutral-300">다가오는 알림</h2>
+			<h2 class="text-base font-semibold text-neutral-600 dark:text-neutral-300">공지</h2>
 			<a
 				href="/notices"
 				class="text-xs text-neutral-400 dark:text-neutral-500 hover:text-neutral-600 dark:hover:text-neutral-300 transition-colors duration-100"
@@ -263,7 +263,7 @@ function isToday(dateStr: string): boolean {
 			</div>
 		{:else if !hasNotices}
 			<div class="bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl px-4 py-6 text-center">
-				<p class="text-sm text-neutral-400 dark:text-neutral-500">다가오는 알림이 없어요</p>
+				<p class="text-sm text-neutral-400 dark:text-neutral-500">공지이 없어요</p>
 			</div>
 		{:else}
 			<div class="space-y-4">
