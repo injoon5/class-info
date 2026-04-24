@@ -78,11 +78,13 @@ export const fetchScheduleWindow = internalAction({
     const y = now.getUTCFullYear();
     const m = now.getUTCMonth() + 1; // 1-12
     const startdate = `${y - 1}1201`;
-    // In Jan/Feb we're still before "next Feb" of the current year; otherwise it's y+1
     const nextFebYear = m <= 2 ? y : y + 1;
     const isLeap = (nextFebYear % 4 === 0 && nextFebYear % 100 !== 0) || nextFebYear % 400 === 0;
     const enddate = `${nextFebYear}02${isLeap ? "29" : "28"}`;
+    console.log(`[fetchScheduleWindow] now=${now.toISOString()} utcYear=${y} utcMonth=${m} schoolcode=${schoolcode}`);
+    console.log(`[fetchScheduleWindow] startdate=${startdate} enddate=${enddate} nextFebYear=${nextFebYear} isLeap=${isLeap}`);
     await ctx.runAction(internal.schedule.fetchAndSaveSchoolSchedule, { startdate, enddate, schoolcode });
+    console.log(`[fetchScheduleWindow] done`);
   },
 });
 

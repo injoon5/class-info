@@ -100,7 +100,7 @@ onMount(() => {
 	<meta name="robots" content="noindex" />
 </svelte:head>
 
-<div class="max-w-4xl mx-auto px-4 py-1 sm:py-0 sm:px-4">
+<div class="max-w-4xl mx-auto px-4 pt-4 pb-1 sm:pt-5 sm:pb-0 sm:px-4">
 	<!-- Header: Week Selector -->
 	<div class="flex justify-center mb-3">
 		<div class="relative flex w-full rounded-xl bg-neutral-200 dark:bg-neutral-800 p-1 shadow-inner transition-colors h-9 sm:h-11 text-sm sm:text-base">
