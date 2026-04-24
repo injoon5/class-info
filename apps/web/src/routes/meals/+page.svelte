@@ -121,7 +121,7 @@ onMount(() => {
 	<meta name="robots" content="noindex" />
 </svelte:head>
 
-<div class="max-w-4xl mx-auto px-4 py-2">
+<div class="max-w-4xl mx-auto px-4 pt-4 pb-2 sm:pt-5">
   {#if mealsQuery.isLoading}
     <LoadingState />
   {:else if mealsQuery.error}
