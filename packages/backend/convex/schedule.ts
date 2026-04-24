@@ -23,14 +23,21 @@ export const upsertManySchoolEvents = internalMutation({
     enddate: v.string(),
   },
   handler: async (ctx, { events, startdate, enddate }) => {
+    console.log(`[upsertManySchoolEvents] startdate=${startdate} enddate=${enddate} incomingEvents=${events.length}`);
+
     const existing = await ctx.db
       .query("schedules")
       .withIndex("by_date", (q) => q.gte("date", startdate).lte("date", enddate))
       .collect();
 
-    for (const ev of existing) {
-      if (ev.source === "school") await ctx.db.delete(ev._id);
+    const toDelete = existing.filter((ev) => ev.source !== "custom");
+    const kept = existing.filter((ev) => ev.source === "custom");
+    console.log(`[upsertManySchoolEvents] existing in range=${existing.length} deleting=${toDelete.length} keeping(custom)=${kept.length}`);
+
+    for (const ev of toDelete) {
+      await ctx.db.delete(ev._id);
     }
+
     const now = Date.now();
     for (const ev of events) {
       await ctx.db.insert("schedules", {
@@ -43,6 +50,7 @@ export const upsertManySchoolEvents = internalMutation({
         updatedAt: now,
       });
     }
+    console.log(`[upsertManySchoolEvents] inserted=${events.length} done`);
   },
 });
 
@@ -50,12 +58,27 @@ export const fetchAndSaveSchoolSchedule = internalAction({
   args: { startdate: v.string(), enddate: v.string(), schoolcode: v.string() },
   handler: async (ctx, { startdate, enddate, schoolcode }) => {
     const url = `https://api.timefor.school/schedule?startdate=${encodeURIComponent(startdate)}&enddate=${encodeURIComponent(enddate)}&schoolcode=${encodeURIComponent(schoolcode)}`;
+    console.log(`[fetchAndSaveSchoolSchedule] requesting url=${url}`);
+
     const res = await fetch(url, { headers: { Accept: "application/json" } });
+    console.log(`[fetchAndSaveSchoolSchedule] response status=${res.status} ok=${res.ok}`);
     if (!res.ok) {
       throw new Error(`Failed to fetch schedule: ${res.status} ${res.statusText}`);
     }
+
     const data = await res.json();
-    if (!Array.isArray(data)) return;
+    console.log(`[fetchAndSaveSchoolSchedule] raw response isArray=${Array.isArray(data)} length=${Array.isArray(data) ? data.length : "n/a"}`);
+    if (!Array.isArray(data)) {
+      console.log(`[fetchAndSaveSchoolSchedule] unexpected response shape:`, JSON.stringify(data).slice(0, 500));
+      return;
+    }
+
+    const today = new Date().toISOString().slice(0, 10).replace(/-/g, "");
+    const rawDates = (data as ExternalScheduleEvent[]).map((d) => d.AA_YMD).sort();
+    console.log(`[fetchAndSaveSchoolSchedule] today=${today} raw date range: first=${rawDates[0]} last=${rawDates[rawDates.length - 1]}`);
+
+    const futureRaw = (data as ExternalScheduleEvent[]).filter((d) => d.AA_YMD > today);
+    console.log(`[fetchAndSaveSchoolSchedule] events after today in raw response: ${futureRaw.length}`);
 
     const events = (data as ExternalScheduleEvent[])
       .filter((d) => d.AA_YMD && d.EVENT_NM)
@@ -65,6 +88,9 @@ export const fetchAndSaveSchoolSchedule = internalAction({
         eventType: d.SBTR_DD_SC_NM ?? "",
         schoolCode: d.SD_SCHUL_CODE ?? schoolcode,
       }));
+
+    const eventDates = events.map((e) => e.date).sort();
+    console.log(`[fetchAndSaveSchoolSchedule] events after filter: count=${events.length} first=${eventDates[0]} last=${eventDates[eventDates.length - 1]}`);
 
     await ctx.runMutation(internal.schedule.upsertManySchoolEvents, { events, startdate, enddate });
   },
