@@ -329,7 +329,6 @@ const dayNames = ['일','월','화','수','목','금','토'];
                         class="relative opacity-50 sm:opacity-0 sm:group-hover:opacity-100 w-4 h-4 sm:w-5 sm:h-5 flex items-center justify-center rounded text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-200 hover:bg-neutral-100 dark:hover:bg-neutral-700 transition-opacity flex-shrink-0 after:absolute after:top-1/2 after:left-1/2 after:-translate-x-1/2 after:-translate-y-1/2 after:w-8 after:h-8"
                         title="일정 추가"
                         aria-label="일정 추가"
-                        data-s-event="Add Calendar Event"
                       >
                         <svg viewBox="0 0 16 16" fill="currentColor" class="w-2.5 h-2.5 sm:w-3 sm:h-3">
                           <path d="M8 2a1 1 0 011 1v4h4a1 1 0 010 2H9v4a1 1 0 01-2 0V9H3a1 1 0 010-2h4V3a1 1 0 011-1z"/>
@@ -359,7 +358,6 @@ const dayNames = ['일','월','화','수','목','금','토'];
                           class="absolute right-0 top-1/2 -translate-y-1/2 p-1 opacity-50 sm:opacity-0 sm:group-hover/ev:opacity-100 text-xs leading-none hover:text-red-600 dark:hover:text-red-400 transition-opacity"
                           title="삭제"
                           aria-label="삭제"
-                          data-s-event="Delete Calendar Event"
                         >×</button>
                       {/if}
                     </div>
@@ -448,7 +446,6 @@ const dayNames = ['일','월','화','수','목','금','토'];
           onclick={handleAddEvent}
           disabled={isSaving || !newEventTitle.trim()}
           class="pressable flex-1 px-3 py-1.5 bg-neutral-800 dark:bg-neutral-200 text-white dark:text-neutral-900 text-sm font-medium rounded disabled:opacity-40 transition-opacity"
-          data-s-event="Save Calendar Event"
         >{isSaving ? '저장 중…' : '저장'}</button>
         <button
           onclick={closeAddForm}
