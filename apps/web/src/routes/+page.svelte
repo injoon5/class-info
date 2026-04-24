@@ -180,7 +180,7 @@ function isToday(dateStr: string): boolean {
 				<div>
 					<p class="text-xs font-semibold text-neutral-400 dark:text-neutral-500 uppercase tracking-widest mb-2">중식</p>
 					{#if !data.meals || !todayLunch}
-						<p class="text-sm text-neutral-400 dark:text-neutral-500">{isWeekend ? '주말이에요' : '정보 없음'}</p>
+						<p class="text-sm text-neutral-400 dark:text-neutral-500">급식 정보가 없습니다</p>
 					{:else}
 						<ul class="space-y-1.5">
 							{#each todayLunch.dishes as dish}
@@ -196,7 +196,7 @@ function isToday(dateStr: string): boolean {
 				<div>
 					<p class="text-xs font-semibold text-neutral-400 dark:text-neutral-500 uppercase tracking-widest mb-2">석식</p>
 					{#if !data.meals || !todayDinner}
-						<p class="text-sm text-neutral-400 dark:text-neutral-500">{isWeekend ? '주말이에요' : '정보 없음'}</p>
+						<p class="text-sm text-neutral-400 dark:text-neutral-500">급식 정보가 없습니다</p>
 					{:else}
 						<ul class="space-y-1.5">
 							{#each todayDinner.dishes as dish}
@@ -213,77 +213,86 @@ function isToday(dateStr: string): boolean {
 
 	</div>
 
-	<!-- ── Upcoming events ────────────────────────────────────────────────── -->
-	{#if upcomingEvents.length > 0}
-		<div class="mb-6">
+	<!-- ── Notices + Events side by side ────────────────────────────────── -->
+	<div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+
+		<!-- Notices -->
+		<div>
+			<div class="flex items-center justify-between mb-2.5">
+				<h2 class="text-base font-semibold text-neutral-600 dark:text-neutral-300">공지</h2>
+				<a
+					href="/notices"
+					class="text-xs text-neutral-400 dark:text-neutral-500 hover:text-neutral-600 dark:hover:text-neutral-300 transition-colors duration-100"
+				>모두 보기 →</a>
+			</div>
+
+			{#if noticesQuery.isLoading && !noticesQuery.data}
+				<div class="bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl px-4 py-6 text-center">
+					<p class="text-sm text-neutral-400 dark:text-neutral-500">불러오는 중…</p>
+				</div>
+			{:else if !hasNotices}
+				<div class="bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl px-4 py-6 text-center">
+					<p class="text-sm text-neutral-400 dark:text-neutral-500">공지가 없어요</p>
+				</div>
+			{:else}
+				<div class="space-y-4">
+					{#each noticePreview as group}
+						<div>
+							<p class="text-xs font-semibold text-neutral-400 dark:text-neutral-500 uppercase tracking-wide mb-2 pl-0.5">
+								{group.displayDate}
+							</p>
+							<div class="grid gap-1.5">
+								{#each group.notices as notice}
+									<NoticeCard {notice} />
+								{/each}
+							</div>
+						</div>
+					{/each}
+
+					{#if (noticesQuery.data?.currentGroups ?? []).length > 3}
+						<a
+							href="/notices"
+							class="block text-center text-sm text-neutral-400 dark:text-neutral-500 hover:text-neutral-700 dark:hover:text-neutral-300 transition-colors duration-100 py-1"
+						>
+							+ {(noticesQuery.data?.currentGroups ?? []).length - 3}개 더 보기
+						</a>
+					{/if}
+				</div>
+			{/if}
+		</div>
+
+		<!-- Events -->
+		<div>
 			<div class="flex items-center justify-between mb-2.5">
 				<h2 class="text-base font-semibold text-neutral-600 dark:text-neutral-300">일정</h2>
 				<a
 					href="/calendar"
 					class="text-xs text-neutral-400 dark:text-neutral-500 hover:text-neutral-600 dark:hover:text-neutral-300 transition-colors duration-100"
-				>일정 →</a>
+				>달력 →</a>
 			</div>
-			<div class="bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl overflow-hidden">
-				{#each upcomingEvents as event, i (event._id ?? i)}
-					<div class="flex items-center gap-3 px-4 py-3 {i > 0 ? 'border-t border-neutral-100 dark:border-neutral-700' : ''}">
-						<span
-							class="w-2 h-2 rounded-full shrink-0"
-							style="background-color: {eventDotColor(event)}"
-							aria-hidden="true"
-						></span>
-						<span class="text-sm tabular-nums text-neutral-400 dark:text-neutral-500 w-16 shrink-0">
-							{isToday(event.date) ? '오늘' : formatEventDate(event.date)}
-						</span>
-						<span class="text-base text-neutral-800 dark:text-neutral-200 font-medium flex-1 min-w-0 truncate">{event.title}</span>
-					</div>
-				{/each}
-			</div>
-		</div>
-	{/if}
-
-	<!-- ── Upcoming notices ───────────────────────────────────────────────── -->
-	<div>
-		<div class="flex items-center justify-between mb-2.5">
-			<h2 class="text-base font-semibold text-neutral-600 dark:text-neutral-300">공지</h2>
-			<a
-				href="/notices"
-				class="text-xs text-neutral-400 dark:text-neutral-500 hover:text-neutral-600 dark:hover:text-neutral-300 transition-colors duration-100"
-			>모두 보기 →</a>
-		</div>
-
-		{#if noticesQuery.isLoading && !noticesQuery.data}
-			<div class="bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl px-4 py-6 text-center">
-				<p class="text-sm text-neutral-400 dark:text-neutral-500">불러오는 중…</p>
-			</div>
-		{:else if !hasNotices}
-			<div class="bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl px-4 py-6 text-center">
-				<p class="text-sm text-neutral-400 dark:text-neutral-500">공지이 없어요</p>
-			</div>
-		{:else}
-			<div class="space-y-4">
-				{#each noticePreview as group}
-					<div>
-						<p class="text-xs font-semibold text-neutral-400 dark:text-neutral-500 uppercase tracking-wide mb-2 pl-0.5">
-							{group.displayDate}
-						</p>
-						<div class="grid gap-1.5">
-							{#each group.notices as notice}
-								<NoticeCard {notice} />
-							{/each}
+			{#if upcomingEvents.length === 0}
+				<div class="bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl px-4 py-6 text-center">
+					<p class="text-sm text-neutral-400 dark:text-neutral-500">다가오는 일정이 없어요</p>
+				</div>
+			{:else}
+				<div class="bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl overflow-hidden">
+					{#each upcomingEvents as event, i (event._id ?? i)}
+						<div class="flex items-center gap-3 px-4 py-3 {i > 0 ? 'border-t border-neutral-100 dark:border-neutral-700' : ''}">
+							<span
+								class="w-2 h-2 rounded-full shrink-0"
+								style="background-color: {eventDotColor(event)}"
+								aria-hidden="true"
+							></span>
+							<span class="text-sm tabular-nums text-neutral-400 dark:text-neutral-500 w-16 shrink-0">
+								{isToday(event.date) ? '오늘' : formatEventDate(event.date)}
+							</span>
+							<span class="text-base text-neutral-800 dark:text-neutral-200 font-medium flex-1 min-w-0 truncate">{event.title}</span>
 						</div>
-					</div>
-				{/each}
+					{/each}
+				</div>
+			{/if}
+		</div>
 
-				{#if (noticesQuery.data?.currentGroups ?? []).length > 3}
-					<a
-						href="/notices"
-						class="block text-center text-sm text-neutral-400 dark:text-neutral-500 hover:text-neutral-700 dark:hover:text-neutral-300 transition-colors duration-100 py-1"
-					>
-						+ {(noticesQuery.data?.currentGroups ?? []).length - 3}개 더 보기
-					</a>
-				{/if}
-			</div>
-		{/if}
 	</div>
 
 </div>
