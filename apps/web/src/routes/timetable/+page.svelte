@@ -11,6 +11,19 @@ let { data }: { data: PageData } = $props();
 
 let selectedWeek: number = $state(0); // 0: this week, 1: next week
 
+let gridBlurred = $state(false);
+let blurTimerId: ReturnType<typeof setTimeout> | null = null;
+let effectMounted = false;
+
+$effect(() => {
+  selectedWeek;
+  if (!effectMounted) { effectMounted = true; return; }
+  gridBlurred = true;
+  if (blurTimerId !== null) clearTimeout(blurTimerId);
+  blurTimerId = setTimeout(() => { gridBlurred = false; blurTimerId = null; }, 200);
+  return () => { if (blurTimerId !== null) { clearTimeout(blurTimerId); blurTimerId = null; } };
+});
+
 // Scroll gradient state
 let scrollContainer = $state<HTMLDivElement>();
 let leftGradient = $state<HTMLDivElement>();
@@ -140,7 +153,8 @@ onMount(() => {
 				 style="opacity: {scrollRight > 0 ? 1 : 0};"
 				 bind:this={rightGradient}></div>
 			
-			<div class="overflow-x-auto" bind:this={scrollContainer} onscroll={updateGradients}>
+			<div class="overflow-x-auto" bind:this={scrollContainer} onscroll={updateGradients}
+				style="transition: filter 150ms ease, opacity 150ms ease; {gridBlurred ? 'filter: blur(4px); opacity: 0.7;' : ''}">
 				<table class="w-full min-w-[18rem] table-fixed border border-neutral-200 dark:border-neutral-700 border-collapse shadow-sm mx-auto">
 				<thead>
 					<tr class="bg-neutral-100 dark:bg-neutral-800">
