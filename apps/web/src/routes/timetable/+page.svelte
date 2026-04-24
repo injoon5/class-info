@@ -154,7 +154,7 @@ onMount(() => {
 				 bind:this={rightGradient}></div>
 			
 			<div class="overflow-x-auto" bind:this={scrollContainer} onscroll={updateGradients}
-				style="transition: filter 150ms ease, opacity 150ms ease; {gridBlurred ? 'filter: blur(4px); opacity: 0.7;' : ''}">
+				style="transition: filter 150ms ease, opacity 150ms ease; {gridBlurred ? 'filter: blur(12px); opacity: 0.7;' : ''}">
 				<table class="w-full min-w-[18rem] table-fixed border border-neutral-200 dark:border-neutral-700 border-collapse shadow-sm mx-auto">
 				<thead>
 					<tr class="bg-neutral-100 dark:bg-neutral-800">
