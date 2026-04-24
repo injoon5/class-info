@@ -136,13 +136,9 @@ function isToday(dateStr: string): boolean {
 				>전체 →</a>
 			</div>
 			<div class="bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl p-4">
-			{#if isWeekend}
+			{#if isWeekend || !data.timetable || todaySchedule.length === 0}
 				<div class="flex items-center justify-center py-8">
-					<p class="text-sm text-neutral-400 dark:text-neutral-500 text-center">주말이에요</p>
-				</div>
-			{:else if !data.timetable || todaySchedule.length === 0}
-				<div class="flex items-center justify-center py-8">
-					<p class="text-sm text-neutral-400 dark:text-neutral-500 text-center">시간표 없음</p>
+					<p class="text-base text-neutral-800 dark:text-neutral-200 text-center">시간표 없음</p>
 				</div>
 			{:else}
 				<ol class="space-y-2.5">
@@ -150,12 +146,8 @@ function isToday(dateStr: string): boolean {
 						<li class="flex items-start gap-2.5">
 							<span class="text-xs tabular-nums text-neutral-400 dark:text-neutral-500 w-4 shrink-0 pt-0.5 leading-snug">{slot.period}</span>
 							<div class="min-w-0">
-								<span class="text-lg font-semibold text-neutral-800 dark:text-neutral-200 leading-snug block truncate">{slot.subject}</span>
-								{#if slot.replaced}
-									<span class="text-xs text-amber-600 dark:text-amber-400 font-medium">변경</span>
-								{:else}
-									<span class="text-xs text-neutral-400 dark:text-neutral-500">{formatPeriodTime(slot.period)}</span>
-								{/if}
+								<span class="text-lg font-semibold leading-snug block truncate {slot.replaced ? 'text-amber-500 dark:text-amber-400' : 'text-neutral-800 dark:text-neutral-200'}">{slot.subject}</span>
+								<span class="text-xs text-neutral-400 dark:text-neutral-500">{formatPeriodTime(slot.period)}</span>
 							</div>
 						</li>
 					{/each}
@@ -181,7 +173,7 @@ function isToday(dateStr: string): boolean {
 				<div>
 					<p class="text-xs font-semibold text-neutral-400 dark:text-neutral-500 uppercase tracking-widest mb-2">중식</p>
 					{#if !data.meals || !todayLunch}
-						<p class="text-sm text-neutral-400 dark:text-neutral-500">급식 정보가 없습니다</p>
+						<p class="text-base text-neutral-800 dark:text-neutral-200">급식 정보가 없습니다</p>
 					{:else}
 						<ul class="space-y-1.5">
 							{#each todayLunch.dishes as dish}
@@ -197,7 +189,7 @@ function isToday(dateStr: string): boolean {
 				<div>
 					<p class="text-xs font-semibold text-neutral-400 dark:text-neutral-500 uppercase tracking-widest mb-2">석식</p>
 					{#if !data.meals || !todayDinner}
-						<p class="text-sm text-neutral-400 dark:text-neutral-500">급식 정보가 없습니다</p>
+						<p class="text-base text-neutral-800 dark:text-neutral-200">급식 정보가 없습니다</p>
 					{:else}
 						<ul class="space-y-1.5">
 							{#each todayDinner.dishes as dish}
@@ -230,11 +222,11 @@ function isToday(dateStr: string): boolean {
 
 			{#if noticesQuery.isLoading && !noticesQuery.data}
 				<div class="bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl px-4 py-6 text-center">
-					<p class="text-sm text-neutral-400 dark:text-neutral-500">불러오는 중…</p>
+					<p class="text-base text-neutral-800 dark:text-neutral-200">불러오는 중…</p>
 				</div>
 			{:else if !hasNotices}
 				<div class="bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl px-4 py-6 text-center">
-					<p class="text-sm text-neutral-400 dark:text-neutral-500">공지가 없어요</p>
+					<p class="text-base text-neutral-800 dark:text-neutral-200">공지가 없어요</p>
 				</div>
 			{:else}
 				<div class="space-y-4">
@@ -254,7 +246,7 @@ function isToday(dateStr: string): boolean {
 					{#if (noticesQuery.data?.currentGroups ?? []).length > 3}
 						<a
 							href="/notices"
-							class="block text-center text-sm text-neutral-400 dark:text-neutral-500 hover:text-neutral-700 dark:hover:text-neutral-300 transition-colors duration-100 py-1"
+							class="block text-center text-base text-neutral-400 dark:text-neutral-500 hover:text-neutral-700 dark:hover:text-neutral-300 transition-colors duration-100 py-1"
 						>
 							+ {(noticesQuery.data?.currentGroups ?? []).length - 3}개 더 보기
 						</a>
@@ -274,7 +266,7 @@ function isToday(dateStr: string): boolean {
 			</div>
 			{#if upcomingEvents.length === 0}
 				<div class="bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl px-4 py-6 text-center">
-					<p class="text-sm text-neutral-400 dark:text-neutral-500">다가오는 일정이 없어요</p>
+					<p class="text-base text-neutral-800 dark:text-neutral-200">다가오는 일정이 없어요</p>
 				</div>
 			{:else}
 				<div class="bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl overflow-hidden">
@@ -285,7 +277,7 @@ function isToday(dateStr: string): boolean {
 								style="background-color: {eventDotColor(event)}"
 								aria-hidden="true"
 							></span>
-							<span class="text-sm tabular-nums text-neutral-400 dark:text-neutral-500 w-16 shrink-0">
+							<span class="text-base tabular-nums text-neutral-800 dark:text-neutral-200 w-16 shrink-0">
 								{isToday(event.date) ? '오늘' : formatEventDate(event.date)}
 							</span>
 							<span class="text-base text-neutral-800 dark:text-neutral-200 font-medium flex-1 min-w-0 truncate text-right">{event.title}</span>
