@@ -122,16 +122,16 @@ function isToday(dateStr: string): boolean {
 	</div>
 
 	<!-- ── Quick info: timetable + meal ───────────────────────────────────── -->
-	<!-- 1-col on mobile, 2-col on sm+ -->
-	<div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-6">
+	<!-- 1-col on mobile, 4-col on sm+ (timetable=1, meal=3) -->
+	<div class="grid grid-cols-1 sm:grid-cols-4 gap-3 mb-6">
 
-		<!-- Timetable -->
-		<div class="bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl p-4">
+		<!-- Timetable: col-span-1 -->
+		<div class="sm:col-span-1 bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl p-4">
 			<div class="flex items-center justify-between mb-3">
-				<h2 class="text-xs font-semibold text-neutral-400 dark:text-neutral-500 uppercase tracking-widest">시간표</h2>
+				<h2 class="text-sm font-semibold text-neutral-400 dark:text-neutral-500 uppercase tracking-widest">시간표</h2>
 				<a
 					href="/timetable"
-					class="text-xs text-neutral-400 dark:text-neutral-500 hover:text-neutral-600 dark:hover:text-neutral-300 transition-colors duration-100 pressable"
+					class="text-sm text-neutral-400 dark:text-neutral-500 hover:text-neutral-600 dark:hover:text-neutral-300 transition-colors duration-100 pressable"
 					aria-label="전체 시간표 보기"
 				>전체 →</a>
 			</div>
@@ -163,13 +163,13 @@ function isToday(dateStr: string): boolean {
 			{/if}
 		</div>
 
-		<!-- Meal -->
-		<div class="bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl p-4">
+		<!-- Meal: col-span-3 -->
+		<div class="sm:col-span-3 bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl p-4">
 			<div class="flex items-center justify-between mb-3">
-				<h2 class="text-xs font-semibold text-neutral-400 dark:text-neutral-500 uppercase tracking-widest">급식</h2>
+				<h2 class="text-sm font-semibold text-neutral-400 dark:text-neutral-500 uppercase tracking-widest">급식</h2>
 				<a
 					href="/meals"
-					class="text-xs text-neutral-400 dark:text-neutral-500 hover:text-neutral-600 dark:hover:text-neutral-300 transition-colors duration-100 pressable"
+					class="text-sm text-neutral-400 dark:text-neutral-500 hover:text-neutral-600 dark:hover:text-neutral-300 transition-colors duration-100 pressable"
 					aria-label="전체 급식 보기"
 				>전체 →</a>
 			</div>
@@ -185,7 +185,8 @@ function isToday(dateStr: string): boolean {
 					</p>
 				</div>
 			{:else}
-				<div class="space-y-4">
+				<!-- 2-col grid inside: lunch | dinner -->
+				<div class="grid grid-cols-2 gap-4">
 					{#if todayLunch}
 						<div>
 							<p class="text-xs font-semibold text-neutral-400 dark:text-neutral-500 uppercase tracking-widest mb-2">중식</p>
@@ -200,7 +201,7 @@ function isToday(dateStr: string): boolean {
 						</div>
 					{/if}
 					{#if todayDinner}
-						<div class="{todayLunch ? 'border-t border-neutral-100 dark:border-neutral-700 pt-4' : ''}">
+						<div>
 							<p class="text-xs font-semibold text-neutral-400 dark:text-neutral-500 uppercase tracking-widest mb-2">석식</p>
 							<ul class="space-y-1.5">
 								{#each todayDinner.dishes as dish}
