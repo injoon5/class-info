@@ -46,6 +46,7 @@ export const upsertManySchoolEvents = internalMutation({
         updatedAt: now,
       });
     }
+    console.log(`[schedule.upsertManySchoolEvents] range=${startdate}–${enddate} deleted=${toDelete.length} inserted=${events.length}`);
   },
 });
 
@@ -73,6 +74,7 @@ export const fetchAndSaveSchoolSchedule = internalAction({
         schoolCode: d.SD_SCHUL_CODE ?? schoolcode,
       }));
 
+    console.log(`[schedule.fetchAndSaveSchoolSchedule] range=${startdate}–${enddate} events=${events.length}`);
     await ctx.runMutation(internal.schedule.upsertManySchoolEvents, { events, startdate, enddate });
   },
 });
