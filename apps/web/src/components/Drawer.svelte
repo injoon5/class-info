@@ -262,8 +262,6 @@ function onMouseUp() {
         </div>
       {/if}
 
-      <!-- iOS safe area -->
-      <div class="sm:hidden flex-shrink-0" style="height: env(safe-area-inset-bottom, 0px)"></div>
     </div>
   </div>
 {/if}
