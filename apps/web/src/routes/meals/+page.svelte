@@ -260,7 +260,7 @@ onMount(() => {
         {/if}
         {#if nutrientRows.length > 0}
           <p class="text-xs font-semibold text-neutral-400 dark:text-neutral-500 uppercase tracking-wide mb-2">영양</p>
-          <div class="grid grid-cols-2 gap-x-4 gap-y-1.5">
+          <div class="grid grid-cols-3 gap-x-4 gap-y-1.5">
             {#each nutrientRows as [name, value]}
               <div class="flex items-baseline justify-between gap-1 border-b border-neutral-100 dark:border-neutral-800 pb-1.5">
                 <span class="text-xs text-neutral-500 dark:text-neutral-400 truncate">{name}</span>
