@@ -176,11 +176,21 @@ let lastPointerY = 0;
 let lastPointerTime = 0;
 let pointerVelocity = 0; // px/ms, positive = downward
 
-// translateY value used in the inline style
-const drawerTranslateY = $derived(
-  isDragging
-    ? dragY
-    : isVisible ? 0 : panelHeight
+// Detect mobile vs desktop to pick the right animation
+let isMobile = $state(true);
+$effect(() => {
+  const mq = window.matchMedia('(min-width: 640px)');
+  isMobile = !mq.matches;
+  const handler = (e: MediaQueryListEvent) => { isMobile = !e.matches; };
+  mq.addEventListener('change', handler);
+  return () => mq.removeEventListener('change', handler);
+});
+
+// Mobile: slide up/down. Desktop: scale + fade (popup feel).
+const drawerStyle = $derived(
+  isMobile
+    ? `transform: translateY(${isDragging ? dragY : isVisible ? 0 : panelHeight}px); transition: transform ${isDragging ? 0 : TRANSITION_MS}ms cubic-bezier(0.32, 0.72, 0, 1);`
+    : `transform: scale(${isVisible ? 1 : 0.95}); opacity: ${isVisible ? 1 : 0}; transition: transform ${TRANSITION_MS}ms cubic-bezier(0.32, 0.72, 0, 1), opacity ${Math.round(TRANSITION_MS * 0.65)}ms;`
 );
 
 // Backdrop opacity: follows drag position in real time
@@ -577,8 +587,7 @@ const dayNames = ['일','월','화','수','목','금','토'];
              sm:border sm:border-neutral-200 sm:dark:border-neutral-700
              outline-none
              will-change-transform"
-      style="transform: translateY({drawerTranslateY}px);
-             transition: transform {isDragging ? 0 : TRANSITION_MS}ms cubic-bezier(0.32, 0.72, 0, 1);"
+      style={drawerStyle}
       onclick={(e) => e.stopPropagation()}
       onkeydown={(e) => { if (e.key === 'Escape') closeDayPopup(); e.stopPropagation(); }}
     >
@@ -591,13 +600,13 @@ const dayNames = ['일','월','화','수','목','금','토'];
       <div class="px-5 pt-3 pb-4 sm:pt-5 flex items-start justify-between flex-shrink-0 border-b border-neutral-100 dark:border-neutral-800">
         <div>
           <p class="text-xs font-medium text-neutral-400 dark:text-neutral-500 mb-1 tracking-wide">
-            {selectedDateInfo.year}년 {monthNames[selectedDateInfo.month - 1]}
+            {selectedDateInfo.year}년
           </p>
           <div class="flex items-baseline gap-2 flex-wrap">
             <h2
               id="day-popup-title"
               class="text-2xl font-bold leading-none text-neutral-900 dark:text-neutral-100"
-            >{selectedDateInfo.day}일</h2>
+            >{monthNames[selectedDateInfo.month - 1]} {selectedDateInfo.day}일</h2>
             <span class="text-base text-neutral-500 dark:text-neutral-400 leading-none">
               {selectedDateInfo.weekday}요일
             </span>
@@ -643,7 +652,7 @@ const dayNames = ['일','월','화','수','목','금','토'];
               <li class="flex rounded-xl overflow-hidden shadow-sm">
                 <div class="w-1.5 flex-shrink-0 {style.color}"></div>
                 <div class="flex-1 px-3 py-2.5 {style.bg}">
-                  <p class="text-[10px] font-semibold uppercase tracking-wider {style.labelColor} mb-0.5">{style.label}</p>
+                  <p class="text-xs font-semibold uppercase tracking-wide {style.labelColor} mb-0.5">{style.label}</p>
                   <p class="text-sm font-medium text-neutral-800 dark:text-neutral-100 leading-snug">{event.title}</p>
                 </div>
               </li>
@@ -655,7 +664,7 @@ const dayNames = ['일','월','화','수','목','금','토'];
                 <div class="w-1.5 flex-shrink-0 {style.color}"></div>
                 <div class="flex-1 flex items-center justify-between gap-2 px-3 py-2.5 {style.bg}">
                   <div class="min-w-0">
-                    <p class="text-[10px] font-semibold uppercase tracking-wider {style.labelColor} mb-0.5">일정</p>
+                    <p class="text-xs font-semibold uppercase tracking-wide {style.labelColor} mb-0.5">일정</p>
                     <p class="text-sm font-medium text-neutral-800 dark:text-neutral-100 leading-snug">{event.title}</p>
                   </div>
                   {#if isAuthenticated}
