@@ -200,8 +200,13 @@ function isToday(dateStr: string): boolean {
 					<ol class="space-y-2.5">
 						{#each displaySchedule as slot}
 							<li class="flex items-start gap-2.5">
-								<span class="text-base tabular-nums text-neutral-400 dark:text-neutral-500 w-5 shrink-0 pt-0.5 leading-snug">{slot.period}</span>
-								<span class="text-lg font-semibold leading-snug block truncate min-w-0 {slot.replaced ? 'text-amber-500 dark:text-amber-400' : 'text-neutral-800 dark:text-neutral-200'}">{slot.subject}</span>
+								<span class="text-sm tabular-nums font-normal text-neutral-400 dark:text-neutral-500 w-5 shrink-0 pt-1 leading-snug">{slot.period}</span>
+								<div class="min-w-0 flex-1">
+									<span class="text-lg font-semibold leading-snug block truncate {slot.replaced ? 'text-amber-500 dark:text-amber-400' : 'text-neutral-800 dark:text-neutral-200'}">{slot.subject}</span>
+									{#if slot.teacher}
+										<span class="text-sm text-neutral-400 dark:text-neutral-500 leading-snug">{slot.teacher}</span>
+									{/if}
+								</div>
 							</li>
 						{/each}
 					</ol>
