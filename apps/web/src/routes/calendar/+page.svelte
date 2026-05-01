@@ -484,7 +484,7 @@ const dayNames = ['일','월','화','수','목','금','토'];
     <ul class="space-y-2.5">
       {#each selectedDateEvents.school as event}
         {@const style = getSchoolEventPopupStyle(event.eventType)}
-        <li class="flex rounded-xl overflow-hidden shadow-sm">
+        <li class="flex rounded-lg overflow-hidden shadow-sm">
           <div class="w-1.5 flex-shrink-0 {style.color}"></div>
           <div class="flex-1 px-3 py-2.5 {style.bg}">
             <p class="text-xs font-semibold uppercase tracking-wide {style.labelColor} mb-0.5">{style.label}</p>
@@ -494,7 +494,7 @@ const dayNames = ['일','월','화','수','목','금','토'];
       {/each}
       {#each selectedDateEvents.custom as event}
         {@const style = CUSTOM_POPUP_STYLE[event.color] ?? CUSTOM_POPUP_STYLE.blue}
-        <li class="flex rounded-xl overflow-hidden shadow-sm">
+        <li class="flex rounded-lg overflow-hidden shadow-sm">
           <div class="w-1.5 flex-shrink-0 {style.color}"></div>
           <div class="flex-1 flex items-center justify-between gap-2 px-3 py-2.5 {style.bg}">
             <div class="min-w-0">
