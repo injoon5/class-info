@@ -396,10 +396,59 @@ const dayNames = ['일','월','화','수','목','금','토'];
   </div>
 </div>
 
+{#snippet adminFooter()}
+  {#if !popupAddMode}
+    <button
+      onclick={() => { popupAddMode = true; }}
+      class="pressable w-full flex items-center justify-center gap-2 py-2.5 rounded-xl bg-neutral-100 dark:bg-neutral-800 text-sm font-medium text-neutral-700 dark:text-neutral-300 hover:bg-neutral-200 dark:hover:bg-neutral-700 transition-colors"
+    >
+      <svg viewBox="0 0 20 20" fill="currentColor" class="w-4 h-4 flex-shrink-0">
+        <path fill-rule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clip-rule="evenodd"/>
+      </svg>
+      일정 추가
+    </button>
+  {:else}
+    <input
+      type="text"
+      bind:value={newEventTitle}
+      bind:this={addInputEl}
+      placeholder="일정 제목을 입력하세요"
+      class="w-full px-3.5 py-2.5 mb-3 border border-neutral-200 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-800 text-neutral-800 dark:text-neutral-200 text-sm rounded-xl focus:outline-none focus:ring-2 focus:ring-neutral-400 dark:focus:ring-neutral-500 focus:border-transparent transition-shadow placeholder:text-neutral-400"
+      onkeydown={(e) => {
+        if (e.key === 'Enter') handleAddEvent();
+        if (e.key === 'Escape') { popupAddMode = false; newEventTitle = ''; }
+      }}
+    />
+    <div class="flex gap-2 mb-3">
+      {#each CUSTOM_COLORS as color}
+        <button
+          onclick={() => (newEventColor = color.id)}
+          class="pressable w-7 h-7 rounded-full {color.bgClass} transition-[transform,box-shadow]
+            {newEventColor === color.id ? 'ring-2 ring-offset-2 ring-neutral-500 dark:ring-neutral-400 scale-110' : 'opacity-70 hover:opacity-100 hover:scale-105'}"
+          aria-label={color.id}
+          aria-pressed={newEventColor === color.id}
+        ></button>
+      {/each}
+    </div>
+    <div class="flex gap-2">
+      <button
+        onclick={handleAddEvent}
+        disabled={isSaving || !newEventTitle.trim()}
+        class="pressable flex-1 py-2.5 bg-neutral-800 dark:bg-neutral-100 text-white dark:text-neutral-900 text-sm font-semibold rounded-xl disabled:opacity-40 transition-opacity"
+      >{isSaving ? '저장 중…' : '저장'}</button>
+      <button
+        onclick={() => { popupAddMode = false; newEventTitle = ''; }}
+        class="pressable px-4 py-2.5 border border-neutral-200 dark:border-neutral-700 text-sm font-medium text-neutral-600 dark:text-neutral-400 rounded-xl hover:bg-neutral-50 dark:hover:bg-neutral-800 transition-colors"
+      >취소</button>
+    </div>
+  {/if}
+{/snippet}
+
 <!-- Day detail drawer -->
 <Drawer
   open={selectedDate !== null}
   onclose={onDrawerClose}
+  footer={isAuthenticated ? adminFooter : undefined}
 >
   {#snippet header()}
     {#if selectedDateInfo}
@@ -469,53 +518,4 @@ const dayNames = ['일','월','화','수','목','금','토'];
     </ul>
   {/if}
 
-  {#snippet footer()}
-    {#if isAuthenticated}
-      {#if !popupAddMode}
-        <button
-          onclick={() => { popupAddMode = true; }}
-          class="pressable w-full flex items-center justify-center gap-2 py-2.5 rounded-xl bg-neutral-100 dark:bg-neutral-800 text-sm font-medium text-neutral-700 dark:text-neutral-300 hover:bg-neutral-200 dark:hover:bg-neutral-700 transition-colors"
-        >
-          <svg viewBox="0 0 20 20" fill="currentColor" class="w-4 h-4 flex-shrink-0">
-            <path fill-rule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clip-rule="evenodd"/>
-          </svg>
-          일정 추가
-        </button>
-      {:else}
-        <input
-          type="text"
-          bind:value={newEventTitle}
-          bind:this={addInputEl}
-          placeholder="일정 제목을 입력하세요"
-          class="w-full px-3.5 py-2.5 mb-3 border border-neutral-200 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-800 text-neutral-800 dark:text-neutral-200 text-sm rounded-xl focus:outline-none focus:ring-2 focus:ring-neutral-400 dark:focus:ring-neutral-500 focus:border-transparent transition-shadow placeholder:text-neutral-400"
-          onkeydown={(e) => {
-            if (e.key === 'Enter') handleAddEvent();
-            if (e.key === 'Escape') { popupAddMode = false; newEventTitle = ''; }
-          }}
-        />
-        <div class="flex gap-2 mb-3">
-          {#each CUSTOM_COLORS as color}
-            <button
-              onclick={() => (newEventColor = color.id)}
-              class="pressable w-7 h-7 rounded-full {color.bgClass} transition-[transform,box-shadow]
-                {newEventColor === color.id ? 'ring-2 ring-offset-2 ring-neutral-500 dark:ring-neutral-400 scale-110' : 'opacity-70 hover:opacity-100 hover:scale-105'}"
-              aria-label={color.id}
-              aria-pressed={newEventColor === color.id}
-            ></button>
-          {/each}
-        </div>
-        <div class="flex gap-2">
-          <button
-            onclick={handleAddEvent}
-            disabled={isSaving || !newEventTitle.trim()}
-            class="pressable flex-1 py-2.5 bg-neutral-800 dark:bg-neutral-100 text-white dark:text-neutral-900 text-sm font-semibold rounded-xl disabled:opacity-40 transition-opacity"
-          >{isSaving ? '저장 중…' : '저장'}</button>
-          <button
-            onclick={() => { popupAddMode = false; newEventTitle = ''; }}
-            class="pressable px-4 py-2.5 border border-neutral-200 dark:border-neutral-700 text-sm font-medium text-neutral-600 dark:text-neutral-400 rounded-xl hover:bg-neutral-50 dark:hover:bg-neutral-800 transition-colors"
-          >취소</button>
-        </div>
-      {/if}
-    {/if}
-  {/snippet}
 </Drawer>
