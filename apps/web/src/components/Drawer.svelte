@@ -187,6 +187,7 @@ $effect(() => {
 
 function onMouseDown(e: MouseEvent) {
   if (e.button !== 0) return;
+  if (contentEl && contentEl.contains(e.target as Node)) return;
   if (startDrag(e.clientY)) e.preventDefault();
 }
 
