@@ -228,7 +228,7 @@ function isToday(dateStr: string): boolean {
 						{:else}
 							<ul class="space-y-1.5">
 								{#each displayLunch.dishes as dish}
-									<li class="text-base text-neutral-700 dark:text-neutral-300 leading-snug">{dish}</li>
+									<li class="text-base text-neutral-700 dark:text-neutral-300 leading-snug truncate max-w-full overflow-hidden whitespace-nowrap">{dish}</li>
 								{/each}
 							</ul>
 							{#if displayLunch.calories}
@@ -244,7 +244,7 @@ function isToday(dateStr: string): boolean {
 						{:else}
 							<ul class="space-y-1.5">
 								{#each displayDinner.dishes as dish}
-									<li class="text-base text-neutral-700 dark:text-neutral-300 leading-snug">{dish}</li>
+									<li class="text-base text-neutral-700 dark:text-neutral-300 leading-snug truncate max-w-full overflow-hidden whitespace-nowrap">{dish}</li>
 								{/each}
 							</ul>
 							{#if displayDinner.calories}
