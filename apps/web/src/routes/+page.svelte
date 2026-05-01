@@ -172,7 +172,7 @@ function isToday(dateStr: string): boolean {
 			<div class="flex flex-col items-end gap-1">
 				{#each todayEvents as event}
 					<div class="flex items-baseline gap-2">
-						<span class="text-xl sm:text-2xl font-semibold text-neutral-800 dark:text-neutral-200">{event.title}</span>
+						<span class="text-xl font-medium text-neutral-800 dark:text-neutral-200">{event.title}</span>
 						{#if eventTypeLabel(event)}
 							<span class="text-base font-semibold {eventTypeCss(event)}">{eventTypeLabel(event)}</span>
 						{/if}
