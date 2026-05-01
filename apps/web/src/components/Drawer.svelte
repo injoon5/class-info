@@ -232,7 +232,7 @@ function onMouseUp() {
       </div>
 
       <!-- Header: custom content + close button -->
-      <div class="px-5 pt-3 pb-4 sm:pt-5 flex items-start justify-between gap-3 flex-shrink-0 border-b border-neutral-100 dark:border-neutral-800">
+      <div class="px-4 pt-3 pb-4 sm:pt-4 flex items-start justify-between gap-3 flex-shrink-0 border-b border-neutral-100 dark:border-neutral-800">
         <div class="flex-1 min-w-0">
           {@render header()}
         </div>
@@ -250,14 +250,14 @@ function onMouseUp() {
       <!-- Scrollable body -->
       <div
         bind:this={contentEl}
-        class="flex-1 overflow-y-auto overscroll-contain px-5 py-4 min-h-0"
+        class="flex-1 overflow-y-auto overscroll-contain px-4 pt-4 pb-0 min-h-0"
       >
         {@render children()}
       </div>
 
       <!-- Optional footer -->
       {#if footer}
-        <div class="flex-shrink-0 border-t border-neutral-100 dark:border-neutral-800 px-5 py-4">
+        <div class="flex-shrink-0 border-t border-neutral-100 dark:border-neutral-800 px-4 py-4">
           {@render footer()}
         </div>
       {/if}
