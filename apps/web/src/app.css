@@ -5,6 +5,8 @@ html {
     /* Support for dynamic viewport on mobile Safari */
     height: 100vh; /* Fallback for older browsers */
     height: 100dvh; /* Dynamic viewport height - adapts when URL bar hides/shows */
+    scrollbar-width: thin;
+    scrollbar-color: gray transparent;
 }
 
 /* Apply Pretendard font globally */
