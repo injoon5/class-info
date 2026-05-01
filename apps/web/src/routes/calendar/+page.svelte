@@ -2,6 +2,7 @@
 import { onMount } from 'svelte';
 import { useQuery, useConvexClient } from 'convex-svelte';
 import { api } from "@class-info/backend/convex/_generated/api";
+import Drawer from '../../components/Drawer.svelte';
 import type { PageData } from './$types.js';
 
 let { data }: { data: PageData } = $props();
@@ -129,7 +130,7 @@ const CUSTOM_COLORS = [
   { id: 'teal',   bgClass: 'bg-teal-500' },
 ];
 
-// Color helpers — popup event items
+// Color helpers — drawer event items
 function getSchoolEventPopupStyle(eventType: string) {
   if (eventType === '공휴일') return { color: 'bg-red-400', bg: 'bg-red-50 dark:bg-red-950/30', label: '공휴일', labelColor: 'text-red-500 dark:text-red-400' };
   if (eventType === '휴업일') return { color: 'bg-amber-400', bg: 'bg-amber-50 dark:bg-amber-950/30', label: '휴업일', labelColor: 'text-amber-500 dark:text-amber-400' };
@@ -150,180 +151,42 @@ const isAuthenticated = data.isAuthenticated as boolean;
 let newEventTitle = $state('');
 let newEventColor = $state('blue');
 let isSaving = $state(false);
-
-// ── Drawer state ────────────────────────────────────────────────────────────
-const TRANSITION_MS = 340;
-
-let selectedDate = $state<string | null>(null);
-let popupAddMode = $state(false);
-let popupPanelEl = $state<HTMLElement | undefined>();
-let contentScrollEl = $state<HTMLElement | undefined>();
 let addInputEl = $state<HTMLInputElement | undefined>();
 
-// isVisible drives the CSS transition. selectedDate keeps the element in DOM
-// while the closing animation plays.
-let isVisible = $state(false);
-let isClosing = $state(false);
-
-// Drag state (reactive — drives inline styles)
-let dragY = $state(0);
-let isDragging = $state(false);
-let panelHeight = $state(800); // measured on mount
-
-// Non-reactive drag tracking (no need for reactivity)
-let pointerStartY = 0;
-let lastPointerY = 0;
-let lastPointerTime = 0;
-let pointerVelocity = 0; // px/ms, positive = downward
-
-// Detect mobile vs desktop to pick the right animation
-let isMobile = $state(true);
-$effect(() => {
-  const mq = window.matchMedia('(min-width: 640px)');
-  isMobile = !mq.matches;
-  const handler = (e: MediaQueryListEvent) => { isMobile = !e.matches; };
-  mq.addEventListener('change', handler);
-  return () => mq.removeEventListener('change', handler);
-});
-
-// Mobile: slide up/down. Desktop: scale + fade (popup feel).
-const drawerStyle = $derived(
-  isMobile
-    ? `transform: translateY(${isDragging ? dragY : isVisible ? 0 : panelHeight}px); transition: transform ${isDragging ? 0 : TRANSITION_MS}ms cubic-bezier(0.32, 0.72, 0, 1);`
-    : `transform: scale(${isVisible ? 1 : 0.95}); opacity: ${isVisible ? 1 : 0}; transition: transform ${TRANSITION_MS}ms cubic-bezier(0.32, 0.72, 0, 1), opacity ${Math.round(TRANSITION_MS * 0.65)}ms;`
-);
-
-// Backdrop opacity: follows drag position in real time
-const backdropOpacity = $derived(
-  isVisible
-    ? Math.max(0, 1 - Math.max(0, dragY) / panelHeight)
-    : 0
-);
-
-// Track height whenever panel mounts or resizes
-$effect(() => {
-  if (popupPanelEl) panelHeight = popupPanelEl.offsetHeight;
-});
-
-// Focus management
-$effect(() => {
-  if (isVisible && popupPanelEl) popupPanelEl.focus();
-});
 $effect(() => {
   if (popupAddMode && addInputEl) addInputEl.focus();
 });
 
-// Register non-passive touchmove on the panel so we can preventDefault
-// (Svelte event attributes are passive by default and can't prevent scroll)
-$effect(() => {
-  const panel = popupPanelEl;
-  if (!panel) return;
-  panel.addEventListener('touchstart', handleTouchStart, { passive: true });
-  panel.addEventListener('touchmove', handleTouchMove, { passive: false });
-  panel.addEventListener('touchend', handleTouchEnd);
-  panel.addEventListener('touchcancel', handleTouchEnd);
-  return () => {
-    panel.removeEventListener('touchstart', handleTouchStart);
-    panel.removeEventListener('touchmove', handleTouchMove);
-    panel.removeEventListener('touchend', handleTouchEnd);
-    panel.removeEventListener('touchcancel', handleTouchEnd);
-  };
+// ── Drawer state ─────────────────────────────────────────────────────────────
+
+let selectedDate = $state<string | null>(null);
+let popupAddMode = $state(false);
+
+const selectedDateInfo = $derived(selectedDate ? parseDateStr(selectedDate) : null);
+const selectedDateEvents = $derived({
+  school: selectedDate ? (schoolEventsByDate[selectedDate] || []) : [],
+  custom: selectedDate ? (customEventsByDate[selectedDate] || []) : [],
 });
 
-function openDayPopup(yyyymmdd: string) {
-  if (isClosing) return;
+function openDayDrawer(yyyymmdd: string) {
   selectedDate = yyyymmdd;
-  dragY = 0;
   popupAddMode = false;
   newEventTitle = '';
   newEventColor = 'blue';
-  isVisible = false; // paint at off-screen position first…
-  // …then on the next two frames, slide in
-  requestAnimationFrame(() => requestAnimationFrame(() => {
-    if (popupPanelEl) panelHeight = popupPanelEl.offsetHeight;
-    isVisible = true;
-  }));
-}
-
-async function closeDayPopup() {
-  if (isSaving || isClosing) return;
-  isClosing = true;
-  isDragging = false; // re-enable transition
-  isVisible = false;  // CSS transition: translateY → panelHeight
-  await new Promise<void>(r => setTimeout(r, TRANSITION_MS + 30));
-  selectedDate = null;
-  popupAddMode = false;
-  newEventTitle = '';
-  dragY = 0;
-  isClosing = false;
 }
 
 function openAddForm(yyyymmdd: string) {
-  if (selectedDate === yyyymmdd && isVisible) {
-    popupAddMode = true; // popup already open for this date
-  } else {
-    openDayPopup(yyyymmdd);
-    popupAddMode = true;
-  }
+  selectedDate = yyyymmdd;
+  popupAddMode = true;
+  newEventTitle = '';
+  newEventColor = 'blue';
 }
 
-// Block background scroll while drawer is open
-$effect(() => {
-  if (selectedDate) {
-    document.body.style.overflow = 'hidden';
-    return () => { document.body.style.overflow = ''; };
-  }
-});
-
-// ── Touch drag handlers ──────────────────────────────────────────────────────
-
-function handleTouchStart(e: TouchEvent) {
-  if (isClosing || !isVisible) return;
-  // Only start drag when content scroll area is at the very top
-  if (contentScrollEl && contentScrollEl.scrollTop > 0) return;
-
-  if (popupPanelEl) panelHeight = popupPanelEl.offsetHeight;
-  const y = e.touches[0].clientY;
-  pointerStartY = y;
-  lastPointerY = y;
-  lastPointerTime = Date.now();
-  pointerVelocity = 0;
-  isDragging = true;
+function onDrawerClose() {
+  selectedDate = null;
+  popupAddMode = false;
+  newEventTitle = '';
 }
-
-function handleTouchMove(e: TouchEvent) {
-  if (!isDragging) return;
-  const y = e.touches[0].clientY;
-  const now = Date.now();
-  const dt = now - lastPointerTime;
-  if (dt > 0) pointerVelocity = (y - lastPointerY) / dt;
-  lastPointerY = y;
-  lastPointerTime = now;
-
-  const delta = y - pointerStartY;
-  if (delta > 0) {
-    // Dragging down — follow finger exactly and block scroll
-    dragY = delta;
-    e.preventDefault();
-  } else {
-    // Dragging up past top — rubber band resistance
-    dragY = delta * 0.2;
-  }
-}
-
-function handleTouchEnd() {
-  if (!isDragging) return;
-  const dismiss = dragY > panelHeight * 0.4 || pointerVelocity > 0.5;
-  if (dismiss) {
-    closeDayPopup(); // sets isVisible = false → CSS slides off-screen from current dragY
-  } else {
-    isDragging = false; // re-enable transition
-    dragY = 0;          // spring back
-  }
-  pointerVelocity = 0;
-}
-
-// ── Admin mutations ──────────────────────────────────────────────────────────
 
 async function handleAddEvent() {
   if (!newEventTitle.trim() || !selectedDate || isSaving) return;
@@ -351,14 +214,6 @@ async function handleDeleteCustomEvent(id: string) {
     alert('삭제 중 오류가 발생했습니다.');
   }
 }
-
-// ── Derived display data ─────────────────────────────────────────────────────
-
-const selectedDateInfo = $derived(selectedDate ? parseDateStr(selectedDate) : null);
-const selectedDateEvents = $derived({
-  school: selectedDate ? (schoolEventsByDate[selectedDate] || []) : [],
-  custom: selectedDate ? (customEventsByDate[selectedDate] || []) : [],
-});
 
 // ── Calendar scroll gradients ────────────────────────────────────────────────
 
@@ -388,13 +243,11 @@ const dayNames = ['일','월','화','수','목','금','토'];
 <svelte:head>
   <title>일정 - 1학년 3반</title>
   <meta name="description" content="학교 행사와 학사 일정을 한눈에 확인하세요." />
-
   <meta property="og:title" content="일정 - 1학년 3반" />
   <meta property="og:description" content="학교 행사와 학사 일정을 한눈에 확인하세요." />
   <meta property="og:url" content="https://timefor.school/calendar" />
   <meta property="og:type" content="website" />
   <meta property="og:site_name" content="TimeforSchool" />
-
   <meta name="twitter:card" content="summary_large_image" />
   <meta name="twitter:title" content="일정 - 1학년 3반" />
   <meta name="twitter:description" content="학교 행사와 학사 일정을 한눈에 확인하세요." />
@@ -437,7 +290,6 @@ const dayNames = ['일','월','화','수','목','금','토'];
 
   <!-- Calendar -->
   <div class="relative">
-    <!-- Scroll gradients -->
     <div
       class="absolute left-0 top-0 bottom-0 w-6 bg-gradient-to-r from-white dark:from-neutral-900 to-transparent z-10 pointer-events-none transition-opacity duration-200"
       style="opacity: {scrollLeft > 0 ? 1 : 0};"
@@ -447,11 +299,7 @@ const dayNames = ['일','월','화','수','목','금','토'];
       style="opacity: {scrollRight > 0 ? 1 : 0};"
     ></div>
 
-    <div
-      class="overflow-x-auto"
-      bind:this={scrollContainer}
-      onscroll={updateGradients}
-    >
+    <div class="overflow-x-auto" bind:this={scrollContainer} onscroll={updateGradients}>
       <div class="min-w-[40rem] border border-neutral-200 dark:border-neutral-700 rounded-lg overflow-hidden shadow-sm">
 
         <!-- Day name header -->
@@ -482,14 +330,13 @@ const dayNames = ['일','월','화','수','목','금','토'];
                   {cell.day !== null && isSat ? 'bg-blue-50/40 dark:bg-blue-950/20 hover:bg-blue-100/70 dark:hover:bg-blue-950/40' : ''}
                   {cell.day !== null && !isSun && !isSat ? 'bg-white dark:bg-neutral-900 hover:bg-neutral-50 dark:hover:bg-neutral-800/70' : ''}
                   {cell.day === null ? 'bg-neutral-50 dark:bg-neutral-800/50' : ''}"
-                onclick={() => cell.day !== null && openDayPopup(cell.yyyymmdd!)}
+                onclick={() => cell.day !== null && openDayDrawer(cell.yyyymmdd!)}
                 role={cell.day !== null ? 'button' : undefined}
                 tabindex={cell.day !== null ? 0 : undefined}
-                onkeydown={(e) => { if (cell.day !== null && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); openDayPopup(cell.yyyymmdd!); } }}
+                onkeydown={(e) => { if (cell.day !== null && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); openDayDrawer(cell.yyyymmdd!); } }}
                 aria-label={cell.day !== null ? `${displayYear}년 ${monthNames[displayMonth]} ${cell.day}일 일정 보기` : undefined}
               >
                 {#if cell.day !== null}
-                  <!-- Date number row -->
                   <div class="flex items-center justify-between mb-0.5">
                     <span
                       class="text-base leading-none w-7 h-7 sm:w-8 sm:h-8 flex items-center justify-center flex-shrink-0
@@ -502,7 +349,6 @@ const dayNames = ['일','월','화','수','목','금','토'];
                               : (isPast ? 'text-neutral-400 dark:text-neutral-600' : 'text-neutral-700 dark:text-neutral-300')}"
                     >{cell.day}</span>
 
-                    <!-- Admin: add event shortcut -->
                     {#if isAuthenticated}
                       <button
                         onclick={(e) => { e.stopPropagation(); openAddForm(cell.yyyymmdd!); }}
@@ -517,20 +363,12 @@ const dayNames = ['일','월','화','수','목','금','토'];
                     {/if}
                   </div>
 
-                  <!-- School events -->
                   {#each (schoolEventsByDate[cell.yyyymmdd!] || []) as event}
-                    <div
-                      class="text-xs rounded px-1 py-0.5 mb-0.5 truncate leading-tight {getSchoolEventClass(event.eventType)}"
-                      title={event.title}
-                    >{event.title}</div>
+                    <div class="text-xs rounded px-1 py-0.5 mb-0.5 truncate leading-tight {getSchoolEventClass(event.eventType)}" title={event.title}>{event.title}</div>
                   {/each}
 
-                  <!-- Custom events -->
                   {#each (customEventsByDate[cell.yyyymmdd!] || []) as event}
-                    <div
-                      class="text-xs rounded px-1 py-0.5 mb-0.5 truncate leading-tight {CUSTOM_COLOR_CLASSES[event.color] ?? CUSTOM_COLOR_CLASSES.blue}"
-                      title={event.title}
-                    >{event.title}</div>
+                    <div class="text-xs rounded px-1 py-0.5 mb-0.5 truncate leading-tight {CUSTOM_COLOR_CLASSES[event.color] ?? CUSTOM_COLOR_CLASSES.blue}" title={event.title}>{event.title}</div>
                   {/each}
                 {/if}
               </div>
@@ -544,15 +382,9 @@ const dayNames = ['일','월','화','수','목','금','토'];
 
   <!-- Legend -->
   <div class="mt-3 flex flex-wrap gap-x-3 gap-y-1 text-xs text-neutral-500 dark:text-neutral-400">
-    <span class="flex items-center gap-1">
-      <span class="inline-block w-2.5 h-2.5 rounded-sm bg-red-200 dark:bg-red-900/60"></span>공휴일
-    </span>
-    <span class="flex items-center gap-1">
-      <span class="inline-block w-2.5 h-2.5 rounded-sm bg-amber-200 dark:bg-amber-900/60"></span>휴업일
-    </span>
-    <span class="flex items-center gap-1">
-      <span class="inline-block w-2.5 h-2.5 rounded-sm bg-sky-200 dark:bg-sky-900/60"></span>학교 행사
-    </span>
+    <span class="flex items-center gap-1"><span class="inline-block w-2.5 h-2.5 rounded-sm bg-red-200 dark:bg-red-900/60"></span>공휴일</span>
+    <span class="flex items-center gap-1"><span class="inline-block w-2.5 h-2.5 rounded-sm bg-amber-200 dark:bg-amber-900/60"></span>휴업일</span>
+    <span class="flex items-center gap-1"><span class="inline-block w-2.5 h-2.5 rounded-sm bg-sky-200 dark:bg-sky-900/60"></span>학교 행사</span>
   </div>
 
   <div class="block sm:hidden mt-1 text-center text-xs text-neutral-500 select-none pointer-events-none">
@@ -560,191 +392,126 @@ const dayNames = ['일','월','화','수','목','금','토'];
   </div>
 </div>
 
-<!-- ── Day detail drawer ──────────────────────────────────────────────────── -->
-{#if selectedDate && selectedDateInfo}
-  <!-- Backdrop: opacity driven by drag position, pointer-events blocked during close -->
-  <div
-    class="fixed inset-0 bg-black/60 dark:bg-black/70 z-50 backdrop-blur-[2px]"
-    style="opacity: {backdropOpacity}; transition: opacity {isDragging ? 0 : TRANSITION_MS}ms;"
-    role="presentation"
-    onclick={closeDayPopup}
-  ></div>
-
-  <!-- Wrapper: positions drawer at bottom on mobile, centered on desktop -->
-  <div class="fixed inset-0 z-50 pointer-events-none flex flex-col justify-end sm:items-center sm:justify-center sm:p-4">
-    <div
-      bind:this={popupPanelEl}
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="day-popup-title"
-      tabindex="-1"
-      class="pointer-events-auto w-full sm:w-[26rem] sm:max-w-[90vw]
-             bg-white dark:bg-neutral-900
-             rounded-t-3xl sm:rounded-2xl
-             shadow-2xl
-             flex flex-col
-             max-h-[88svh] sm:max-h-[80svh]
-             sm:border sm:border-neutral-200 sm:dark:border-neutral-700
-             outline-none
-             will-change-transform"
-      style={drawerStyle}
-      onclick={(e) => e.stopPropagation()}
-      onkeydown={(e) => { if (e.key === 'Escape') closeDayPopup(); e.stopPropagation(); }}
-    >
-      <!-- Mobile drag handle -->
-      <div class="sm:hidden flex justify-center pt-3 pb-1 flex-shrink-0 touch-none select-none">
-        <div class="w-10 h-1 rounded-full bg-neutral-300 dark:bg-neutral-600"></div>
-      </div>
-
-      <!-- Header -->
-      <div class="px-5 pt-3 pb-4 sm:pt-5 flex items-start justify-between flex-shrink-0 border-b border-neutral-100 dark:border-neutral-800">
-        <div>
-          <p class="text-xs font-medium text-neutral-400 dark:text-neutral-500 mb-1 tracking-wide">
-            {selectedDateInfo.year}년
-          </p>
-          <div class="flex items-baseline gap-2 flex-wrap">
-            <h2
-              id="day-popup-title"
-              class="text-2xl font-bold leading-none text-neutral-900 dark:text-neutral-100"
-            >{monthNames[selectedDateInfo.month - 1]} {selectedDateInfo.day}일</h2>
-            <span class="text-base text-neutral-500 dark:text-neutral-400 leading-none">
-              {selectedDateInfo.weekday}요일
-            </span>
-            {#if selectedDateInfo.isToday}
-              <span class="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-neutral-800 dark:bg-neutral-200 text-white dark:text-neutral-900 leading-none">
-                오늘
-              </span>
-            {/if}
-          </div>
-        </div>
-        <button
-          onclick={closeDayPopup}
-          class="pressable flex-shrink-0 flex items-center justify-center w-8 h-8 rounded-full text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-200 hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors ml-2 mt-0.5"
-          aria-label="닫기"
-        >
-          <svg viewBox="0 0 20 20" fill="currentColor" class="w-5 h-5">
-            <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd"/>
-          </svg>
-        </button>
-      </div>
-
-      <!-- Events list (scrollable) -->
-      <div
-        bind:this={contentScrollEl}
-        class="flex-1 overflow-y-auto overscroll-contain px-5 py-4 min-h-0"
-      >
-        {#if selectedDateEvents.school.length === 0 && selectedDateEvents.custom.length === 0}
-          <div class="flex flex-col items-center justify-center py-10 text-center">
-            <div class="w-12 h-12 rounded-full bg-neutral-100 dark:bg-neutral-800 flex items-center justify-center mb-3">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="w-6 h-6 text-neutral-400 dark:text-neutral-500">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75m-18 0v-7.5A2.25 2.25 0 015.25 9h13.5A2.25 2.25 0 0121 11.25v7.5"/>
-              </svg>
-            </div>
-            <p class="text-sm font-medium text-neutral-500 dark:text-neutral-400">일정이 없습니다</p>
-            {#if isAuthenticated}
-              <p class="text-xs text-neutral-400 dark:text-neutral-500 mt-1">아래 버튼으로 일정을 추가해보세요</p>
-            {/if}
-          </div>
-        {:else}
-          <ul class="space-y-2.5">
-            {#each selectedDateEvents.school as event}
-              {@const style = getSchoolEventPopupStyle(event.eventType)}
-              <li class="flex rounded-xl overflow-hidden shadow-sm">
-                <div class="w-1.5 flex-shrink-0 {style.color}"></div>
-                <div class="flex-1 px-3 py-2.5 {style.bg}">
-                  <p class="text-xs font-semibold uppercase tracking-wide {style.labelColor} mb-0.5">{style.label}</p>
-                  <p class="text-sm font-medium text-neutral-800 dark:text-neutral-100 leading-snug">{event.title}</p>
-                </div>
-              </li>
-            {/each}
-
-            {#each selectedDateEvents.custom as event}
-              {@const style = CUSTOM_POPUP_STYLE[event.color] ?? CUSTOM_POPUP_STYLE.blue}
-              <li class="flex rounded-xl overflow-hidden shadow-sm">
-                <div class="w-1.5 flex-shrink-0 {style.color}"></div>
-                <div class="flex-1 flex items-center justify-between gap-2 px-3 py-2.5 {style.bg}">
-                  <div class="min-w-0">
-                    <p class="text-xs font-semibold uppercase tracking-wide {style.labelColor} mb-0.5">일정</p>
-                    <p class="text-sm font-medium text-neutral-800 dark:text-neutral-100 leading-snug">{event.title}</p>
-                  </div>
-                  {#if isAuthenticated}
-                    <button
-                      onclick={() => handleDeleteCustomEvent(event._id)}
-                      class="pressable flex-shrink-0 w-7 h-7 flex items-center justify-center rounded-full text-neutral-400 hover:text-red-500 dark:hover:text-red-400 hover:bg-white/60 dark:hover:bg-black/20 transition-colors"
-                      aria-label="삭제"
-                      title="삭제"
-                    >
-                      <svg viewBox="0 0 20 20" fill="currentColor" class="w-4 h-4">
-                        <path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clip-rule="evenodd"/>
-                      </svg>
-                    </button>
-                  {/if}
-                </div>
-              </li>
-            {/each}
-          </ul>
+<!-- Day detail drawer -->
+<Drawer
+  open={selectedDate !== null}
+  onclose={onDrawerClose}
+>
+  {#snippet header()}
+    {#if selectedDateInfo}
+      <p class="text-xs font-medium text-neutral-400 dark:text-neutral-500 mb-1 tracking-wide">
+        {selectedDateInfo.year}년
+      </p>
+      <div class="flex items-baseline gap-2 flex-wrap">
+        <h2 id="day-popup-title" class="text-2xl font-bold leading-none text-neutral-900 dark:text-neutral-100">
+          {monthNames[selectedDateInfo.month - 1]} {selectedDateInfo.day}일
+        </h2>
+        <span class="text-base text-neutral-500 dark:text-neutral-400 leading-none">{selectedDateInfo.weekday}요일</span>
+        {#if selectedDateInfo.isToday}
+          <span class="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-neutral-800 dark:bg-neutral-200 text-white dark:text-neutral-900 leading-none">오늘</span>
         {/if}
       </div>
+    {/if}
+  {/snippet}
 
-      <!-- Admin: add event footer -->
+  <!-- Events body -->
+  {#if selectedDateEvents.school.length === 0 && selectedDateEvents.custom.length === 0}
+    <div class="flex flex-col items-center justify-center py-10 text-center">
+      <div class="w-12 h-12 rounded-full bg-neutral-100 dark:bg-neutral-800 flex items-center justify-center mb-3">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="w-6 h-6 text-neutral-400 dark:text-neutral-500">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75m-18 0v-7.5A2.25 2.25 0 015.25 9h13.5A2.25 2.25 0 0121 11.25v7.5"/>
+        </svg>
+      </div>
+      <p class="text-sm font-medium text-neutral-500 dark:text-neutral-400">일정이 없습니다</p>
       {#if isAuthenticated}
-        <div class="flex-shrink-0 border-t border-neutral-100 dark:border-neutral-800 px-5 py-4">
-          {#if !popupAddMode}
-            <button
-              onclick={() => { popupAddMode = true; }}
-              class="pressable w-full flex items-center justify-center gap-2 py-2.5 rounded-xl bg-neutral-100 dark:bg-neutral-800 text-sm font-medium text-neutral-700 dark:text-neutral-300 hover:bg-neutral-200 dark:hover:bg-neutral-700 transition-colors"
-            >
-              <svg viewBox="0 0 20 20" fill="currentColor" class="w-4 h-4 flex-shrink-0">
-                <path fill-rule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clip-rule="evenodd"/>
-              </svg>
-              일정 추가
-            </button>
-          {:else}
-            <div>
-              <input
-                type="text"
-                bind:value={newEventTitle}
-                bind:this={addInputEl}
-                placeholder="일정 제목을 입력하세요"
-                class="w-full px-3.5 py-2.5 mb-3 border border-neutral-200 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-800 text-neutral-800 dark:text-neutral-200 text-sm rounded-xl focus:outline-none focus:ring-2 focus:ring-neutral-400 dark:focus:ring-neutral-500 focus:border-transparent transition-shadow placeholder:text-neutral-400"
-                onkeydown={(e) => {
-                  if (e.key === 'Enter') handleAddEvent();
-                  if (e.key === 'Escape') { popupAddMode = false; newEventTitle = ''; }
-                }}
-              />
-
-              <div class="flex items-center justify-between mb-3">
-                <div class="flex gap-2">
-                  {#each CUSTOM_COLORS as color}
-                    <button
-                      onclick={() => (newEventColor = color.id)}
-                      class="pressable w-7 h-7 rounded-full {color.bgClass} transition-[transform,box-shadow]
-                        {newEventColor === color.id ? 'ring-2 ring-offset-2 ring-neutral-500 dark:ring-neutral-400 scale-110' : 'opacity-70 hover:opacity-100 hover:scale-105'}"
-                      aria-label={color.id}
-                      aria-pressed={newEventColor === color.id}
-                    ></button>
-                  {/each}
-                </div>
-              </div>
-
-              <div class="flex gap-2">
-                <button
-                  onclick={handleAddEvent}
-                  disabled={isSaving || !newEventTitle.trim()}
-                  class="pressable flex-1 py-2.5 bg-neutral-800 dark:bg-neutral-100 text-white dark:text-neutral-900 text-sm font-semibold rounded-xl disabled:opacity-40 transition-opacity"
-                >{isSaving ? '저장 중…' : '저장'}</button>
-                <button
-                  onclick={() => { popupAddMode = false; newEventTitle = ''; }}
-                  class="pressable px-4 py-2.5 border border-neutral-200 dark:border-neutral-700 text-sm font-medium text-neutral-600 dark:text-neutral-400 rounded-xl hover:bg-neutral-50 dark:hover:bg-neutral-800 transition-colors"
-                >취소</button>
-              </div>
+        <p class="text-xs text-neutral-400 dark:text-neutral-500 mt-1">아래 버튼으로 일정을 추가해보세요</p>
+      {/if}
+    </div>
+  {:else}
+    <ul class="space-y-2.5">
+      {#each selectedDateEvents.school as event}
+        {@const style = getSchoolEventPopupStyle(event.eventType)}
+        <li class="flex rounded-xl overflow-hidden shadow-sm">
+          <div class="w-1.5 flex-shrink-0 {style.color}"></div>
+          <div class="flex-1 px-3 py-2.5 {style.bg}">
+            <p class="text-xs font-semibold uppercase tracking-wide {style.labelColor} mb-0.5">{style.label}</p>
+            <p class="text-sm font-medium text-neutral-800 dark:text-neutral-100 leading-snug">{event.title}</p>
+          </div>
+        </li>
+      {/each}
+      {#each selectedDateEvents.custom as event}
+        {@const style = CUSTOM_POPUP_STYLE[event.color] ?? CUSTOM_POPUP_STYLE.blue}
+        <li class="flex rounded-xl overflow-hidden shadow-sm">
+          <div class="w-1.5 flex-shrink-0 {style.color}"></div>
+          <div class="flex-1 flex items-center justify-between gap-2 px-3 py-2.5 {style.bg}">
+            <div class="min-w-0">
+              <p class="text-xs font-semibold uppercase tracking-wide {style.labelColor} mb-0.5">일정</p>
+              <p class="text-sm font-medium text-neutral-800 dark:text-neutral-100 leading-snug">{event.title}</p>
             </div>
-          {/if}
+            {#if isAuthenticated}
+              <button
+                onclick={() => handleDeleteCustomEvent(event._id)}
+                class="pressable flex-shrink-0 w-7 h-7 flex items-center justify-center rounded-full text-neutral-400 hover:text-red-500 dark:hover:text-red-400 hover:bg-white/60 dark:hover:bg-black/20 active:scale-90 transition-all duration-75"
+                aria-label="삭제" title="삭제"
+              >
+                <svg viewBox="0 0 20 20" fill="currentColor" class="w-4 h-4">
+                  <path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clip-rule="evenodd"/>
+                </svg>
+              </button>
+            {/if}
+          </div>
+        </li>
+      {/each}
+    </ul>
+  {/if}
+
+  {#snippet footer()}
+    {#if isAuthenticated}
+      {#if !popupAddMode}
+        <button
+          onclick={() => { popupAddMode = true; }}
+          class="pressable w-full flex items-center justify-center gap-2 py-2.5 rounded-xl bg-neutral-100 dark:bg-neutral-800 text-sm font-medium text-neutral-700 dark:text-neutral-300 hover:bg-neutral-200 dark:hover:bg-neutral-700 transition-colors"
+        >
+          <svg viewBox="0 0 20 20" fill="currentColor" class="w-4 h-4 flex-shrink-0">
+            <path fill-rule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clip-rule="evenodd"/>
+          </svg>
+          일정 추가
+        </button>
+      {:else}
+        <input
+          type="text"
+          bind:value={newEventTitle}
+          bind:this={addInputEl}
+          placeholder="일정 제목을 입력하세요"
+          class="w-full px-3.5 py-2.5 mb-3 border border-neutral-200 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-800 text-neutral-800 dark:text-neutral-200 text-sm rounded-xl focus:outline-none focus:ring-2 focus:ring-neutral-400 dark:focus:ring-neutral-500 focus:border-transparent transition-shadow placeholder:text-neutral-400"
+          onkeydown={(e) => {
+            if (e.key === 'Enter') handleAddEvent();
+            if (e.key === 'Escape') { popupAddMode = false; newEventTitle = ''; }
+          }}
+        />
+        <div class="flex gap-2 mb-3">
+          {#each CUSTOM_COLORS as color}
+            <button
+              onclick={() => (newEventColor = color.id)}
+              class="pressable w-7 h-7 rounded-full {color.bgClass} transition-[transform,box-shadow]
+                {newEventColor === color.id ? 'ring-2 ring-offset-2 ring-neutral-500 dark:ring-neutral-400 scale-110' : 'opacity-70 hover:opacity-100 hover:scale-105'}"
+              aria-label={color.id}
+              aria-pressed={newEventColor === color.id}
+            ></button>
+          {/each}
+        </div>
+        <div class="flex gap-2">
+          <button
+            onclick={handleAddEvent}
+            disabled={isSaving || !newEventTitle.trim()}
+            class="pressable flex-1 py-2.5 bg-neutral-800 dark:bg-neutral-100 text-white dark:text-neutral-900 text-sm font-semibold rounded-xl disabled:opacity-40 transition-opacity"
+          >{isSaving ? '저장 중…' : '저장'}</button>
+          <button
+            onclick={() => { popupAddMode = false; newEventTitle = ''; }}
+            class="pressable px-4 py-2.5 border border-neutral-200 dark:border-neutral-700 text-sm font-medium text-neutral-600 dark:text-neutral-400 rounded-xl hover:bg-neutral-50 dark:hover:bg-neutral-800 transition-colors"
+          >취소</button>
         </div>
       {/if}
-
-      <!-- iOS safe area bottom -->
-      <div class="sm:hidden flex-shrink-0" style="height: env(safe-area-inset-bottom, 0px)"></div>
-    </div>
-  </div>
-{/if}
+    {/if}
+  {/snippet}
+</Drawer>
