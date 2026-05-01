@@ -14,9 +14,10 @@ export const load = (async () => {
 	const kstNow = getNowInKst();
 	const year = kstNow.getFullYear();
 
-	const [noticesOverview, timetable, meals] = await Promise.all([
+	const [noticesOverview, timetable, nextWeekTimetable, meals] = await Promise.all([
 		client.query(api.notices.overview, {}),
 		client.query(api.timetable.getByWeek, { week: 0 }),
+		client.query(api.timetable.getByWeek, { week: 1 }),
 		client.query((api as any).meals.getTwoWeeks, {}),
 	]);
 
@@ -29,5 +30,5 @@ export const load = (async () => {
 		]);
 	} catch {}
 
-	return { noticesOverview, timetable, meals, schoolEvents, customEvents };
+	return { noticesOverview, timetable, nextWeekTimetable, meals, schoolEvents, customEvents };
 }) satisfies PageServerLoad;

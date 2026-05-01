@@ -11,7 +11,7 @@ const noticesQuery = useQuery(api.notices.overview, {}, () => ({
 	keepPreviousData: true,
 }));
 
-// ── Date helpers (client-side for accuracy) ───────────────────────────────────
+// ── Date helpers ──────────────────────────────────────────────────────────────
 function getNowInKst(): Date {
 	const now = new Date();
 	const utc = now.getTime() + now.getTimezoneOffset() * 60_000;
@@ -22,34 +22,72 @@ function yyyymmdd(d: Date): string {
 	return `${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, '0')}${String(d.getDate()).padStart(2, '0')}`;
 }
 
-const kst = getNowInKst();
-const todayYyyymmdd = yyyymmdd(kst);
-const jsDay = kst.getDay(); // 0=Sun … 6=Sat
-const todayDayIndex = jsDay >= 1 && jsDay <= 5 ? jsDay - 1 : -1;
-const isWeekend = todayDayIndex === -1;
+function getMondayTime(d: Date): number {
+	const copy = new Date(d);
+	const day = copy.getDay();
+	copy.setDate(copy.getDate() - (day === 0 ? 6 : day - 1));
+	copy.setHours(0, 0, 0, 0);
+	return copy.getTime();
+}
 
 const WEEKDAYS_KR = ['일', '월', '화', '수', '목', '금', '토'];
+const kst = getNowInKst();
+const todayYyyymmdd = yyyymmdd(kst);
 const todayMonth = kst.getMonth() + 1;
 const todayDate = kst.getDate();
-const todayWeekday = WEEKDAYS_KR[jsDay];
+const todayWeekday = WEEKDAYS_KR[kst.getDay()];
 
-// ── Derived from server data ──────────────────────────────────────────────────
-const todaySchedule = $derived(
-	(data.timetable?.timetable?.[todayDayIndex] ?? []) as Array<{
-		period: number;
-		subject: string;
-		teacher: string;
-		replaced: boolean;
-	}>
-);
+// ── School-day logic ──────────────────────────────────────────────────────────
+function isHoliday(dateStr: string): boolean {
+	return (data.schoolEvents ?? []).some((e: any) =>
+		e.date === dateStr &&
+		(e.eventType === '공휴일' || e.eventType === '휴업일' || e.eventType === '재량휴업일')
+	);
+}
 
-const todayDay = $derived(
-	(data.meals?.thisWeek?.days ?? []).find((d: any) => d.date === todayYyyymmdd) ?? null
-);
-const todayLunch = $derived(todayDay?.lunch ?? null);
-const todayDinner = $derived(todayDay?.dinner ?? null);
+function isSchoolDay(d: Date): boolean {
+	const day = d.getDay();
+	return day >= 1 && day <= 5 && !isHoliday(yyyymmdd(d));
+}
 
-// Upcoming events: today → +7 days, excluding 토요휴업일 clutter
+function findNextSchoolDay(): Date {
+	const d = new Date(kst);
+	for (let i = 0; i < 14; i++) {
+		d.setDate(d.getDate() + 1);
+		if (isSchoolDay(d)) return new Date(d);
+	}
+	return d;
+}
+
+// The day whose timetable + meal we display
+const displayDay = isSchoolDay(kst) ? kst : findNextSchoolDay();
+const displayDayStr = yyyymmdd(displayDay);
+const displayDayIndex = displayDay.getDay() - 1; // 0=Mon…4=Fri
+
+// Which week's timetable to use
+const displayIsNextWeek = getMondayTime(displayDay) > getMondayTime(kst);
+const displayTimetableData = displayIsNextWeek ? data.nextWeekTimetable : data.timetable;
+const displaySchedule = (displayTimetableData?.timetable?.[displayDayIndex] ?? []) as Array<{
+	period: number; subject: string; teacher: string; replaced: boolean;
+}>;
+
+// Which meal day to show
+const allMealDays = [...(data.meals?.thisWeek?.days ?? []), ...(data.meals?.nextWeek?.days ?? [])];
+const displayMealDay = allMealDays.find((d: any) => d.date === displayDayStr) ?? null;
+const displayLunch = displayMealDay?.lunch ?? null;
+const displayDinner = displayMealDay?.dinner ?? null;
+
+// Card title prefix: "" | "내일 " | "5월 3일 "
+const tomorrowStr = yyyymmdd(new Date(kst.getTime() + 24 * 60 * 60 * 1000));
+const cardDayLabel = (() => {
+	if (displayDayStr === todayYyyymmdd) return '';
+	if (displayDayStr === tomorrowStr) return '내일 ';
+	const m = Number(displayDayStr.slice(4, 6));
+	const d = Number(displayDayStr.slice(6, 8));
+	return `${m}월 ${d}일 `;
+})();
+
+// ── Events ────────────────────────────────────────────────────────────────────
 const in7days = yyyymmdd(new Date(kst.getTime() + 7 * 24 * 60 * 60 * 1000));
 const upcomingEvents = $derived(
 	[...(data.schoolEvents ?? []), ...(data.customEvents ?? [])]
@@ -61,18 +99,11 @@ const upcomingEvents = $derived(
 		.sort((a: any, b: any) => a.date.localeCompare(b.date))
 );
 
-// First 3 notice groups for the preview
-const noticePreview = $derived(
-	(noticesQuery.data?.currentGroups ?? []).slice(0, 3)
-);
+// ── Notices ───────────────────────────────────────────────────────────────────
+const noticePreview = $derived((noticesQuery.data?.currentGroups ?? []).slice(0, 3));
 const hasNotices = $derived(noticePreview.length > 0);
 
-function formatPeriodTime(periodNum: number): string {
-	const times: string[] = data.timetable?.day_time ?? [];
-	const label = times[periodNum - 1];
-	return label ? label.replace(/^.*\(([^)]+)\)$/, '$1') : '';
-}
-
+// ── Helpers ───────────────────────────────────────────────────────────────────
 function formatEventDate(dateStr: string): string {
 	const y = Number(dateStr.slice(0, 4));
 	const m = Number(dateStr.slice(4, 6));
@@ -81,12 +112,17 @@ function formatEventDate(dateStr: string): string {
 	return `${m}/${d}(${WEEKDAYS_KR[date.getDay()]})`;
 }
 
-function eventDotColor(event: any): string {
-	if (event.source === 'custom' && event.color) return event.color;
+function eventTypeLabel(event: any): string {
+	if (event.source === 'custom' || !event.eventType) return '';
+	return event.eventType;
+}
+
+function eventTypeCss(event: any): string {
 	switch (event.eventType) {
-		case '공휴일': return '#ef4444';
-		case '휴업일': return '#f59e0b';
-		default: return '#0ea5e9';
+		case '공휴일': return 'text-red-500 dark:text-red-400';
+		case '휴업일':
+		case '재량휴업일': return 'text-amber-500 dark:text-amber-400';
+		default: return 'text-sky-500 dark:text-sky-400';
 	}
 }
 
@@ -120,100 +156,87 @@ function isToday(dateStr: string): boolean {
 		</div>
 	</div>
 
-	<!-- ── Quick info: timetable + meal ───────────────────────────────────── -->
-	<!-- 1-col on mobile, 4-col on sm+ (timetable=1, meal=3) -->
-	<div class="grid grid-cols-1 sm:grid-cols-4 gap-3 mb-6">
+	<!-- ── Quick info: timetable (1) + meal (2) ───────────────────────────── -->
+	<div class="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-6">
 
-		<!-- Timetable: col-span-1 -->
-		<div class="sm:col-span-1">
+		<!-- Timetable -->
+		<div class="sm:col-span-1 flex flex-col">
 			<div class="flex items-center justify-between mb-2.5">
-				<h2 class="text-lg font-semibold text-neutral-600 dark:text-neutral-300">시간표</h2>
-				<a
-					href="/timetable"
-					class="text-sm text-neutral-400 dark:text-neutral-500 hover:text-neutral-600 dark:hover:text-neutral-300 transition-colors duration-100"
-					aria-label="전체 시간표 보기"
-				>모두 보기 →</a>
+				<h2 class="text-lg font-semibold text-neutral-600 dark:text-neutral-300">{cardDayLabel}시간표</h2>
+				<a href="/timetable" class="text-sm text-neutral-400 dark:text-neutral-500 hover:text-neutral-600 dark:hover:text-neutral-300 transition-colors duration-100">모두 보기 →</a>
 			</div>
-			<div class="bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl p-4">
-			{#if isWeekend || !data.timetable || todaySchedule.length === 0}
-				<div class="flex items-center justify-center py-8">
-					<p class="text-base text-neutral-800 dark:text-neutral-200 text-center">시간표 없음</p>
-				</div>
-			{:else}
-				<ol class="space-y-2.5">
-					{#each todaySchedule as slot}
-						<li class="flex items-start gap-2.5">
-							<span class="text-base tabular-nums text-neutral-400 dark:text-neutral-500 w-5 shrink-0 pt-0.5 leading-snug">{slot.period}</span>
-							<span class="text-lg font-semibold leading-snug block truncate min-w-0 {slot.replaced ? 'text-amber-500 dark:text-amber-400' : 'text-neutral-800 dark:text-neutral-200'}">{slot.subject}</span>
-						</li>
-					{/each}
-				</ol>
-			{/if}
+			<div class="flex-1 bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl p-4">
+				{#if displaySchedule.length === 0}
+					<div class="flex items-center justify-center h-full py-8">
+						<p class="text-base text-neutral-800 dark:text-neutral-200 text-center">시간표 없음</p>
+					</div>
+				{:else}
+					<ol class="space-y-2.5">
+						{#each displaySchedule as slot}
+							<li class="flex items-start gap-2.5">
+								<span class="text-base tabular-nums text-neutral-400 dark:text-neutral-500 w-5 shrink-0 pt-0.5 leading-snug">{slot.period}</span>
+								<span class="text-lg font-semibold leading-snug block truncate min-w-0 {slot.replaced ? 'text-amber-500 dark:text-amber-400' : 'text-neutral-800 dark:text-neutral-200'}">{slot.subject}</span>
+							</li>
+						{/each}
+					</ol>
+				{/if}
 			</div>
 		</div>
 
-		<!-- Meal: col-span-3 -->
-		<div class="sm:col-span-3">
+		<!-- Meal -->
+		<div class="sm:col-span-2 flex flex-col">
 			<div class="flex items-center justify-between mb-2.5">
-				<h2 class="text-lg font-semibold text-neutral-600 dark:text-neutral-300">급식</h2>
-				<a
-					href="/meals"
-					class="text-sm text-neutral-400 dark:text-neutral-500 hover:text-neutral-600 dark:hover:text-neutral-300 transition-colors duration-100"
-					aria-label="전체 급식 보기"
-				>모두 보기 →</a>
+				<h2 class="text-lg font-semibold text-neutral-600 dark:text-neutral-300">{cardDayLabel}급식</h2>
+				<a href="/meals" class="text-sm text-neutral-400 dark:text-neutral-500 hover:text-neutral-600 dark:hover:text-neutral-300 transition-colors duration-100">모두 보기 →</a>
 			</div>
-			<div class="bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl p-4">
-			<!-- Always show both columns, with empty state if no data -->
-			<div class="grid grid-cols-2 gap-4">
-				<!-- Lunch -->
-				<div>
-					<p class="text-base font-semibold text-neutral-400 dark:text-neutral-500 mb-2">중식</p>
-					{#if !data.meals || !todayLunch}
-						<p class="text-base text-neutral-800 dark:text-neutral-200">급식 정보가 없어요</p>
-					{:else}
-						<ul class="space-y-1.5">
-							{#each todayLunch.dishes as dish}
-								<li class="text-base text-neutral-700 dark:text-neutral-300 leading-snug">{dish}</li>
-							{/each}
-						</ul>
-						{#if todayLunch.calories}
-							<p class="mt-2 text-sm text-neutral-400 dark:text-neutral-500">{todayLunch.calories}</p>
+			<div class="flex-1 bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl p-4">
+				<div class="grid grid-cols-2 gap-4">
+					<!-- Lunch -->
+					<div>
+						<p class="text-base font-semibold text-neutral-400 dark:text-neutral-500 mb-2">중식</p>
+						{#if !displayLunch}
+							<p class="text-base text-neutral-800 dark:text-neutral-200">급식 정보가 없어요</p>
+						{:else}
+							<ul class="space-y-1.5">
+								{#each displayLunch.dishes as dish}
+									<li class="text-base text-neutral-700 dark:text-neutral-300 leading-snug">{dish}</li>
+								{/each}
+							</ul>
+							{#if displayLunch.calories}
+								<p class="mt-2 text-sm text-neutral-400 dark:text-neutral-500">{displayLunch.calories}</p>
+							{/if}
 						{/if}
-					{/if}
-				</div>
-				<!-- Dinner -->
-				<div>
-					<p class="text-base font-semibold text-neutral-400 dark:text-neutral-500 mb-2">석식</p>
-					{#if !data.meals || !todayDinner}
-						<p class="text-base text-neutral-800 dark:text-neutral-200">급식 정보가 없어요</p>
-					{:else}
-						<ul class="space-y-1.5">
-							{#each todayDinner.dishes as dish}
-								<li class="text-base text-neutral-700 dark:text-neutral-300 leading-snug">{dish}</li>
-							{/each}
-						</ul>
-						{#if todayDinner.calories}
-							<p class="mt-2 text-sm text-neutral-400 dark:text-neutral-500">{todayDinner.calories}</p>
+					</div>
+					<!-- Dinner -->
+					<div>
+						<p class="text-base font-semibold text-neutral-400 dark:text-neutral-500 mb-2">석식</p>
+						{#if !displayDinner}
+							<p class="text-base text-neutral-800 dark:text-neutral-200">급식 정보가 없어요</p>
+						{:else}
+							<ul class="space-y-1.5">
+								{#each displayDinner.dishes as dish}
+									<li class="text-base text-neutral-700 dark:text-neutral-300 leading-snug">{dish}</li>
+								{/each}
+							</ul>
+							{#if displayDinner.calories}
+								<p class="mt-2 text-sm text-neutral-400 dark:text-neutral-500">{displayDinner.calories}</p>
+							{/if}
 						{/if}
-					{/if}
+					</div>
 				</div>
-			</div>
 			</div>
 		</div>
 
 	</div>
 
-	<!-- ── Notices + Events side by side ────────────────────────────────── -->
+	<!-- ── Notices + Events ────────────────────────────────────────────────── -->
 	<div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
 
 		<!-- Notices -->
 		<div>
 			<div class="flex items-center justify-between mb-2.5">
 				<h2 class="text-lg font-semibold text-neutral-600 dark:text-neutral-300">공지</h2>
-				<a
-					href="/notices"
-					class="text-sm text-neutral-400 dark:text-neutral-500 hover:text-neutral-600 dark:hover:text-neutral-300 transition-colors duration-100"
-				>모두 보기 →</a>
+				<a href="/notices" class="text-sm text-neutral-400 dark:text-neutral-500 hover:text-neutral-600 dark:hover:text-neutral-300 transition-colors duration-100">모두 보기 →</a>
 			</div>
 
 			{#if noticesQuery.isLoading && !noticesQuery.data}
@@ -255,10 +278,7 @@ function isToday(dateStr: string): boolean {
 		<div>
 			<div class="flex items-center justify-between mb-2.5">
 				<h2 class="text-lg font-semibold text-neutral-600 dark:text-neutral-300">일정</h2>
-				<a
-					href="/calendar"
-					class="text-sm text-neutral-400 dark:text-neutral-500 hover:text-neutral-600 dark:hover:text-neutral-300 transition-colors duration-100"
-				>모두 보기 →</a>
+				<a href="/calendar" class="text-sm text-neutral-400 dark:text-neutral-500 hover:text-neutral-600 dark:hover:text-neutral-300 transition-colors duration-100">모두 보기 →</a>
 			</div>
 			{#if upcomingEvents.length === 0}
 				<div class="bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl px-4 py-6 text-center">
@@ -267,14 +287,12 @@ function isToday(dateStr: string): boolean {
 			{:else}
 				<div class="bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl overflow-hidden">
 					{#each upcomingEvents as event, i (event._id ?? i)}
-						<div class="flex items-center gap-3 px-4 py-3 {i > 0 ? 'border-t border-neutral-100 dark:border-neutral-700' : ''}">
-							<span
-								class="w-2 h-2 rounded-full shrink-0"
-								style="background-color: {eventDotColor(event)}"
-								aria-hidden="true"
-							></span>
+						<div class="flex items-center gap-2 px-4 py-3 {i > 0 ? 'border-t border-neutral-100 dark:border-neutral-700' : ''}">
 							<span class="text-base text-neutral-800 dark:text-neutral-200 font-medium flex-1 min-w-0 truncate">{event.title}</span>
-							<span class="text-base text-neutral-400 dark:text-neutral-500 w-16 shrink-0 text-right">
+							{#if eventTypeLabel(event)}
+								<span class="text-sm font-medium shrink-0 {eventTypeCss(event)}">{eventTypeLabel(event)}</span>
+							{/if}
+							<span class="text-sm text-neutral-400 dark:text-neutral-500 shrink-0 text-right w-16">
 								{isToday(event.date) ? '오늘' : formatEventDate(event.date)}
 							</span>
 						</div>
