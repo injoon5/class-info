@@ -300,7 +300,7 @@ const dayNames = ['일','월','화','수','목','금','토'];
     ></div>
 
     <div class="overflow-x-auto" bind:this={scrollContainer} onscroll={updateGradients}>
-      <div class="min-w-[40rem] border border-neutral-200 dark:border-neutral-700 rounded-lg overflow-hidden shadow-sm">
+      <div class="min-w-[40rem] border border-neutral-200 dark:border-neutral-700 rounded overflow-hidden shadow-sm">
 
         <!-- Day name header -->
         <div class="grid grid-cols-7 bg-neutral-100 dark:bg-neutral-800 border-b border-neutral-200 dark:border-neutral-700">
@@ -484,7 +484,7 @@ const dayNames = ['일','월','화','수','목','금','토'];
     <ul class="space-y-2.5">
       {#each selectedDateEvents.school as event}
         {@const style = getSchoolEventPopupStyle(event.eventType)}
-        <li class="flex rounded-lg overflow-hidden shadow-sm">
+        <li class="flex rounded overflow-hidden shadow-sm">
           <div class="w-1.5 flex-shrink-0 {style.color}"></div>
           <div class="flex-1 px-3 py-2.5 {style.bg}">
             <p class="text-xs font-semibold uppercase tracking-wide {style.labelColor} mb-0.5">{style.label}</p>
@@ -494,7 +494,7 @@ const dayNames = ['일','월','화','수','목','금','토'];
       {/each}
       {#each selectedDateEvents.custom as event}
         {@const style = CUSTOM_POPUP_STYLE[event.color] ?? CUSTOM_POPUP_STYLE.blue}
-        <li class="flex rounded-lg overflow-hidden shadow-sm">
+        <li class="flex rounded overflow-hidden shadow-sm">
           <div class="w-1.5 flex-shrink-0 {style.color}"></div>
           <div class="flex-1 flex items-center justify-between gap-2 px-3 py-2.5 {style.bg}">
             <div class="min-w-0">
