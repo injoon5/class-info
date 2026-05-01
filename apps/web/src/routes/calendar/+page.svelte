@@ -1,7 +1,40 @@
 <script lang="ts">
 import { onMount } from 'svelte';
 import { fade } from 'svelte/transition';
+import { cubicOut, cubicIn } from 'svelte/easing';
 import { useQuery, useConvexClient } from 'convex-svelte';
+
+function sheetIn(node: Element) {
+  const isMobile = window.innerWidth < 640;
+  if (isMobile) {
+    return {
+      duration: 340,
+      easing: cubicOut,
+      css: (t: number) => `transform: translateY(${(1 - t) * 100}%)`
+    };
+  }
+  return {
+    duration: 240,
+    easing: cubicOut,
+    css: (t: number) => `transform: translateY(${(1 - t) * 20}px) scale(${0.97 + t * 0.03}); opacity: ${t}`
+  };
+}
+
+function sheetOut(node: Element) {
+  const isMobile = window.innerWidth < 640;
+  if (isMobile) {
+    return {
+      duration: 220,
+      easing: cubicIn,
+      css: (t: number) => `transform: translateY(${(1 - t) * 100}%)`
+    };
+  }
+  return {
+    duration: 160,
+    easing: cubicIn,
+    css: (t: number) => `transform: translateY(${(1 - t) * 8}px) scale(${0.98 + t * 0.02}); opacity: ${t}`
+  };
+}
 import { api } from "@class-info/backend/convex/_generated/api";
 import type { PageData } from './$types.js';
 
@@ -451,9 +484,9 @@ const dayNames = ['일','월','화','수','목','금','토'];
              flex flex-col
              max-h-[88svh] sm:max-h-[80svh]
              sm:border sm:border-neutral-200 sm:dark:border-neutral-700
-             outline-none
-             translate-y-0"
-      style="animation: slideUp 0.32s cubic-bezier(0.32, 0.72, 0, 1) both;"
+             outline-none"
+      in:sheetIn
+      out:sheetOut
       onclick={(e) => e.stopPropagation()}
       onkeydown={(e) => { if (e.key === 'Escape') closeDayPopup(); e.stopPropagation(); }}
     >
@@ -612,28 +645,3 @@ const dayNames = ['일','월','화','수','목','금','토'];
   </div>
 {/if}
 
-<style>
-  @keyframes slideUp {
-    from {
-      transform: translateY(100%);
-      opacity: 0.5;
-    }
-    to {
-      transform: translateY(0);
-      opacity: 1;
-    }
-  }
-
-  @media (min-width: 640px) {
-    @keyframes slideUp {
-      from {
-        transform: translateY(20px) scale(0.97);
-        opacity: 0;
-      }
-      to {
-        transform: translateY(0) scale(1);
-        opacity: 1;
-      }
-    }
-  }
-</style>
