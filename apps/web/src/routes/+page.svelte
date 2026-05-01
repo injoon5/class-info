@@ -161,7 +161,7 @@ function isToday(dateStr: string): boolean {
 <div class="max-w-4xl mx-auto px-4 pt-3 pb-12 sm:pt-5">
 
 	<!-- ── Date banner ─────────────────────────────────────────────────────── -->
-	<div class="flex items-start justify-between gap-4 mb-5 sm:mb-6">
+	<div class="flex items-end justify-between gap-4 mb-5 sm:mb-6">
 		<div class="flex items-baseline gap-2.5">
 			<h1 class="text-3xl sm:text-4xl font-bold text-neutral-900 dark:text-neutral-100">
 				{todayMonth}월 {todayDate}일
