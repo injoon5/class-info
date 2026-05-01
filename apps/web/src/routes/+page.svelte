@@ -206,7 +206,7 @@ function isToday(dateStr: string): boolean {
 										<span class="text-xs font-medium text-neutral-400 dark:text-neutral-500 leading-none mt-0.5">{slot.teacher}</span>
 									{/if}
 								</div>
-								<span class="text-lg font-semibold leading-snug block truncate min-w-0 flex-1 {slot.replaced ? 'text-amber-500 dark:text-amber-400' : 'text-neutral-800 dark:text-neutral-200'}">{slot.subject}</span>
+								<span class="text-base font-semibold leading-snug block truncate min-w-0 flex-1 {slot.replaced ? 'text-amber-500 dark:text-amber-400' : 'text-neutral-800 dark:text-neutral-200'}">{slot.subject}</span>
 							</li>
 						{/each}
 					</ol>
