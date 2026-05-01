@@ -250,7 +250,7 @@ function onMouseUp() {
       <!-- Scrollable body -->
       <div
         bind:this={contentEl}
-        class="flex-1 overflow-y-auto overscroll-contain px-4 pt-4 pb-0 min-h-0"
+        class="flex-1 overflow-y-auto overscroll-contain px-4 py-4 min-h-0"
       >
         {@render children()}
       </div>
