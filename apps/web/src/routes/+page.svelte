@@ -79,12 +79,13 @@ const displayDinner = displayMealDay?.dinner ?? null;
 
 // Card title prefix: "" | "내일 " | "5월 3일 "
 const tomorrowStr = yyyymmdd(new Date(kst.getTime() + 24 * 60 * 60 * 1000));
+const displayWeekday = WEEKDAYS_KR[displayDay.getDay()];
 const cardDayLabel = (() => {
 	if (displayDayStr === todayYyyymmdd) return '';
-	if (displayDayStr === tomorrowStr) return '내일 ';
+	if (displayDayStr === tomorrowStr) return `내일 (${displayWeekday}) `;
 	const m = Number(displayDayStr.slice(4, 6));
 	const d = Number(displayDayStr.slice(6, 8));
-	return `${m}월 ${d}일 `;
+	return `${m}월 ${d}일 (${displayWeekday}) `;
 })();
 
 // ── Events ────────────────────────────────────────────────────────────────────
