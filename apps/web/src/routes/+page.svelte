@@ -169,12 +169,12 @@ function isToday(dateStr: string): boolean {
 			<span class="text-xl sm:text-2xl font-medium text-neutral-400 dark:text-neutral-500">{todayWeekday}요일</span>
 		</div>
 		{#if todayEvents.length > 0}
-			<div class="flex flex-col items-end gap-1 pt-1">
+			<div class="flex flex-col items-end gap-1">
 				{#each todayEvents as event}
-					<div class="flex items-center gap-2">
-						<span class="text-base font-medium text-neutral-800 dark:text-neutral-200">{event.title}</span>
+					<div class="flex items-baseline gap-2">
+						<span class="text-xl sm:text-2xl font-semibold text-neutral-800 dark:text-neutral-200">{event.title}</span>
 						{#if eventTypeLabel(event)}
-							<span class="text-sm font-semibold {eventTypeCss(event)}">{eventTypeLabel(event)}</span>
+							<span class="text-base font-semibold {eventTypeCss(event)}">{eventTypeLabel(event)}</span>
 						{/if}
 					</div>
 				{/each}
