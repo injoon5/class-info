@@ -95,7 +95,8 @@ const upcomingEvents = $derived(
 		.filter((e: any) =>
 			e.date >= todayYyyymmdd &&
 			e.date <= in7days &&
-			e.title !== '토요휴업일'
+			e.title !== '토요휴업일' &&
+			e.eventType !== '해당없음'
 		)
 		.sort((a: any, b: any) => a.date.localeCompare(b.date))
 );
