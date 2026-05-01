@@ -245,24 +245,31 @@ onMount(() => {
     </ul>
 
     {#if selectedMeal.meal.calories || selectedMeal.meal.nutrients}
-      <div class="mt-4 pt-4 border-t border-neutral-100 dark:border-neutral-800 space-y-2">
+      {@const nutrientRows = selectedMeal.meal.nutrients
+        ? selectedMeal.meal.nutrients.split(/<br\s*\/?>/i).map(s => s.trim()).filter(Boolean).map(s => {
+            const idx = s.indexOf(' : ');
+            return idx !== -1 ? [s.slice(0, idx).trim(), s.slice(idx + 3).trim()] : [s, ''];
+          })
+        : []}
+      <div class="mt-4 pt-4 border-t border-neutral-100 dark:border-neutral-800">
         {#if selectedMeal.meal.calories}
-          <div class="flex items-center gap-2">
-            <span class="text-xs font-semibold text-neutral-400 dark:text-neutral-500 uppercase tracking-wide w-12">열량</span>
+          <div class="flex items-center gap-2 mb-3">
+            <span class="text-xs font-semibold text-neutral-400 dark:text-neutral-500 uppercase tracking-wide">열량</span>
             <span class="text-sm text-neutral-700 dark:text-neutral-300">{selectedMeal.meal.calories}</span>
           </div>
         {/if}
-        {#if selectedMeal.meal.nutrients}
-          <div class="flex items-start gap-2">
-            <span class="text-xs font-semibold text-neutral-400 dark:text-neutral-500 uppercase tracking-wide w-12 pt-0.5">영양</span>
-            <span class="text-sm text-neutral-700 dark:text-neutral-300 leading-relaxed">{selectedMeal.meal.nutrients}</span>
+        {#if nutrientRows.length > 0}
+          <p class="text-xs font-semibold text-neutral-400 dark:text-neutral-500 uppercase tracking-wide mb-2">영양</p>
+          <div class="grid grid-cols-2 gap-x-4 gap-y-1.5">
+            {#each nutrientRows as [name, value]}
+              <div class="flex items-baseline justify-between gap-1 border-b border-neutral-100 dark:border-neutral-800 pb-1.5">
+                <span class="text-xs text-neutral-500 dark:text-neutral-400 truncate">{name}</span>
+                <span class="text-xs font-medium text-neutral-700 dark:text-neutral-300 tabular-nums flex-shrink-0">{value}</span>
+              </div>
+            {/each}
           </div>
         {/if}
       </div>
-    {/if}
-
-    {#if selectedMeal.meal.originInfo}
-      <p class="mt-4 text-xs text-neutral-400 dark:text-neutral-500 leading-relaxed">{selectedMeal.meal.originInfo}</p>
     {/if}
   {/if}
 </Drawer>
