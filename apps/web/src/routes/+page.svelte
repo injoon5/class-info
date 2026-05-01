@@ -183,10 +183,10 @@ function isToday(dateStr: string): boolean {
 	</div>
 
 	<!-- ── Quick info: timetable (1) + meal (2) ───────────────────────────── -->
-	<div class="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-6">
+	<div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
 
 		<!-- Timetable -->
-		<div class="sm:col-span-1">
+		<div class="sm:col-span-1 mb-6">
 			<div class="flex items-center justify-between mb-2.5">
 				<h2 class="text-lg font-semibold text-neutral-600 dark:text-neutral-300">{cardDayLabel}시간표</h2>
 				<a href="/timetable" class="text-sm text-neutral-400 dark:text-neutral-500 hover:text-neutral-600 dark:hover:text-neutral-300 transition-colors duration-100">모두 보기 →</a>
@@ -199,14 +199,14 @@ function isToday(dateStr: string): boolean {
 				{:else}
 					<ol class="space-y-2.5">
 						{#each displaySchedule as slot}
-							<li class="flex items-start gap-2.5">
-								<span class="text-sm tabular-nums font-normal text-neutral-400 dark:text-neutral-500 w-5 shrink-0 pt-1 leading-snug">{slot.period}</span>
-								<div class="min-w-0 flex-1">
-									<span class="text-lg font-semibold leading-snug block truncate {slot.replaced ? 'text-amber-500 dark:text-amber-400' : 'text-neutral-800 dark:text-neutral-200'}">{slot.subject}</span>
+							<li class="flex items-center gap-2.5">
+								<div class="flex flex-col items-center shrink-0 w-7">
+									<span class="text-sm tabular-nums font-normal text-neutral-400 dark:text-neutral-500 leading-none">{slot.period}</span>
 									{#if slot.teacher}
-										<span class="text-sm text-neutral-400 dark:text-neutral-500 leading-snug">{slot.teacher}</span>
+										<span class="text-xs font-medium text-neutral-400 dark:text-neutral-500 leading-none mt-0.5">{slot.teacher}</span>
 									{/if}
 								</div>
+								<span class="text-lg font-semibold leading-snug block truncate min-w-0 flex-1 {slot.replaced ? 'text-amber-500 dark:text-amber-400' : 'text-neutral-800 dark:text-neutral-200'}">{slot.subject}</span>
 							</li>
 						{/each}
 					</ol>
@@ -215,7 +215,7 @@ function isToday(dateStr: string): boolean {
 		</div>
 
 		<!-- Meal -->
-		<div class="sm:col-span-2">
+		<div class="sm:col-span-2 mb-6">
 			<div class="flex items-center justify-between mb-2.5">
 				<h2 class="text-lg font-semibold text-neutral-600 dark:text-neutral-300">{cardDayLabel}급식</h2>
 				<a href="/meals" class="text-sm text-neutral-400 dark:text-neutral-500 hover:text-neutral-600 dark:hover:text-neutral-300 transition-colors duration-100">모두 보기 →</a>
@@ -264,7 +264,7 @@ function isToday(dateStr: string): boolean {
 	<div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
 
 		<!-- Notices -->
-		<div>
+		<div class="mb-6">
 			<div class="flex items-center justify-between mb-2.5">
 				<h2 class="text-lg font-semibold text-neutral-600 dark:text-neutral-300">공지</h2>
 				<a href="/notices" class="text-sm text-neutral-400 dark:text-neutral-500 hover:text-neutral-600 dark:hover:text-neutral-300 transition-colors duration-100">모두 보기 →</a>
@@ -306,7 +306,7 @@ function isToday(dateStr: string): boolean {
 		</div>
 
 		<!-- Events -->
-		<div>
+		<div class="mb-6">
 			<div class="flex items-center justify-between mb-2.5">
 				<h2 class="text-lg font-semibold text-neutral-600 dark:text-neutral-300">일정</h2>
 				<a href="/calendar" class="text-sm text-neutral-400 dark:text-neutral-500 hover:text-neutral-600 dark:hover:text-neutral-300 transition-colors duration-100">모두 보기 →</a>
