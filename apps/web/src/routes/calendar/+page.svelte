@@ -321,20 +321,24 @@ const dayNames = ['일','월','화','수','목','금','토'];
               {@const isPast = cell.yyyymmdd !== null && cell.yyyymmdd < todayStr}
               {@const isSun = di === 0}
               {@const isSat = di === 6}
+              {@const hasEvents = cell.day !== null && ((schoolEventsByDate[cell.yyyymmdd!] || []).length > 0 || (customEventsByDate[cell.yyyymmdd!] || []).length > 0)}
               <!-- svelte-ignore a11y_no_noninteractive_tabindex -->
               <div
                 class="min-h-[5rem] sm:min-h-[7rem] p-1 sm:p-1.5 relative group
-                  {cell.day !== null ? 'cursor-pointer transition-colors duration-100' : ''}
+                  {hasEvents ? 'cursor-pointer transition-colors duration-100' : ''}
                   {di < 6 ? 'border-r border-neutral-200 dark:border-neutral-700' : ''}
-                  {cell.day !== null && isSun ? 'bg-red-50/40 dark:bg-red-950/20 hover:bg-red-100/70 dark:hover:bg-red-950/40' : ''}
-                  {cell.day !== null && isSat ? 'bg-blue-50/40 dark:bg-blue-950/20 hover:bg-blue-100/70 dark:hover:bg-blue-950/40' : ''}
-                  {cell.day !== null && !isSun && !isSat ? 'bg-white dark:bg-neutral-900 hover:bg-neutral-50 dark:hover:bg-neutral-800/70' : ''}
+                  {cell.day !== null && isSun ? 'bg-red-50/40 dark:bg-red-950/20' : ''}
+                  {hasEvents && isSun ? 'hover:bg-red-100/70 dark:hover:bg-red-950/40' : ''}
+                  {cell.day !== null && isSat ? 'bg-blue-50/40 dark:bg-blue-950/20' : ''}
+                  {hasEvents && isSat ? 'hover:bg-blue-100/70 dark:hover:bg-blue-950/40' : ''}
+                  {cell.day !== null && !isSun && !isSat ? 'bg-white dark:bg-neutral-900' : ''}
+                  {hasEvents && !isSun && !isSat ? 'hover:bg-neutral-50 dark:hover:bg-neutral-800/70' : ''}
                   {cell.day === null ? 'bg-neutral-50 dark:bg-neutral-800/50' : ''}"
-                onclick={() => cell.day !== null && openDayDrawer(cell.yyyymmdd!)}
-                role={cell.day !== null ? 'button' : undefined}
-                tabindex={cell.day !== null ? 0 : undefined}
-                onkeydown={(e) => { if (cell.day !== null && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); openDayDrawer(cell.yyyymmdd!); } }}
-                aria-label={cell.day !== null ? `${displayYear}년 ${monthNames[displayMonth]} ${cell.day}일 일정 보기` : undefined}
+                onclick={() => hasEvents && openDayDrawer(cell.yyyymmdd!)}
+                role={hasEvents ? 'button' : undefined}
+                tabindex={hasEvents ? 0 : undefined}
+                onkeydown={(e) => { if (hasEvents && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); openDayDrawer(cell.yyyymmdd!); } }}
+                aria-label={hasEvents ? `${displayYear}년 ${monthNames[displayMonth]} ${cell.day}일 일정 보기` : undefined}
               >
                 {#if cell.day !== null}
                   <div class="flex items-center justify-between mb-0.5">

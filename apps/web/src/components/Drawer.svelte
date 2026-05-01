@@ -41,18 +41,16 @@ $effect(() => {
   if (panelEl) panelHeight = panelEl.offsetHeight;
 });
 
-// Backdrop opacity: synced to drag (mobile only; desktop is pure opacity)
+// Backdrop opacity: dims as panel is dragged down
 const backdropOpacity = $derived(
-  isVisible
-    ? (isMobile ? Math.max(0, 1 - Math.max(0, dragY) / panelHeight) : 1)
-    : 0
+  isVisible ? Math.max(0, 1 - Math.max(0, dragY) / panelHeight) : 0
 );
 
-// Panel style: slide on mobile, scale+fade on desktop
+// Panel style: slide on mobile, scale+fade on desktop (both support translateY drag)
 const panelStyle = $derived(
   isMobile
     ? `transform: translateY(${isDragging ? dragY : isVisible ? 0 : panelHeight}px); transition: transform ${isDragging ? 0 : TRANSITION_MS}ms cubic-bezier(0.32, 0.72, 0, 1);`
-    : `transform: scale(${isVisible ? 1 : 0.95}); opacity: ${isVisible ? 1 : 0}; transition: transform ${TRANSITION_MS}ms cubic-bezier(0.32, 0.72, 0, 1), opacity ${Math.round(TRANSITION_MS * 0.65)}ms;`
+    : `transform: translateY(${isDragging ? dragY : 0}px) scale(${isVisible ? 1 : 0.95}); opacity: ${isVisible ? 1 : 0}; transition: transform ${isDragging ? 0 : TRANSITION_MS}ms cubic-bezier(0.32, 0.72, 0, 1), opacity ${isDragging ? 0 : Math.round(TRANSITION_MS * 0.65)}ms;`
 );
 
 // ── Open / close ─────────────────────────────────────────────────────────────
@@ -93,12 +91,48 @@ $effect(() => {
   if (isVisible && panelEl) panelEl.focus();
 });
 
-// ── Touch drag (non-passive so we can preventDefault) ───────────────────────
+// ── Shared drag state ────────────────────────────────────────────────────────
 
 let pointerStartY = 0;
 let lastPointerY = 0;
 let lastPointerTime = 0;
 let pointerVelocity = 0;
+
+function startDrag(y: number) {
+  if (isClosing || !isVisible) return false;
+  if (contentEl && contentEl.scrollTop > 0) return false;
+  if (panelEl) panelHeight = panelEl.offsetHeight;
+  pointerStartY = y;
+  lastPointerY = y;
+  lastPointerTime = Date.now();
+  pointerVelocity = 0;
+  isDragging = true;
+  return true;
+}
+
+function moveDrag(y: number) {
+  if (!isDragging) return;
+  const now = Date.now();
+  const dt = now - lastPointerTime;
+  if (dt > 0) pointerVelocity = (y - lastPointerY) / dt;
+  lastPointerY = y;
+  lastPointerTime = now;
+  dragY = Math.max(0, y - pointerStartY);
+}
+
+function endDrag() {
+  if (!isDragging) return;
+  const dismiss = dragY > panelHeight * 0.4 || pointerVelocity > 0.5;
+  if (dismiss) {
+    close();
+  } else {
+    isDragging = false;
+    dragY = 0;
+  }
+  pointerVelocity = 0;
+}
+
+// ── Touch drag (non-passive so we can preventDefault) ───────────────────────
 
 $effect(() => {
   const panel = panelEl;
@@ -116,41 +150,52 @@ $effect(() => {
 });
 
 function onTouchStart(e: TouchEvent) {
-  if (isClosing || !isVisible) return;
-  if (contentEl && contentEl.scrollTop > 0) return;
-  if (panelEl) panelHeight = panelEl.offsetHeight;
-  const y = e.touches[0].clientY;
-  pointerStartY = y;
-  lastPointerY = y;
-  lastPointerTime = Date.now();
-  pointerVelocity = 0;
-  isDragging = true;
+  startDrag(e.touches[0].clientY);
 }
 
 function onTouchMove(e: TouchEvent) {
-  if (!isDragging) return;
-  const y = e.touches[0].clientY;
-  const now = Date.now();
-  const dt = now - lastPointerTime;
-  if (dt > 0) pointerVelocity = (y - lastPointerY) / dt;
-  lastPointerY = y;
-  lastPointerTime = now;
-  const delta = y - pointerStartY;
-  // Clamp to >= 0: no upward movement past resting position
-  dragY = Math.max(0, delta);
+  moveDrag(e.touches[0].clientY);
   if (dragY > 0) e.preventDefault();
 }
 
 function onTouchEnd() {
+  endDrag();
+}
+
+// ── Mouse drag ───────────────────────────────────────────────────────────────
+
+$effect(() => {
+  const panel = panelEl;
+  if (!panel) return;
+  panel.addEventListener('mousedown', onMouseDown);
+  return () => panel.removeEventListener('mousedown', onMouseDown);
+});
+
+$effect(() => {
   if (!isDragging) return;
-  const dismiss = dragY > panelHeight * 0.4 || pointerVelocity > 0.5;
-  if (dismiss) {
-    close();
-  } else {
-    isDragging = false;
-    dragY = 0;
-  }
-  pointerVelocity = 0;
+  document.addEventListener('mousemove', onMouseMove);
+  document.addEventListener('mouseup', onMouseUp);
+  document.body.style.cursor = 'grabbing';
+  document.body.style.userSelect = 'none';
+  return () => {
+    document.removeEventListener('mousemove', onMouseMove);
+    document.removeEventListener('mouseup', onMouseUp);
+    document.body.style.cursor = '';
+    document.body.style.userSelect = '';
+  };
+});
+
+function onMouseDown(e: MouseEvent) {
+  if (e.button !== 0) return;
+  if (startDrag(e.clientY)) e.preventDefault();
+}
+
+function onMouseMove(e: MouseEvent) {
+  moveDrag(e.clientY);
+}
+
+function onMouseUp() {
+  endDrag();
 }
 </script>
 
@@ -182,7 +227,7 @@ function onTouchEnd() {
       onkeydown={(e) => { if (e.key === 'Escape') close(); e.stopPropagation(); }}
     >
       <!-- Drag handle (mobile only) -->
-      <div class="sm:hidden flex justify-center pt-3 pb-1 flex-shrink-0 touch-none select-none">
+      <div class="sm:hidden flex justify-center pt-3 pb-1 flex-shrink-0 touch-none select-none cursor-grab active:cursor-grabbing">
         <div class="w-10 h-1 rounded-full bg-neutral-300 dark:bg-neutral-600"></div>
       </div>
 
