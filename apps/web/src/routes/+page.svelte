@@ -161,14 +161,14 @@ function isToday(dateStr: string): boolean {
 	<div class="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-6">
 
 		<!-- Timetable -->
-		<div class="sm:col-span-1 flex flex-col">
+		<div class="sm:col-span-1">
 			<div class="flex items-center justify-between mb-2.5">
 				<h2 class="text-lg font-semibold text-neutral-600 dark:text-neutral-300">{cardDayLabel}시간표</h2>
 				<a href="/timetable" class="text-sm text-neutral-400 dark:text-neutral-500 hover:text-neutral-600 dark:hover:text-neutral-300 transition-colors duration-100">모두 보기 →</a>
 			</div>
-			<div class="flex-1 bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl p-4">
+			<div class="bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl p-4">
 				{#if displaySchedule.length === 0}
-					<div class="flex items-center justify-center h-full py-8">
+					<div class="flex items-center justify-center py-8">
 						<p class="text-base text-neutral-800 dark:text-neutral-200 text-center">시간표 없음</p>
 					</div>
 				{:else}
@@ -185,12 +185,12 @@ function isToday(dateStr: string): boolean {
 		</div>
 
 		<!-- Meal -->
-		<div class="sm:col-span-2 flex flex-col">
+		<div class="sm:col-span-2">
 			<div class="flex items-center justify-between mb-2.5">
 				<h2 class="text-lg font-semibold text-neutral-600 dark:text-neutral-300">{cardDayLabel}급식</h2>
 				<a href="/meals" class="text-sm text-neutral-400 dark:text-neutral-500 hover:text-neutral-600 dark:hover:text-neutral-300 transition-colors duration-100">모두 보기 →</a>
 			</div>
-			<div class="flex-1 bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl p-4">
+			<div class="bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl p-4">
 				<div class="grid grid-cols-2 gap-4">
 					<!-- Lunch -->
 					<div>
