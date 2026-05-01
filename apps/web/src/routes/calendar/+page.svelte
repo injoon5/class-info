@@ -1,40 +1,6 @@
 <script lang="ts">
 import { onMount } from 'svelte';
-import { fade } from 'svelte/transition';
-import { cubicOut, cubicIn } from 'svelte/easing';
 import { useQuery, useConvexClient } from 'convex-svelte';
-
-function sheetIn(node: Element) {
-  const isMobile = window.innerWidth < 640;
-  if (isMobile) {
-    return {
-      duration: 340,
-      easing: cubicOut,
-      css: (t: number) => `transform: translateY(${(1 - t) * 100}%)`
-    };
-  }
-  return {
-    duration: 240,
-    easing: cubicOut,
-    css: (t: number) => `transform: translateY(${(1 - t) * 20}px) scale(${0.97 + t * 0.03}); opacity: ${t}`
-  };
-}
-
-function sheetOut(node: Element) {
-  const isMobile = window.innerWidth < 640;
-  if (isMobile) {
-    return {
-      duration: 220,
-      easing: cubicIn,
-      css: (t: number) => `transform: translateY(${(1 - t) * 100}%)`
-    };
-  }
-  return {
-    duration: 160,
-    easing: cubicIn,
-    css: (t: number) => `transform: translateY(${(1 - t) * 8}px) scale(${0.98 + t * 0.02}); opacity: ${t}`
-  };
-}
 import { api } from "@class-info/backend/convex/_generated/api";
 import type { PageData } from './$types.js';
 
@@ -185,37 +151,161 @@ let newEventTitle = $state('');
 let newEventColor = $state('blue');
 let isSaving = $state(false);
 
-// Popup state
+// ── Drawer state ────────────────────────────────────────────────────────────
+const TRANSITION_MS = 340;
+
 let selectedDate = $state<string | null>(null);
 let popupAddMode = $state(false);
 let popupPanelEl = $state<HTMLElement | undefined>();
+let contentScrollEl = $state<HTMLElement | undefined>();
+let addInputEl = $state<HTMLInputElement | undefined>();
 
-const selectedDateInfo = $derived(selectedDate ? parseDateStr(selectedDate) : null);
-const selectedDateEvents = $derived({
-  school: selectedDate ? (schoolEventsByDate[selectedDate] || []) : [],
-  custom: selectedDate ? (customEventsByDate[selectedDate] || []) : [],
+// isVisible drives the CSS transition. selectedDate keeps the element in DOM
+// while the closing animation plays.
+let isVisible = $state(false);
+let isClosing = $state(false);
+
+// Drag state (reactive — drives inline styles)
+let dragY = $state(0);
+let isDragging = $state(false);
+let panelHeight = $state(800); // measured on mount
+
+// Non-reactive drag tracking (no need for reactivity)
+let pointerStartY = 0;
+let lastPointerY = 0;
+let lastPointerTime = 0;
+let pointerVelocity = 0; // px/ms, positive = downward
+
+// translateY value used in the inline style
+const drawerTranslateY = $derived(
+  isDragging
+    ? dragY
+    : isVisible ? 0 : panelHeight
+);
+
+// Backdrop opacity: follows drag position in real time
+const backdropOpacity = $derived(
+  isVisible
+    ? Math.max(0, 1 - Math.max(0, dragY) / panelHeight)
+    : 0
+);
+
+// Track height whenever panel mounts or resizes
+$effect(() => {
+  if (popupPanelEl) panelHeight = popupPanelEl.offsetHeight;
+});
+
+// Focus management
+$effect(() => {
+  if (isVisible && popupPanelEl) popupPanelEl.focus();
+});
+$effect(() => {
+  if (popupAddMode && addInputEl) addInputEl.focus();
+});
+
+// Register non-passive touchmove on the panel so we can preventDefault
+// (Svelte event attributes are passive by default and can't prevent scroll)
+$effect(() => {
+  const panel = popupPanelEl;
+  if (!panel) return;
+  panel.addEventListener('touchstart', handleTouchStart, { passive: true });
+  panel.addEventListener('touchmove', handleTouchMove, { passive: false });
+  panel.addEventListener('touchend', handleTouchEnd);
+  panel.addEventListener('touchcancel', handleTouchEnd);
+  return () => {
+    panel.removeEventListener('touchstart', handleTouchStart);
+    panel.removeEventListener('touchmove', handleTouchMove);
+    panel.removeEventListener('touchend', handleTouchEnd);
+    panel.removeEventListener('touchcancel', handleTouchEnd);
+  };
 });
 
 function openDayPopup(yyyymmdd: string) {
+  if (isClosing) return;
   selectedDate = yyyymmdd;
+  dragY = 0;
   popupAddMode = false;
   newEventTitle = '';
   newEventColor = 'blue';
+  isVisible = false; // paint at off-screen position first…
+  // …then on the next two frames, slide in
+  requestAnimationFrame(() => requestAnimationFrame(() => {
+    if (popupPanelEl) panelHeight = popupPanelEl.offsetHeight;
+    isVisible = true;
+  }));
 }
 
-function closeDayPopup() {
-  if (isSaving) return;
+async function closeDayPopup() {
+  if (isSaving || isClosing) return;
+  isClosing = true;
+  isDragging = false; // re-enable transition
+  isVisible = false;  // CSS transition: translateY → panelHeight
+  await new Promise<void>(r => setTimeout(r, TRANSITION_MS + 30));
   selectedDate = null;
   popupAddMode = false;
   newEventTitle = '';
+  dragY = 0;
+  isClosing = false;
 }
 
 function openAddForm(yyyymmdd: string) {
-  selectedDate = yyyymmdd;
-  popupAddMode = true;
-  newEventTitle = '';
-  newEventColor = 'blue';
+  if (selectedDate === yyyymmdd && isVisible) {
+    popupAddMode = true; // popup already open for this date
+  } else {
+    openDayPopup(yyyymmdd);
+    popupAddMode = true;
+  }
 }
+
+// ── Touch drag handlers ──────────────────────────────────────────────────────
+
+function handleTouchStart(e: TouchEvent) {
+  if (isClosing || !isVisible) return;
+  // Only start drag when content scroll area is at the very top
+  if (contentScrollEl && contentScrollEl.scrollTop > 0) return;
+
+  if (popupPanelEl) panelHeight = popupPanelEl.offsetHeight;
+  const y = e.touches[0].clientY;
+  pointerStartY = y;
+  lastPointerY = y;
+  lastPointerTime = Date.now();
+  pointerVelocity = 0;
+  isDragging = true;
+}
+
+function handleTouchMove(e: TouchEvent) {
+  if (!isDragging) return;
+  const y = e.touches[0].clientY;
+  const now = Date.now();
+  const dt = now - lastPointerTime;
+  if (dt > 0) pointerVelocity = (y - lastPointerY) / dt;
+  lastPointerY = y;
+  lastPointerTime = now;
+
+  const delta = y - pointerStartY;
+  if (delta > 0) {
+    // Dragging down — follow finger exactly and block scroll
+    dragY = delta;
+    e.preventDefault();
+  } else {
+    // Dragging up past top — rubber band resistance
+    dragY = delta * 0.2;
+  }
+}
+
+function handleTouchEnd() {
+  if (!isDragging) return;
+  const dismiss = dragY > panelHeight * 0.4 || pointerVelocity > 0.5;
+  if (dismiss) {
+    closeDayPopup(); // sets isVisible = false → CSS slides off-screen from current dragY
+  } else {
+    isDragging = false; // re-enable transition
+    dragY = 0;          // spring back
+  }
+  pointerVelocity = 0;
+}
+
+// ── Admin mutations ──────────────────────────────────────────────────────────
 
 async function handleAddEvent() {
   if (!newEventTitle.trim() || !selectedDate || isSaving) return;
@@ -244,23 +334,16 @@ async function handleDeleteCustomEvent(id: string) {
   }
 }
 
-let addInputEl = $state<HTMLInputElement | undefined>();
+// ── Derived display data ─────────────────────────────────────────────────────
 
-// Focus the panel when popup opens for keyboard accessibility
-$effect(() => {
-  if (selectedDate && popupPanelEl) {
-    popupPanelEl.focus();
-  }
+const selectedDateInfo = $derived(selectedDate ? parseDateStr(selectedDate) : null);
+const selectedDateEvents = $derived({
+  school: selectedDate ? (schoolEventsByDate[selectedDate] || []) : [],
+  custom: selectedDate ? (customEventsByDate[selectedDate] || []) : [],
 });
 
-// Focus the add input when add mode opens
-$effect(() => {
-  if (popupAddMode && addInputEl) {
-    addInputEl.focus();
-  }
-});
+// ── Calendar scroll gradients ────────────────────────────────────────────────
 
-// Scroll gradients
 let scrollContainer = $state<HTMLDivElement | undefined>();
 let scrollLeft = $state(0);
 let scrollRight = $state(0);
@@ -459,17 +542,17 @@ const dayNames = ['일','월','화','수','목','금','토'];
   </div>
 </div>
 
-<!-- Day detail popup -->
+<!-- ── Day detail drawer ──────────────────────────────────────────────────── -->
 {#if selectedDate && selectedDateInfo}
-  <!-- Backdrop -->
+  <!-- Backdrop: opacity driven by drag position, pointer-events blocked during close -->
   <div
-    transition:fade={{ duration: 180 }}
-    class="fixed inset-0 bg-black/50 dark:bg-black/60 z-50 backdrop-blur-[2px]"
+    class="fixed inset-0 bg-black/60 dark:bg-black/70 z-50 backdrop-blur-[2px]"
+    style="opacity: {backdropOpacity}; transition: opacity {isDragging ? 0 : TRANSITION_MS}ms;"
     role="presentation"
     onclick={closeDayPopup}
   ></div>
 
-  <!-- Panel wrapper: bottom-anchored on mobile, centered on desktop -->
+  <!-- Wrapper: positions drawer at bottom on mobile, centered on desktop -->
   <div class="fixed inset-0 z-50 pointer-events-none flex flex-col justify-end sm:items-center sm:justify-center sm:p-4">
     <div
       bind:this={popupPanelEl}
@@ -484,14 +567,15 @@ const dayNames = ['일','월','화','수','목','금','토'];
              flex flex-col
              max-h-[88svh] sm:max-h-[80svh]
              sm:border sm:border-neutral-200 sm:dark:border-neutral-700
-             outline-none"
-      in:sheetIn
-      out:sheetOut
+             outline-none
+             will-change-transform"
+      style="transform: translateY({drawerTranslateY}px);
+             transition: transform {isDragging ? 0 : TRANSITION_MS}ms cubic-bezier(0.32, 0.72, 0, 1);"
       onclick={(e) => e.stopPropagation()}
       onkeydown={(e) => { if (e.key === 'Escape') closeDayPopup(); e.stopPropagation(); }}
     >
       <!-- Mobile drag handle -->
-      <div class="sm:hidden flex justify-center pt-3 pb-1 flex-shrink-0">
+      <div class="sm:hidden flex justify-center pt-3 pb-1 flex-shrink-0 touch-none select-none">
         <div class="w-10 h-1 rounded-full bg-neutral-300 dark:bg-neutral-600"></div>
       </div>
 
@@ -528,7 +612,10 @@ const dayNames = ['일','월','화','수','목','금','토'];
       </div>
 
       <!-- Events list (scrollable) -->
-      <div class="flex-1 overflow-y-auto overscroll-contain px-5 py-4 min-h-0">
+      <div
+        bind:this={contentScrollEl}
+        class="flex-1 overflow-y-auto overscroll-contain px-5 py-4 min-h-0"
+      >
         {#if selectedDateEvents.school.length === 0 && selectedDateEvents.custom.length === 0}
           <div class="flex flex-col items-center justify-center py-10 text-center">
             <div class="w-12 h-12 rounded-full bg-neutral-100 dark:bg-neutral-800 flex items-center justify-center mb-3">
@@ -644,4 +731,3 @@ const dayNames = ['일','월','화','수','목','금','토'];
     </div>
   </div>
 {/if}
-
