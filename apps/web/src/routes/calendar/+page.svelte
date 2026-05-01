@@ -257,6 +257,14 @@ function openAddForm(yyyymmdd: string) {
   }
 }
 
+// Block background scroll while drawer is open
+$effect(() => {
+  if (selectedDate) {
+    document.body.style.overflow = 'hidden';
+    return () => { document.body.style.overflow = ''; };
+  }
+});
+
 // ── Touch drag handlers ──────────────────────────────────────────────────────
 
 function handleTouchStart(e: TouchEvent) {
