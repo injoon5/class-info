@@ -90,15 +90,17 @@ const cardDayLabel = (() => {
 
 // ── Events ────────────────────────────────────────────────────────────────────
 const in7days = yyyymmdd(new Date(kst.getTime() + 7 * 24 * 60 * 60 * 1000));
-const upcomingEvents = $derived(
+
+const allEvents = $derived(
 	[...(data.schoolEvents ?? []), ...(data.customEvents ?? [])]
-		.filter((e: any) =>
-			e.date >= todayYyyymmdd &&
-			e.date <= in7days &&
-			e.title !== '토요휴업일' &&
-			e.eventType !== '해당없음'
-		)
+		.filter((e: any) => e.title !== '토요휴업일')
 		.sort((a: any, b: any) => a.date.localeCompare(b.date))
+);
+
+const todayEvents = $derived(allEvents.filter((e: any) => e.date === todayYyyymmdd));
+
+const upcomingEvents = $derived(
+	allEvents.filter((e: any) => e.date >= todayYyyymmdd && e.date <= in7days)
 );
 
 // ── Notices ───────────────────────────────────────────────────────────────────
@@ -128,6 +130,16 @@ function eventTypeCss(event: any): string {
 	}
 }
 
+function eventDotColor(event: any): string {
+	if (event.source === 'custom' && event.color) return event.color;
+	switch (event.eventType) {
+		case '공휴일': return '#ef4444';
+		case '휴업일':
+		case '재량휴업일': return '#f59e0b';
+		default: return '#0ea5e9';
+	}
+}
+
 function isToday(dateStr: string): boolean {
 	return dateStr === todayYyyymmdd;
 }
@@ -149,13 +161,25 @@ function isToday(dateStr: string): boolean {
 <div class="max-w-4xl mx-auto px-4 pt-3 pb-12 sm:pt-5">
 
 	<!-- ── Date banner ─────────────────────────────────────────────────────── -->
-	<div class="mb-5 sm:mb-6">
-		<div class="flex items-baseline gap-2.5">
+	<div class="flex items-start justify-between gap-4 mb-5 sm:mb-6">
+		<div>
 			<h1 class="text-3xl sm:text-4xl font-bold text-neutral-900 dark:text-neutral-100" style="text-wrap: balance">
 				{todayMonth}월 {todayDate}일
 			</h1>
 			<span class="text-xl sm:text-2xl font-medium text-neutral-400 dark:text-neutral-500">{todayWeekday}요일</span>
 		</div>
+		{#if todayEvents.length > 0}
+			<div class="flex flex-col items-end gap-1 pt-1">
+				{#each todayEvents as event}
+					<div class="flex items-center gap-2">
+						<span class="text-base font-medium text-neutral-800 dark:text-neutral-200">{event.title}</span>
+						{#if eventTypeLabel(event)}
+							<span class="text-sm font-semibold {eventTypeCss(event)}">{eventTypeLabel(event)}</span>
+						{/if}
+					</div>
+				{/each}
+			</div>
+		{/if}
 	</div>
 
 	<!-- ── Quick info: timetable (1) + meal (2) ───────────────────────────── -->
@@ -290,10 +314,8 @@ function isToday(dateStr: string): boolean {
 				<div class="bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl overflow-hidden">
 					{#each upcomingEvents as event, i (event._id ?? i)}
 						<div class="flex items-center gap-2 px-4 py-3 {i > 0 ? 'border-t border-neutral-100 dark:border-neutral-700' : ''}">
+							<span class="w-2 h-2 rounded-full shrink-0" style="background-color: {eventDotColor(event)}" aria-hidden="true"></span>
 							<span class="text-base text-neutral-800 dark:text-neutral-200 font-medium flex-1 min-w-0 truncate">{event.title}</span>
-							{#if eventTypeLabel(event)}
-								<span class="text-sm font-medium shrink-0 {eventTypeCss(event)}">{eventTypeLabel(event)}</span>
-							{/if}
 							<span class="text-sm text-neutral-400 dark:text-neutral-500 shrink-0 text-right w-16">
 								{isToday(event.date) ? '오늘' : formatEventDate(event.date)}
 							</span>
