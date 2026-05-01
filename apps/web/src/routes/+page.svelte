@@ -163,10 +163,10 @@ function isToday(dateStr: string): boolean {
 	<!-- ── Date banner ─────────────────────────────────────────────────────── -->
 	<div class="flex items-end justify-between gap-4 mb-5 sm:mb-6">
 		<div class="flex items-baseline gap-2.5">
-			<h1 class="text-3xl sm:text-4xl font-bold text-neutral-900 dark:text-neutral-100">
+			<h1 class="text-3xl font-bold text-neutral-900 dark:text-neutral-100">
 				{todayMonth}월 {todayDate}일
 			</h1>
-			<span class="text-xl sm:text-2xl font-medium text-neutral-400 dark:text-neutral-500">{todayWeekday}요일</span>
+			<span class="text-xl font-medium text-neutral-400 dark:text-neutral-500">{todayWeekday}요일</span>
 		</div>
 		{#if todayEvents.length > 0}
 			<div class="flex flex-col items-end gap-1">
