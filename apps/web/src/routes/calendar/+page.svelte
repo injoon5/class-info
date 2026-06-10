@@ -2,6 +2,7 @@
 import { onMount } from 'svelte';
 import { useQuery, useConvexClient } from 'convex-svelte';
 import { api } from "@class-info/backend/convex/_generated/api";
+import type { Id } from "@class-info/backend/convex/_generated/dataModel";
 import Drawer from '../../components/Drawer.svelte';
 import type { PageData } from './$types.js';
 
@@ -39,13 +40,13 @@ let displayYear = $state(data.year as number);
 let displayMonth = $state(nowKst.getMonth()); // 0-11
 
 const schoolEventsQuery = useQuery(
-  (api as any).schedule.getSchoolEventsByYear,
+  api.schedule.getSchoolEventsByYear,
   () => ({ year: String(displayYear) }),
   () => ({ initialData: data.schoolEvents, keepPreviousData: true })
 );
 
 const customEventsQuery = useQuery(
-  (api as any).schedule.getCustomEventsByYear,
+  api.schedule.getCustomEventsByYear,
   () => ({ year: String(displayYear) }),
   () => ({ initialData: data.customEvents, keepPreviousData: true })
 );
@@ -108,7 +109,7 @@ const customEventsByDate = $derived(
 // Color helpers — calendar cell chips
 function getSchoolEventClass(eventType: string): string {
   if (eventType === '공휴일') return 'bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300';
-  if (eventType === '휴업일') return 'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300';
+  if (eventType === '휴업일' || eventType === '재량휴업일') return 'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300';
   return 'bg-sky-100 text-sky-700 dark:bg-sky-900/40 dark:text-sky-300';
 }
 
@@ -133,7 +134,7 @@ const CUSTOM_COLORS = [
 // Color helpers — drawer event items
 function getSchoolEventPopupStyle(eventType: string) {
   if (eventType === '공휴일') return { color: 'bg-red-400', bg: 'bg-red-50 dark:bg-red-950/30', label: '공휴일', labelColor: 'text-red-500 dark:text-red-400' };
-  if (eventType === '휴업일') return { color: 'bg-amber-400', bg: 'bg-amber-50 dark:bg-amber-950/30', label: '휴업일', labelColor: 'text-amber-500 dark:text-amber-400' };
+  if (eventType === '휴업일' || eventType === '재량휴업일') return { color: 'bg-amber-400', bg: 'bg-amber-50 dark:bg-amber-950/30', label: eventType, labelColor: 'text-amber-500 dark:text-amber-400' };
   return { color: 'bg-sky-400', bg: 'bg-sky-50 dark:bg-sky-950/30', label: '학교 행사', labelColor: 'text-sky-500 dark:text-sky-400' };
 }
 
@@ -192,7 +193,7 @@ async function handleAddEvent() {
   if (!newEventTitle.trim() || !selectedDate || isSaving) return;
   isSaving = true;
   try {
-    await client.mutation((api as any).schedule.createCustomEvent, {
+    await client.mutation(api.schedule.createCustomEvent, {
       date: selectedDate,
       title: newEventTitle.trim(),
       color: newEventColor,
@@ -206,10 +207,10 @@ async function handleAddEvent() {
   }
 }
 
-async function handleDeleteCustomEvent(id: string) {
+async function handleDeleteCustomEvent(id: Id<'schedules'>) {
   if (!confirm('이 일정을 삭제하시겠습니까?')) return;
   try {
-    await client.mutation((api as any).schedule.deleteCustomEvent, { id });
+    await client.mutation(api.schedule.deleteCustomEvent, { id });
   } catch {
     alert('삭제 중 오류가 발생했습니다.');
   }

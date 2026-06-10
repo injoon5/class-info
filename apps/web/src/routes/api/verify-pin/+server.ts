@@ -4,10 +4,9 @@ import { ConvexHttpClient } from 'convex/browser';
 import { api } from '@class-info/backend/convex/_generated/api';
 import { PUBLIC_CONVEX_URL } from '$env/static/public';
 
-const convex = new ConvexHttpClient(PUBLIC_CONVEX_URL);
-
 export const POST: RequestHandler = async ({ request }) => {
 	try {
+		const convex = new ConvexHttpClient(PUBLIC_CONVEX_URL);
 		const { pin } = await request.json();
 		
 		if (!pin) {

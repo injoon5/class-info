@@ -75,9 +75,6 @@ const overview = useQuery(api.notices.overview, {}, () => ({
                 {/each}
             </div>
         {/if}
-        {#if (!overview.data?.currentGroups || overview.data.currentGroups.length === 0) && (!overview.data?.pastMonths || overview.data.pastMonths.length === 0)}
-            <EmptyState />
-        {/if}
     {/if}
     <NoticeFooter notices={overview.data?.currentGroups || []} />
 </div>

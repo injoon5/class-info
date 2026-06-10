@@ -42,7 +42,7 @@ function updateGradients() {
 }
 
 const timetableQuery = useQuery(
-	(api as any).timetable.getByWeek,
+	api.timetable.getByWeek,
 	() => ({ week: selectedWeek }),
 	() => ({
 		initialData: selectedWeek === 0 ? data.timetable : undefined,
@@ -181,7 +181,7 @@ onMount(() => {
 										<!-- Subject cell -->
 										<div class="flex items-center justify-center gap-2">
 											<div>
-												<span class="text-md sm:text-xl font-semibold text-neutral-800 dark:text-neutral-200">{day[i].subject}</span>
+												<span class="text-base sm:text-xl font-semibold text-neutral-800 dark:text-neutral-200">{day[i].subject}</span>
 											</div>
 										</div>
 										<div class="text-sm sm:text-lg mt-0.5 font-medium text-neutral-500 dark:text-neutral-400">{day[i].teacher}</div>

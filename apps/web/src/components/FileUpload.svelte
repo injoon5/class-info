@@ -2,9 +2,10 @@
 import { useConvexClient } from 'convex-svelte';
 import { useUploadFile } from "@convex-dev/r2/svelte";
 import { api } from "@class-info/backend/convex/_generated/api";
+import type { Id } from "@class-info/backend/convex/_generated/dataModel";
 
-export let files: any[] = []; // Array of file IDs
-export let onFilesChange: (fileIds: any[]) => void;
+export let files: Id<'files'>[] = []; // Array of file IDs
+export let onFilesChange: (fileIds: Id<'files'>[]) => void;
 
 const client = useConvexClient();
 const uploadFile = useUploadFile(api.files);
@@ -12,7 +13,7 @@ let isUploading = false;
 let dragOver = false;
 
 interface UploadedFile {
-  _id: string;
+  _id: Id<'files'>;
   name: string;
   type: string;
   size: number;
@@ -21,18 +22,20 @@ interface UploadedFile {
 
 let uploadedFiles: UploadedFile[] = [];
 
-// Load existing files when component mounts
+// Load existing files when the file list changes (and clear when emptied)
 $: if (files.length > 0) {
   loadFiles();
+} else {
+  uploadedFiles = [];
 }
 
 async function loadFiles() {
   try {
-    const filePromises = files.map(fileId => 
+    const filePromises = files.map(fileId =>
       client.query(api.files.getFile, { fileId })
     );
     const results = await Promise.all(filePromises);
-    uploadedFiles = results.filter((file): file is UploadedFile => file !== null);
+    uploadedFiles = results.filter((file): file is NonNullable<typeof file> => file !== null);
   } catch (error) {
     // console.error('Error loading files:', error);
     uploadedFiles = [];
@@ -74,7 +77,9 @@ async function handleFileUpload(fileList: FileList) {
       return fileId;
     });
     
-    const newFileIds = (await Promise.all(uploadPromises)).filter(Boolean);
+    const newFileIds = (await Promise.all(uploadPromises)).filter(
+      (id): id is Id<'files'> => id !== null
+    );
     const updatedFiles = [...files, ...newFileIds];
     onFilesChange(updatedFiles);
   } catch (error) {
@@ -85,7 +90,7 @@ async function handleFileUpload(fileList: FileList) {
   }
 }
 
-async function removeFile(fileId: string) {
+async function removeFile(fileId: Id<'files'>) {
   try {
     await client.mutation(api.files.deleteFile, { fileId });
     const updatedFiles = files.filter(id => id !== fileId);
@@ -139,8 +144,10 @@ function handleDrop(e: DragEvent) {
 
 <div class="space-y-3">
   <!-- File Upload Area -->
-  <div 
+  <div
     class="border-2 border-dashed {dragOver ? 'border-neutral-500 bg-neutral-50 dark:bg-neutral-700' : 'border-neutral-300 dark:border-neutral-600'} p-4 text-center transition-colors"
+    role="region"
+    aria-label="파일 업로드 영역"
     ondragover={handleDragOver}
     ondragleave={handleDragLeave}
     ondrop={handleDrop}
@@ -149,7 +156,7 @@ function handleDrop(e: DragEvent) {
       type="file" 
       multiple 
       accept="image/*,application/pdf"
-      onchange={(e) => e.target?.files && handleFileUpload(e.target.files)}
+      onchange={(e) => e.currentTarget.files && handleFileUpload(e.currentTarget.files)}
       class="hidden"
       id="file-upload"
       disabled={isUploading}

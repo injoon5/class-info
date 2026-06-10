@@ -12,7 +12,7 @@ const headerGapClass = $derived(`flex items-center gap-1.5 sm:gap-2 ${isPast ? '
 const typePillClass = $derived(`px-1.5 py-0.5  ${isPast ? 'text-xs' : 'text-sm'}  font-semibold rounded ${getTypeColor(notice.type)} ${isPast ? 'opacity-75' : ''}`);
 const subjectClass = $derived(`${isPast ? 'text-xs font-medium text-neutral-500 dark:text-neutral-400' : 'text-sm font-semibold text-neutral-600 dark:text-neutral-300'}`);
 const titleWrapClass = $derived(`flex items-center gap-1.5`);
-const titleClass = $derived(`${isPast ? 'font-medium text-neutral-600 dark:text-neutral-300 text-xs sm:text-sm' : 'font-semibold text-neutral-800 dark:text-neutral-200 text-base sm:text-md'}`);
+const titleClass = $derived(`${isPast ? 'font-medium text-neutral-600 dark:text-neutral-300 text-xs sm:text-sm' : 'font-semibold text-neutral-800 dark:text-neutral-200 text-base'}`);
 // Add overflow-hidden and break-words to prevent overflow
 const summaryClass = $derived(`${isPast ? 'text-neutral-500 dark:text-neutral-400 text-xs' : 'text-neutral-600 sm:mt-1 dark:text-neutral-300 text-xs sm:text-sm font-medium'} mt-0.5 line-clamp-2 overflow-hidden text-ellipsis`);
 </script>

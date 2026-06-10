@@ -25,6 +25,13 @@ export function getFirstLine(text: string): string {
 
 // client-side grouping moved to server via convex queries
 
+// Parse a "YYYY-MM-DD" string as a local date. `new Date("YYYY-MM-DD")` parses
+// as UTC midnight, which shifts the date back a day in timezones behind UTC.
+function parseLocalDate(dateString: string): Date {
+	const [y, m, d] = dateString.split('-').map(Number);
+	return new Date(y, (m || 1) - 1, d || 1);
+}
+
 export function generateCopyText(groups: any[]): string {
     if (!groups || groups.length === 0) return '';
     const currentAndFuture = groups; // already filtered on server
@@ -32,7 +39,7 @@ export function generateCopyText(groups: any[]): string {
     currentAndFuture.forEach((group: any) => {
         const performanceNotices = (group.notices as any[]).filter((notice: any) => notice.type === '수행평가');
         if (performanceNotices.length > 0) {
-            const date = new Date(performanceNotices[0].dueDate);
+            const date = parseLocalDate(performanceNotices[0].dueDate);
             const weekdays = ['일', '월', '화', '수', '목', '금', '토'];
             const weekday = weekdays[date.getDay()];
             const dateStr = group.isToday ? '오늘' : `${date.getMonth() + 1}/${date.getDate()}(${weekday})`;
@@ -44,23 +51,9 @@ export function generateCopyText(groups: any[]): string {
 }
 
 export function formatDate(dateString: string) {
-	const date = new Date(dateString);
+	const date = parseLocalDate(dateString);
 	const weekdays = ['일', '월', '화', '수', '목', '금', '토'];
 	const weekday = weekdays[date.getDay()];
 	return `${date.getFullYear()}년 ${date.getMonth() + 1}월 ${date.getDate()}일 (${weekday})`;
-}
-
-export function truncateTitle(title: string): string {
-	if (title.length <= 18) return title;
-	return title.substring(0, 18);
-}
-
-export function formatKoreanDueDate(dateString: string): string {
-	const date = new Date(dateString);
-	const month = date.getMonth() + 1;
-	const day = date.getDate();
-	const weekdays = ['일', '월', '화', '수', '목', '금', '토'];
-	const weekday = weekdays[date.getDay()];
-	return `${month}월 ${day}일(${weekday})까지`;
 }
 

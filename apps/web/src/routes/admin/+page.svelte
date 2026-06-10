@@ -76,18 +76,22 @@ function handleFilesChange(fileIds: any[]) {
 	}));
 }
 
+let isSaving = $state(false);
+
 async function handleSubmit() {
+	if (isSaving) return;
 	const formData = $noticeForm;
 	const payload = {
 		...formData,
 		description: typeof formData.description === 'string' ? formData.description : ''
 	};
-	
+
 	if (!payload.title || !payload.subject || !payload.dueDate) {
 		alert('필수 항목을 모두 입력해주세요.');
 		return;
 	}
-	
+
+	isSaving = true;
 	try {
 		if ($editingNotice) {
 			await client.mutation(api.notices.update, { id: $editingNotice._id, ...payload });
@@ -97,6 +101,8 @@ async function handleSubmit() {
 		resetForm();
 	} catch (error) {
 		alert('저장 중 오류가 발생했습니다.');
+	} finally {
+		isSaving = false;
 	}
 }
 
@@ -108,11 +114,6 @@ async function handleDelete(notice: any) {
 			alert('삭제 중 오류가 발생했습니다.');
 		}
 	}
-}
-
-function formatDate(dateStr: string) {
-	const date = new Date(dateStr);
-	return `${date.getMonth() + 1}/${date.getDate()}`;
 }
 
 function getTypeColor(type: string) {
@@ -130,19 +131,19 @@ const allGroupedNotices = $derived(overview.data?.currentGroups || []);
 </script>
 
 <svelte:head>
-	<title>관리자 페이지 - 3-4 학급 공지</title>
-	<meta name="description" content="3-4 학급 공지 관리자 페이지입니다. " />
+	<title>관리자 페이지 - 1학년 3반</title>
+	<meta name="description" content="1학년 3반 공지 관리자 페이지입니다. " />
 
 	<!-- Open Graph -->
-	<meta property="og:title" content="관리자 페이지 - 3-4 학급 공지" />
-	<meta property="og:description" content="3-4 학급 공지 관리자 페이지입니다. " />
+	<meta property="og:title" content="관리자 페이지 - 1학년 3반" />
+	<meta property="og:description" content="1학년 3반 공지 관리자 페이지입니다. " />
 	<meta property="og:type" content="website" />
 	<meta property="og:site_name" content="TimeforSchool" />
-	
+
 	<!-- Twitter Card -->
 	<meta name="twitter:card" content="summary_large_image" />
-	<meta name="twitter:title" content="관리자 페이지 - 3-4 학급 공지" />
-	<meta name="twitter:description" content="3-4 학급 공지 관리자 페이지입니다. " />
+	<meta name="twitter:title" content="관리자 페이지 - 1학년 3반" />
+	<meta name="twitter:description" content="1학년 3반 공지 관리자 페이지입니다. " />
 	
 	<!-- Additional meta tags -->	
 	<meta name="robots" content="noindex, nofollow" />
@@ -285,11 +286,12 @@ const allGroupedNotices = $derived(overview.data?.currentGroups || []);
 					</div>
 					
 					<div class="flex flex-col sm:flex-row gap-2">
-						<button 
+						<button
 							onclick={handleSubmit}
-							class="px-4 pressable-lg font-medium sm:pressable py-2 bg-neutral-800 dark:bg-neutral-300 text-white dark:text-neutral-950 text-sm hover:bg-neutral-700 dark:hover:bg-neutral-200"
+							disabled={isSaving}
+							class="px-4 pressable-lg font-medium sm:pressable py-2 bg-neutral-800 dark:bg-neutral-300 text-white dark:text-neutral-950 text-sm hover:bg-neutral-700 dark:hover:bg-neutral-200 disabled:opacity-50"
 						>
-							{$editingNotice ? '수정' : '추가'}
+							{isSaving ? '저장 중…' : $editingNotice ? '수정' : '추가'}
 						</button>
 						<button 
 							onclick={resetForm}
@@ -310,7 +312,7 @@ const allGroupedNotices = $derived(overview.data?.currentGroups || []);
             {#if allGroupedNotices && allGroupedNotices.length > 0}
             {#each allGroupedNotices as group}
 				<div class="mb-6">
-					<h3 class="text-md font-semibold mb-3 text-neutral-600 dark:text-neutral-300 border-l-4 border-neutral-500 dark:border-neutral-400 pl-3">
+					<h3 class="text-base font-semibold mb-3 text-neutral-600 dark:text-neutral-300 border-l-4 border-neutral-500 dark:border-neutral-400 pl-3">
 						{group.displayDate}
 					</h3>
 					
@@ -328,7 +330,7 @@ const allGroupedNotices = $derived(overview.data?.currentGroups || []);
                                             </span>
                                         </div>
                                         <div class="flex items-center gap-1.5 sm:mb-1 mb-0.5">
-                                            <h4 class="font-semibold text-neutral-800 dark:text-neutral-200 text-base sm:text-md break-words">
+                                            <h4 class="font-semibold text-neutral-800 dark:text-neutral-200 text-base break-words">
                                                 {notice.title}
                                             </h4>
                                             {#if notice.hasFiles}

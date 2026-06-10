@@ -59,7 +59,7 @@ function updateGradients() {
 }
 
 const mealsQuery = useQuery(
-  (api as any).meals.getTwoWeeks,
+  api.meals.getTwoWeeks,
   () => ({}),
   () => ({ initialData: data.twoWeeks, keepPreviousData: true })
 );
@@ -67,6 +67,16 @@ const mealsQuery = useQuery(
 let hasDinner = $derived(
   (mealsQuery.data?.availableMealTypes ?? []).includes("석식")
 );
+
+// If the selected type has no data anywhere, fall back to the other type
+// (e.g. only dinner data exists) so the page never dead-ends.
+const hasAnyMeals = $derived((mealsQuery.data?.availableMealTypes ?? []).length > 0);
+$effect(() => {
+  const available = mealsQuery.data?.availableMealTypes ?? [];
+  if (available.length > 0 && !available.includes(selectedMealType)) {
+    selectedMealType = available[0];
+  }
+});
 
 function mealKey(type: string): string {
   return type === '중식' ? 'lunch' : 'dinner';
@@ -124,7 +134,7 @@ onMount(() => {
     <LoadingState />
   {:else if mealsQuery.error}
     <ErrorState error={mealsQuery.error} />
-  {:else if !mealsQuery.data || ((mealsQuery.data.thisWeek?.days ?? []).every((d: any) => d[mealKey(selectedMealType)] === null) && (mealsQuery.data.nextWeek?.days ?? []).every((d: any) => d[mealKey(selectedMealType)] === null))}
+  {:else if !mealsQuery.data || !hasAnyMeals}
     <EmptyState />
   {:else}
     {#if hasDinner}
