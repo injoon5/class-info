@@ -47,7 +47,7 @@ export default defineSchema({
     update_date: v.string(),
     week: v.number(),
     editedAt: v.number(),
-  }),
+  }).index("by_week", ["week"]),
   
   settings: defineTable({
     key: v.string(),

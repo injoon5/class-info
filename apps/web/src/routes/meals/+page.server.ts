@@ -5,7 +5,7 @@ import { api } from "@class-info/backend/convex/_generated/api";
 
 export const load = (async () => {
   const client = new ConvexHttpClient(PUBLIC_CONVEX_URL!);
-  const data = await client.query((api as any).meals.getTwoWeeks, {});
+  const data = await client.query(api.meals.getTwoWeeks, {});
   return { twoWeeks: data };
 }) satisfies PageServerLoad;
 

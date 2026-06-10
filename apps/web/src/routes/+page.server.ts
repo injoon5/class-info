@@ -18,15 +18,15 @@ export const load = (async () => {
 		client.query(api.notices.overview, {}),
 		client.query(api.timetable.getByWeek, { week: 0 }),
 		client.query(api.timetable.getByWeek, { week: 1 }),
-		client.query((api as any).meals.getTwoWeeks, {}),
+		client.query(api.meals.getTwoWeeks, {}),
 	]);
 
 	let schoolEvents: any[] = [];
 	let customEvents: any[] = [];
 	try {
 		[schoolEvents, customEvents] = await Promise.all([
-			client.query((api as any).schedule.getSchoolEventsByYear, { year: String(year) }),
-			client.query((api as any).schedule.getCustomEventsByYear, { year: String(year) }),
+			client.query(api.schedule.getSchoolEventsByYear, { year: String(year) }),
+			client.query(api.schedule.getCustomEventsByYear, { year: String(year) }),
 		]);
 	} catch {}
 

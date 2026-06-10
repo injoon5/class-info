@@ -76,6 +76,8 @@ const allMealDays = [...(data.meals?.thisWeek?.days ?? []), ...(data.meals?.next
 const displayMealDay = allMealDays.find((d: any) => d.date === displayDayStr) ?? null;
 const displayLunch = displayMealDay?.lunch ?? null;
 const displayDinner = displayMealDay?.dinner ?? null;
+// Only show the dinner column if the school serves dinner at all
+const servesDinner = (data.meals?.availableMealTypes ?? []).includes('석식');
 
 // Card title prefix: "" | "내일 " | "5월 3일 "
 const tomorrowStr = yyyymmdd(new Date(kst.getTime() + 24 * 60 * 60 * 1000));
@@ -219,7 +221,7 @@ function isToday(dateStr: string): boolean {
 				<a href="/meals" class="text-sm text-neutral-400 dark:text-neutral-500 hover:text-neutral-600 dark:hover:text-neutral-300 transition-colors duration-100">모두 보기 →</a>
 			</div>
 			<div class="bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl p-4">
-				<div class="grid grid-cols-2 gap-4">
+				<div class="grid {servesDinner ? 'grid-cols-2' : 'grid-cols-1'} gap-4">
 					<!-- Lunch -->
 					<div>
 						<p class="text-base font-semibold text-neutral-400 dark:text-neutral-500 mb-2">중식</p>
@@ -236,22 +238,24 @@ function isToday(dateStr: string): boolean {
 							{/if}
 						{/if}
 					</div>
-					<!-- Dinner -->
-					<div>
-						<p class="text-base font-semibold text-neutral-400 dark:text-neutral-500 mb-2">석식</p>
-						{#if !displayDinner}
-							<p class="text-base text-neutral-800 dark:text-neutral-200">급식 정보가 없어요</p>
-						{:else}
-							<ul class="space-y-1.5">
-								{#each displayDinner.dishes as dish}
-									<li class="text-base text-neutral-700 dark:text-neutral-300 leading-snug truncate max-w-full overflow-hidden whitespace-nowrap">{dish}</li>
-								{/each}
-							</ul>
-							{#if displayDinner.calories}
-								<p class="mt-2 text-sm text-neutral-400 dark:text-neutral-500">{displayDinner.calories}</p>
+					{#if servesDinner}
+						<!-- Dinner -->
+						<div>
+							<p class="text-base font-semibold text-neutral-400 dark:text-neutral-500 mb-2">석식</p>
+							{#if !displayDinner}
+								<p class="text-base text-neutral-800 dark:text-neutral-200">급식 정보가 없어요</p>
+							{:else}
+								<ul class="space-y-1.5">
+									{#each displayDinner.dishes as dish}
+										<li class="text-base text-neutral-700 dark:text-neutral-300 leading-snug truncate max-w-full overflow-hidden whitespace-nowrap">{dish}</li>
+									{/each}
+								</ul>
+								{#if displayDinner.calories}
+									<p class="mt-2 text-sm text-neutral-400 dark:text-neutral-500">{displayDinner.calories}</p>
+								{/if}
 							{/if}
-						{/if}
-					</div>
+						</div>
+					{/if}
 				</div>
 			</div>
 		</div>

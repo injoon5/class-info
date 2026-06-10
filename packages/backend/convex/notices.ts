@@ -53,13 +53,14 @@ function generateRandomSlug(): string {
   return slug;
 }
 
-async function isSlugTaken(ctx: any, slug: string): Promise<boolean> {
+async function isSlugTaken(ctx: any, slug: string, excludeId?: any): Promise<boolean> {
   if (!slug) return false;
   const hit = await ctx.db
     .query("notices")
     .withIndex("by_slug", (q: any) => q.eq("slug", slug))
     .first();
-  return Boolean(hit);
+  if (!hit) return false;
+  return excludeId === undefined || String(hit._id) !== String(excludeId);
 }
 
 async function createUniqueSlug(ctx: any): Promise<string> {
@@ -148,7 +149,7 @@ export const currentGroups = query({
       .query("notices")
       .withIndex("by_due_date", q => q.gte("dueDate", cutoff))
       .collect();
-    const today = getNowKst();
+    const today = getTodayKst();
     const groups = new Map<string, { date: string; displayDate: string; isToday: boolean; notices: MinimalNotice[] }>();
     for (const n of valid) {
       const due = new Date(n.dueDate);
@@ -282,11 +283,10 @@ export const detail = query({
       }
     }
 
-    if (!notice) return { notice: null, files: [] as any[] };
-
-    const files = Array.isArray(notice.files)
-      ? (await Promise.all(notice.files.map((fid: any) => ctx.db.get(fid)))).filter(Boolean)
+    const fileDocs = notice && Array.isArray(notice.files)
+      ? await Promise.all(notice.files.map((fid) => ctx.db.get(fid)))
       : [];
+    const files = fileDocs.filter((f): f is NonNullable<typeof f> => f !== null);
     return { notice, files };
   },
 });
@@ -337,7 +337,7 @@ export const update = mutation({
     let finalSlug = slug;
     if (slug === undefined) {
       // keep existing slug
-    } else if (!slug || (await isSlugTaken(ctx, slug))) {
+    } else if (!slug || (await isSlugTaken(ctx, slug, id))) {
       finalSlug = await createUniqueSlug(ctx);
     }
     await ctx.db.patch(id, {
