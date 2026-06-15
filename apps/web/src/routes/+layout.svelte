@@ -7,8 +7,16 @@
 	import { browser } from '$app/environment';
 	import { configure } from 'onedollarstats';
 
-	const { children } = $props();
+	const { children, data } = $props();
 	setupConvex(PUBLIC_CONVEX_URL);
+
+	// Class context (if the current route is under /[grade]/[class]).
+	const grade = $derived(page.params.grade);
+	const classNo = $derived(page.params.class);
+	const inClass = $derived(Boolean(grade && classNo));
+	const base = $derived(inClass ? `/${grade}/${classNo}` : '');
+	const schoolName = $derived((data as any)?.school?.schoolName ?? 'TimeforSchool');
+	const homeHref = $derived(inClass ? base : '/');
 
 	onMount(() => {
 		configure({
@@ -21,16 +29,18 @@
 	<!-- Global Header -->
 	<div class="max-w-4xl mx-auto px-4 pt-4 pb-2 sm:pb-3 w-full">
 		<div class="flex justify-between items-center gap-2 pb-2 sm:pb-3 border-b-1 border-neutral-300 dark:border-neutral-600">
-			<a href="/" class="group">
-				<h1 class="text-xl font-bold text-neutral-800 dark:text-neutral-200 group-hover:text-neutral-600 dark:group-hover:text-neutral-300 transition-colors duration-100">TimeforSchool</h1>
+			<a href={homeHref} class="group">
+				<h1 class="text-xl font-bold text-neutral-800 dark:text-neutral-200 group-hover:text-neutral-600 dark:group-hover:text-neutral-300 transition-colors duration-100">{schoolName}{#if inClass}<span class="text-neutral-400 dark:text-neutral-500 font-medium"> {grade}-{classNo}</span>{/if}</h1>
 			</a>
 			<nav class="flex items-center gap-2 sm:gap-3 text-neutral-700 dark:text-neutral-300">
-				<a
-					href="/notices"
-					class="hover:underline p-1 sm:px-2 sm:py-1 {(page.url.pathname.startsWith('/notices') || page.url.pathname.startsWith('/notice/')) ? 'underline' : ''}"
-					aria-current={(page.url.pathname.startsWith('/notices') || page.url.pathname.startsWith('/notice/')) ? 'page' : undefined}
-				>공지</a>
-				<a href="/timetable" class="hover:underline p-1 sm:px-2 sm:py-1 {(page.url.pathname.startsWith('/timetable')) ? 'underline' : ''}" aria-current={(page.url.pathname.startsWith('/timetable')) ? 'page' : undefined}>시간표</a>
+				{#if inClass}
+					<a
+						href="{base}/notices"
+						class="hover:underline p-1 sm:px-2 sm:py-1 {(page.url.pathname.startsWith(`${base}/notices`) || page.url.pathname.startsWith(`${base}/notice/`)) ? 'underline' : ''}"
+						aria-current={(page.url.pathname.startsWith(`${base}/notices`) || page.url.pathname.startsWith(`${base}/notice/`)) ? 'page' : undefined}
+					>공지</a>
+					<a href="{base}/timetable" class="hover:underline p-1 sm:px-2 sm:py-1 {(page.url.pathname.startsWith(`${base}/timetable`)) ? 'underline' : ''}" aria-current={(page.url.pathname.startsWith(`${base}/timetable`)) ? 'page' : undefined}>시간표</a>
+				{/if}
 				<a href="/meals" class="hover:underline p-1 sm:px-2 sm:py-1 {(page.url.pathname.startsWith('/meals')) ? 'underline' : ''}" aria-current={(page.url.pathname.startsWith('/meals')) ? 'page' : undefined}>급식</a>
 				<a href="/calendar" class="hover:underline p-1 sm:px-2 sm:py-1 {(page.url.pathname.startsWith('/calendar')) ? 'underline' : ''}" aria-current={(page.url.pathname.startsWith('/calendar')) ? 'page' : undefined}>일정</a>
 			</nav>

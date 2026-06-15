@@ -2,12 +2,14 @@
 import { onMount } from 'svelte';
 import { useQuery } from 'convex-svelte';
 import { api } from "@class-info/backend/convex/_generated/api";
-import LoadingState from '../../components/LoadingState.svelte';
-import ErrorState from '../../components/ErrorState.svelte';
-import EmptyState from '../../components/EmptyState.svelte';
+import LoadingState from '../../../../components/LoadingState.svelte';
+import ErrorState from '../../../../components/ErrorState.svelte';
+import EmptyState from '../../../../components/EmptyState.svelte';
 import type { PageData } from './$types.js';
 
 let { data }: { data: PageData } = $props();
+
+const classLabel = `${data.grade}학년 ${data.classNo}반`;
 
 let selectedWeek: number = $state(0); // 0: this week, 1: next week
 
@@ -43,7 +45,7 @@ function updateGradients() {
 
 const timetableQuery = useQuery(
 	(api as any).timetable.getByWeek,
-	() => ({ week: selectedWeek }),
+	() => ({ classId: data.klass._id, week: selectedWeek }),
 	() => ({
 		initialData: selectedWeek === 0 ? data.timetable : undefined,
 		keepPreviousData: true
@@ -83,19 +85,18 @@ onMount(() => {
 
 
 <svelte:head>
-	<title>시간표 - 1학년 3반</title>
+	<title>시간표 - {classLabel}</title>
 	<meta name="description" content="정확한 시간표를 변경사항까지 한 번에 확인하세요. " />
 
 	<!-- Open Graph -->
-	<meta property="og:title" content="시간표 - 1학년 3반" />
+	<meta property="og:title" content="시간표 - {classLabel}" />
 	<meta property="og:description" content="정확한 시간표를 변경사항까지 한 번에 확인하세요. " />
-	<meta property="og:url" content="https://timefor.school" />
 	<meta property="og:type" content="website" />
 	<meta property="og:site_name" content="TimeforSchool" />
 
 	<!-- Twitter Card -->
 	<meta name="twitter:card" content="summary_large_image" />
-	<meta name="twitter:title" content="시간표 - 1학년 3반" />
+	<meta name="twitter:title" content="시간표 - {classLabel}" />
 	<meta name="twitter:description" content="정확한 시간표를 변경사항까지 한 번에 확인하세요. " />
 	<meta name="robots" content="noindex" />
 </svelte:head>

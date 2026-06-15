@@ -10,34 +10,23 @@ export const { generateUploadUrl, syncMetadata } = r2.clientApi({
     // For now, allow all uploads - you can add authentication here later
     // This should not return anything according to types
   },
-  onUpload: async (ctx, bucket, key) => {
-    // Store file metadata in our database with custom domain URL
-    const url = `https://files.timefor.school/${key}`;
-    
-    // Extract file info from key if needed
-    const fileName = key.split('/').pop() || key;
-    
-    await ctx.db.insert("files", {
-      name: fileName,
-      type: "unknown", // We'll set this from the client
-      size: 0, // We'll set this from the client
-      url,
-      storageId: key,
-      uploadedAt: Date.now(),
-    });
-  },
+  // NOTE: the file row (with its owning classId) is created by the client via
+  // `updateFileMetadataByStorageId` after upload, so this hook does nothing.
+  onUpload: async (_ctx, _bucket, _key) => {},
 });
 
 export const createFileRecord = mutation({
   args: {
+    classId: v.id("classes"),
     name: v.string(),
     type: v.string(),
     size: v.number(),
     url: v.string(),
     storageId: v.string(),
   },
-  handler: async (ctx, { name, type, size, url, storageId }) => {
+  handler: async (ctx, { classId, name, type, size, url, storageId }) => {
     return await ctx.db.insert("files", {
+      classId,
       name,
       type,
       size,
@@ -66,28 +55,33 @@ export const updateFileMetadata = mutation({
 
 export const updateFileMetadataByStorageId = mutation({
   args: {
+    classId: v.id("classes"),
     storageId: v.string(),
     name: v.string(),
     type: v.string(),
     size: v.number(),
   },
-  handler: async (ctx, { storageId, name, type, size }) => {
+  handler: async (ctx, { classId, storageId, name, type, size }) => {
     const file = await ctx.db
       .query("files")
       .filter((q) => q.eq(q.field("storageId"), storageId))
       .first();
-    
-    if (!file) {
-      throw new Error("File not found");
+
+    if (file) {
+      await ctx.db.patch(file._id, { classId, name, type, size });
+      return file._id;
     }
-    
-    await ctx.db.patch(file._id, {
+
+    // No row exists yet (R2 onUpload no longer auto-inserts) — create it.
+    return await ctx.db.insert("files", {
+      classId,
       name,
       type,
       size,
+      url: `https://files.timefor.school/${storageId}`,
+      storageId,
+      uploadedAt: Date.now(),
     });
-    
-    return file._id;
   },
 });
 

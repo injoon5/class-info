@@ -28,6 +28,8 @@ function getNowInKst(): Date {
 
 let { data }: { data: PageData } = $props();
 
+const schoolName = (data as any).school?.schoolName ?? '';
+
 let selectedMealType = $state("중식");
 
 let gridBlurred = $state(false);
@@ -60,7 +62,7 @@ function updateGradients() {
 
 const mealsQuery = useQuery(
   (api as any).meals.getTwoWeeks,
-  () => ({}),
+  () => ({ schoolId: (data as any).school._id }),
   () => ({ initialData: data.twoWeeks, keepPreviousData: true })
 );
 
@@ -106,15 +108,14 @@ onMount(() => {
 </script>
 
 <svelte:head>
-  <title>급식 - 1학년 3반</title>
+  <title>급식 - {schoolName}</title>
   <meta name="description" content="정확한 급식을 한 눈에 확인하세요. " />
-  <meta property="og:title" content="급식 - 1학년 3반" />
+  <meta property="og:title" content="급식 - {schoolName}" />
   <meta property="og:description" content="정확한 급식을 한 눈에 확인하세요. " />
-  <meta property="og:url" content="https://timefor.school" />
   <meta property="og:type" content="website" />
   <meta property="og:site_name" content="TimeforSchool" />
   <meta name="twitter:card" content="summary_large_image" />
-  <meta name="twitter:title" content="급식 - 1학년 3반" />
+  <meta name="twitter:title" content="급식 - {schoolName}" />
   <meta name="twitter:description" content="정확한 급식을 한 눈에 확인하세요. " />
   <meta name="robots" content="noindex" />
 </svelte:head>

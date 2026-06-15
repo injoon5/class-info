@@ -8,6 +8,9 @@ import type { PageData } from './$types.js';
 let { data }: { data: PageData } = $props();
 const client = useConvexClient();
 
+const schoolId = (data as any).school._id;
+const schoolName = (data as any).school?.schoolName ?? '';
+
 function getNowInKst(): Date {
   const now = new Date();
   const utc = now.getTime() + now.getTimezoneOffset() * 60_000;
@@ -40,13 +43,13 @@ let displayMonth = $state(nowKst.getMonth()); // 0-11
 
 const schoolEventsQuery = useQuery(
   (api as any).schedule.getSchoolEventsByYear,
-  () => ({ year: String(displayYear) }),
+  () => ({ schoolId, year: String(displayYear) }),
   () => ({ initialData: data.schoolEvents, keepPreviousData: true })
 );
 
 const customEventsQuery = useQuery(
   (api as any).schedule.getCustomEventsByYear,
-  () => ({ year: String(displayYear) }),
+  () => ({ schoolId, year: String(displayYear) }),
   () => ({ initialData: data.customEvents, keepPreviousData: true })
 );
 
@@ -193,6 +196,7 @@ async function handleAddEvent() {
   isSaving = true;
   try {
     await client.mutation((api as any).schedule.createCustomEvent, {
+      schoolId,
       date: selectedDate,
       title: newEventTitle.trim(),
       color: newEventColor,
@@ -241,15 +245,14 @@ const dayNames = ['일','월','화','수','목','금','토'];
 </script>
 
 <svelte:head>
-  <title>일정 - 1학년 3반</title>
+  <title>일정 - {schoolName}</title>
   <meta name="description" content="학교 행사와 학사 일정을 한눈에 확인하세요." />
-  <meta property="og:title" content="일정 - 1학년 3반" />
+  <meta property="og:title" content="일정 - {schoolName}" />
   <meta property="og:description" content="학교 행사와 학사 일정을 한눈에 확인하세요." />
-  <meta property="og:url" content="https://timefor.school/calendar" />
   <meta property="og:type" content="website" />
   <meta property="og:site_name" content="TimeforSchool" />
   <meta name="twitter:card" content="summary_large_image" />
-  <meta name="twitter:title" content="일정 - 1학년 3반" />
+  <meta name="twitter:title" content="일정 - {schoolName}" />
   <meta name="twitter:description" content="학교 행사와 학사 일정을 한눈에 확인하세요." />
   <meta name="robots" content="noindex" />
 </svelte:head>

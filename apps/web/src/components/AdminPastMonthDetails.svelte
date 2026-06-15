@@ -3,9 +3,9 @@ import { useQuery } from 'convex-svelte';
 import { api } from "@class-info/backend/convex/_generated/api";
 import { getTypeColor } from '../lib/utils.js';
 
-let { monthKey, onEdit, onDelete }: { monthKey: string; onEdit: (id: string) => void; onDelete: (id: string) => void } = $props();
+let { monthKey, classId, onEdit, onDelete }: { monthKey: string; classId: string; onEdit: (id: string) => void; onDelete: (id: string) => void } = $props();
 
-const groups = useQuery(api.notices.pastByMonth, { monthKey });
+const groups = useQuery((api as any).notices.pastByMonth, { classId, monthKey });
 
 </script>
 

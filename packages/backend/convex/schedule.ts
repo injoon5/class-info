@@ -11,6 +11,7 @@ type ExternalScheduleEvent = {
 
 export const upsertManySchoolEvents = internalMutation({
   args: {
+    schoolId: v.id("schools"),
     events: v.array(
       v.object({
         date: v.string(),
@@ -22,10 +23,12 @@ export const upsertManySchoolEvents = internalMutation({
     startdate: v.string(), // YYYYMMDD — range to clear before re-inserting
     enddate: v.string(),
   },
-  handler: async (ctx, { events, startdate, enddate }) => {
+  handler: async (ctx, { schoolId, events, startdate, enddate }) => {
     const existing = await ctx.db
       .query("schedules")
-      .withIndex("by_date", (q) => q.gte("date", startdate).lte("date", enddate))
+      .withIndex("by_school_date", (q) =>
+        q.eq("schoolId", schoolId).gte("date", startdate).lte("date", enddate)
+      )
       .collect();
 
     const toDelete = existing.filter((ev) => ev.source !== "custom");
@@ -37,6 +40,7 @@ export const upsertManySchoolEvents = internalMutation({
     const now = Date.now();
     for (const ev of events) {
       await ctx.db.insert("schedules", {
+        schoolId,
         date: ev.date,
         title: ev.eventName,
         source: "school",
@@ -51,8 +55,8 @@ export const upsertManySchoolEvents = internalMutation({
 });
 
 export const fetchAndSaveSchoolSchedule = internalAction({
-  args: { startdate: v.string(), enddate: v.string(), schoolcode: v.string() },
-  handler: async (ctx, { startdate, enddate, schoolcode }) => {
+  args: { schoolId: v.id("schools"), startdate: v.string(), enddate: v.string(), schoolcode: v.string() },
+  handler: async (ctx, { schoolId, startdate, enddate, schoolcode }) => {
     const url = `https://api.timefor.school/schedule?startdate=${encodeURIComponent(startdate)}&enddate=${encodeURIComponent(enddate)}&schoolcode=${encodeURIComponent(schoolcode)}`;
 
     const res = await fetch(url, { headers: { Accept: "application/json" } });
@@ -75,7 +79,7 @@ export const fetchAndSaveSchoolSchedule = internalAction({
       }));
 
     console.log(`[schedule.fetchAndSaveSchoolSchedule] range=${startdate}–${enddate} events=${events.length}`);
-    await ctx.runMutation(internal.schedule.upsertManySchoolEvents, { events, startdate, enddate });
+    await ctx.runMutation(internal.schedule.upsertManySchoolEvents, { schoolId, events, startdate, enddate });
   },
 });
 
@@ -120,8 +124,8 @@ function splitInto3MonthChunks(startdate: string, enddate: string) {
 
 // Fetches last December through next February — the window shown to users.
 export const fetchScheduleWindow = internalAction({
-  args: { schoolcode: v.string() },
-  handler: async (ctx, { schoolcode }) => {
+  args: { schoolId: v.id("schools"), schoolcode: v.string() },
+  handler: async (ctx, { schoolId, schoolcode }) => {
     const now = new Date();
     const y = now.getUTCFullYear();
     const m = now.getUTCMonth() + 1; // 1-12
@@ -133,6 +137,7 @@ export const fetchScheduleWindow = internalAction({
     const chunks = splitInto3MonthChunks(startdate, enddate);
     for (const chunk of chunks) {
       await ctx.runAction(internal.schedule.fetchAndSaveSchoolSchedule, {
+        schoolId,
         startdate: chunk.start,
         enddate: chunk.end,
         schoolcode,
@@ -141,13 +146,31 @@ export const fetchScheduleWindow = internalAction({
   },
 });
 
+// Cron orchestrator: refresh the schedule window for every registered school.
+export const fetchAllSchools = internalAction({
+  args: {},
+  handler: async (ctx) => {
+    const schools = await ctx.runQuery(internal.schools.listAllSchools, {});
+    for (const s of schools) {
+      try {
+        await ctx.runAction(internal.schedule.fetchScheduleWindow, {
+          schoolId: s._id,
+          schoolcode: s.schoolCode,
+        });
+      } catch (err) {
+        console.error(`[schedule.fetchAllSchools] failed school=${s._id}`, err);
+      }
+    }
+  },
+});
+
 export const getSchoolEventsByYear = query({
-  args: { year: v.string() },
-  handler: async (ctx, { year }) => {
+  args: { schoolId: v.id("schools"), year: v.string() },
+  handler: async (ctx, { schoolId, year }) => {
     const all = await ctx.db
       .query("schedules")
-      .withIndex("by_date", (q) =>
-        q.gte("date", `${year}0101`).lte("date", `${year}1231`)
+      .withIndex("by_school_date", (q) =>
+        q.eq("schoolId", schoolId).gte("date", `${year}0101`).lte("date", `${year}1231`)
       )
       .collect();
     return all.filter((e) => e.source === "school");
@@ -155,12 +178,12 @@ export const getSchoolEventsByYear = query({
 });
 
 export const getCustomEventsByYear = query({
-  args: { year: v.string() },
-  handler: async (ctx, { year }) => {
+  args: { schoolId: v.id("schools"), year: v.string() },
+  handler: async (ctx, { schoolId, year }) => {
     const all = await ctx.db
       .query("schedules")
-      .withIndex("by_date", (q) =>
-        q.gte("date", `${year}0101`).lte("date", `${year}1231`)
+      .withIndex("by_school_date", (q) =>
+        q.eq("schoolId", schoolId).gte("date", `${year}0101`).lte("date", `${year}1231`)
       )
       .collect();
     return all.filter((e) => e.source === "custom");
@@ -169,6 +192,7 @@ export const getCustomEventsByYear = query({
 
 export const createCustomEvent = mutation({
   args: {
+    schoolId: v.id("schools"),
     date: v.string(),
     title: v.string(),
     color: v.string(),

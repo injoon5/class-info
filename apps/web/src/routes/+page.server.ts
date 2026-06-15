@@ -1,34 +1,14 @@
-import { ConvexHttpClient } from 'convex/browser';
 import type { PageServerLoad } from './$types.js';
-import { PUBLIC_CONVEX_URL } from '$env/static/public';
+import { getConvexClient } from '$lib/server/school';
 import { api } from "@class-info/backend/convex/_generated/api";
 
-function getNowInKst(): Date {
-	const now = new Date();
-	const utc = now.getTime() + now.getTimezoneOffset() * 60_000;
-	return new Date(utc + 9 * 60 * 60_000);
-}
+export const load = (async ({ parent }) => {
+	const { school } = await parent();
+	if (!school) return { classes: [] };
 
-export const load = (async () => {
-	const client = new ConvexHttpClient(PUBLIC_CONVEX_URL!);
-	const kstNow = getNowInKst();
-	const year = kstNow.getFullYear();
-
-	const [noticesOverview, timetable, nextWeekTimetable, meals] = await Promise.all([
-		client.query(api.notices.overview, {}),
-		client.query(api.timetable.getByWeek, { week: 0 }),
-		client.query(api.timetable.getByWeek, { week: 1 }),
-		client.query((api as any).meals.getTwoWeeks, {}),
-	]);
-
-	let schoolEvents: any[] = [];
-	let customEvents: any[] = [];
-	try {
-		[schoolEvents, customEvents] = await Promise.all([
-			client.query((api as any).schedule.getSchoolEventsByYear, { year: String(year) }),
-			client.query((api as any).schedule.getCustomEventsByYear, { year: String(year) }),
-		]);
-	} catch {}
-
-	return { noticesOverview, timetable, nextWeekTimetable, meals, schoolEvents, customEvents };
+	const client = getConvexClient();
+	const classes = await client.query((api as any).classes.listBySchool, { schoolId: school._id });
+	// Sort by grade then class number for a stable directory.
+	classes.sort((a: any, b: any) => a.grade - b.grade || a.classNo - b.classNo);
+	return { classes };
 }) satisfies PageServerLoad;

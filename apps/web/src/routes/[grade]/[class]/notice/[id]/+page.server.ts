@@ -1,16 +1,14 @@
-import { ConvexHttpClient } from 'convex/browser';
 import type { PageServerLoad } from './$types.js';
-import { PUBLIC_CONVEX_URL } from '$env/static/public';
+import { getConvexClient } from '$lib/server/school';
 import { api } from "@class-info/backend/convex/_generated/api";
 import { marked } from 'marked';
 
-export const load = (async ({ params }) => {
-	const client = new ConvexHttpClient(PUBLIC_CONVEX_URL!);
+export const load = (async ({ params, parent }) => {
+	const { klass } = await parent();
+	const client = getConvexClient();
 	const { id } = params;
 
-	// console.log(id);
-
-	const detail = await client.query(api.notices.detail, { id: id as any });
+	const detail = await client.query((api as any).notices.detail, { classId: klass._id, id: id as any });
 
 
 
