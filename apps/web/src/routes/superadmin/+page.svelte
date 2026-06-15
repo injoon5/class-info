@@ -141,9 +141,15 @@ function logout() {
 
 onMount(async () => {
 	const saved = sessionStorage.getItem(STORAGE_KEY);
-	if (saved) {
-		password = saved;
-		await login();
+	if (!saved) return;
+	password = saved;
+	try {
+		applyOverview(await fetchOverview(saved));
+		authed = true;
+	} catch {
+		// Stored password no longer valid — clear it so we show a clean login.
+		sessionStorage.removeItem(STORAGE_KEY);
+		password = '';
 	}
 });
 
@@ -157,22 +163,28 @@ function fmtDate(ms: number): string {
 	<meta name="robots" content="noindex, nofollow" />
 </svelte:head>
 
-<div class="max-w-2xl mx-auto px-4 py-8">
-	{#if !authed}
-		<h1 class="text-2xl font-bold text-neutral-900 dark:text-neutral-100 mb-6">슈퍼관리자</h1>
-		<form
-			onsubmit={(e) => {
-				e.preventDefault();
-				login();
-			}}
-			class="grid gap-4 max-w-sm"
-		>
-			<Field label="비밀번호" for="su-pw" error={error ?? ''}>
-				<Input id="su-pw" type="password" bind:value={password} />
-			</Field>
-			<Button type="submit" full disabled={loading}>{loading ? '확인 중…' : '로그인'}</Button>
-		</form>
-	{:else if overview}
+{#if !authed}
+	<div class="flex items-center justify-center min-h-[calc(100vh-9rem)] px-4">
+		<div class="w-full max-w-sm">
+			<h1 class="text-2xl font-bold text-neutral-900 dark:text-neutral-100 mb-6 text-center">슈퍼관리자</h1>
+			<Card>
+				<form
+					onsubmit={(e) => {
+						e.preventDefault();
+						login();
+					}}
+					class="grid gap-4"
+				>
+					<Field label="비밀번호" for="su-pw" error={error ?? ''}>
+						<Input id="su-pw" type="password" bind:value={password} />
+					</Field>
+					<Button type="submit" full disabled={loading}>{loading ? '확인 중…' : '로그인'}</Button>
+				</form>
+			</Card>
+		</div>
+	</div>
+{:else if overview}
+	<div class="max-w-2xl mx-auto px-4 py-8">
 		<div class="flex items-center justify-between mb-6">
 			<h1 class="text-2xl font-bold text-neutral-900 dark:text-neutral-100">슈퍼관리자</h1>
 			<Button variant="secondary" onclick={logout}>로그아웃</Button>
@@ -264,5 +276,5 @@ function fmtDate(ms: number): string {
 				<Button onclick={changePassword}>변경</Button>
 			</div>
 		</Card>
-	{/if}
-</div>
+	</div>
+{/if}

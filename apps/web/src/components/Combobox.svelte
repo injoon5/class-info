@@ -43,6 +43,7 @@ function handleInput(e: Event) {
 }
 
 function choose(item: ComboboxItem) {
+	clearTimeout(debounce); // cancel any pending search from the last keystroke
 	query = item.label;
 	open = false;
 	activeIndex = -1;
