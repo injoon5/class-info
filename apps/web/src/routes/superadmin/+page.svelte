@@ -16,7 +16,7 @@ type Overview = {
 		schoolName: string;
 		schoolCode: string;
 		createdAt: number;
-		classes: Array<{ grade: number; classNo: number }>;
+		classes: Array<{ _id: string; grade: number; classNo: number }>;
 	}>;
 };
 
@@ -104,6 +104,34 @@ async function changePassword() {
 	}
 }
 
+let deleting = $state<string | null>(null);
+
+async function deleteSchool(schoolId: string, name: string) {
+	if (!confirm(`'${name}' 학교와 모든 학급·공지·급식·일정을 영구 삭제합니다. 계속할까요?`)) return;
+	deleting = schoolId;
+	try {
+		await client.mutation((api as any).superadmin.deleteSchool, { password, schoolId });
+		await refresh();
+	} catch (err: any) {
+		alert(err?.message ? String(err.message).replace(/^.*Error:\s*/, '') : '삭제 실패');
+	} finally {
+		deleting = null;
+	}
+}
+
+async function deleteClass(classId: string, label: string) {
+	if (!confirm(`'${label}' 학급과 그 공지·시간표·첨부파일을 영구 삭제합니다. 계속할까요?`)) return;
+	deleting = classId;
+	try {
+		await client.mutation((api as any).superadmin.deleteClass, { password, classId });
+		await refresh();
+	} catch (err: any) {
+		alert(err?.message ? String(err.message).replace(/^.*Error:\s*/, '') : '삭제 실패');
+	} finally {
+		deleting = null;
+	}
+}
+
 function logout() {
 	sessionStorage.removeItem(STORAGE_KEY);
 	authed = false;
@@ -188,11 +216,26 @@ function fmtDate(ms: number): string {
 						<div class="py-3 first:pt-0 last:pb-0">
 							<div class="flex items-baseline justify-between gap-2">
 								<span class="font-semibold text-neutral-800 dark:text-neutral-200">{s.schoolName}</span>
-								<span class="text-xs text-neutral-400 dark:text-neutral-500 shrink-0">{s.subdomain} · {s.schoolCode}</span>
+								<div class="flex items-center gap-2 shrink-0">
+									<span class="text-xs text-neutral-400 dark:text-neutral-500">{s.subdomain} · {s.schoolCode}</span>
+									<button
+										onclick={() => deleteSchool(s._id, s.schoolName)}
+										disabled={deleting === s._id}
+										class="text-xs font-medium text-red-600 dark:text-red-400 hover:underline disabled:opacity-50"
+									>{deleting === s._id ? '삭제 중…' : '학교 삭제'}</button>
+								</div>
 							</div>
-							<div class="mt-1 flex flex-wrap items-center gap-1.5">
-								{#each s.classes as c}
-									<span class="text-xs px-1.5 py-0.5 rounded bg-neutral-100 dark:bg-neutral-700 text-neutral-600 dark:text-neutral-300 tabular-nums">{c.grade}-{c.classNo}</span>
+							<div class="mt-1.5 flex flex-wrap items-center gap-1.5">
+								{#each s.classes as c (c._id)}
+									<span class="inline-flex items-center gap-1 text-xs pl-1.5 pr-1 py-0.5 rounded bg-neutral-100 dark:bg-neutral-700 text-neutral-600 dark:text-neutral-300 tabular-nums">
+										{c.grade}-{c.classNo}
+										<button
+											onclick={() => deleteClass(c._id, `${c.grade}-${c.classNo}`)}
+											disabled={deleting === c._id}
+											aria-label="{c.grade}-{c.classNo} 학급 삭제"
+											class="text-neutral-400 hover:text-red-600 dark:hover:text-red-400 disabled:opacity-50 leading-none"
+										>×</button>
+									</span>
 								{/each}
 								{#if s.classes.length === 0}
 									<span class="text-xs text-neutral-400 dark:text-neutral-500">학급 없음</span>

@@ -1,5 +1,7 @@
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
+import type { Id } from "./_generated/dataModel";
+import { r2 } from "./files";
 
 // Global superadmin gate. The password lives in `settings` under this key so it
 // can be rotated from the superadmin page (or the Convex CLI). Change the
@@ -55,10 +57,13 @@ export const overview = query({
     const enabled = await getSetting(ctx, REGISTRATION_ENABLED_KEY);
     const code = await getSetting(ctx, REGISTRATION_CODE_KEY);
 
-    const bySchool = new Map<string, Array<{ grade: number; classNo: number }>>();
+    const bySchool = new Map<
+      string,
+      Array<{ _id: Id<"classes">; grade: number; classNo: number }>
+    >();
     for (const c of classes) {
       const arr = bySchool.get(c.schoolId) ?? [];
-      arr.push({ grade: c.grade, classNo: c.classNo });
+      arr.push({ _id: c._id, grade: c.grade, classNo: c.classNo });
       bySchool.set(c.schoolId, arr);
     }
 
@@ -103,5 +108,79 @@ export const setPassword = mutation({
       throw new Error("새 비밀번호는 4자 이상이어야 합니다.");
     }
     await putSetting(ctx, SUPERADMIN_KEY, newPassword);
+  },
+});
+
+// ── Tenant deletion (cascade) ───────────────────────────────────────────────────
+
+// Remove a class and everything scoped to it: notices, timetables, and files
+// (including their R2 objects).
+async function deleteClassDeep(ctx: any, classId: Id<"classes">): Promise<void> {
+  const notices = await ctx.db
+    .query("notices")
+    .withIndex("by_class_due_date", (q: any) => q.eq("classId", classId))
+    .collect();
+  for (const n of notices) await ctx.db.delete(n._id);
+
+  const timetables = await ctx.db
+    .query("timetables")
+    .withIndex("by_class_week", (q: any) => q.eq("classId", classId))
+    .collect();
+  for (const t of timetables) await ctx.db.delete(t._id);
+
+  const files = await ctx.db
+    .query("files")
+    .withIndex("by_class", (q: any) => q.eq("classId", classId))
+    .collect();
+  for (const f of files) {
+    try {
+      await r2.deleteObject(ctx, f.storageId);
+    } catch (err) {
+      console.error("[superadmin] R2 delete failed", err);
+    }
+    await ctx.db.delete(f._id);
+  }
+
+  await ctx.db.delete(classId);
+}
+
+export const deleteClass = mutation({
+  args: { password: v.string(), classId: v.id("classes") },
+  handler: async (ctx, { password, classId }) => {
+    await assertSuper(ctx, password);
+    const cls = await ctx.db.get(classId);
+    if (!cls) return;
+    await deleteClassDeep(ctx, classId);
+  },
+});
+
+// Remove a school and all its classes (cascade) plus school-scoped meals and
+// schedules.
+export const deleteSchool = mutation({
+  args: { password: v.string(), schoolId: v.id("schools") },
+  handler: async (ctx, { password, schoolId }) => {
+    await assertSuper(ctx, password);
+    const school = await ctx.db.get(schoolId);
+    if (!school) return;
+
+    const classes = await ctx.db
+      .query("classes")
+      .withIndex("by_school", (q: any) => q.eq("schoolId", schoolId))
+      .collect();
+    for (const c of classes) await deleteClassDeep(ctx, c._id);
+
+    const meals = await ctx.db
+      .query("meals")
+      .withIndex("by_school_date", (q: any) => q.eq("schoolId", schoolId))
+      .collect();
+    for (const m of meals) await ctx.db.delete(m._id);
+
+    const schedules = await ctx.db
+      .query("schedules")
+      .withIndex("by_school_date", (q: any) => q.eq("schoolId", schoolId))
+      .collect();
+    for (const s of schedules) await ctx.db.delete(s._id);
+
+    await ctx.db.delete(schoolId);
   },
 });

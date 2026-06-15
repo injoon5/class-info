@@ -44,7 +44,7 @@ export default defineSchema({
     url: v.string(), // R2 URL
     storageId: v.string(), // R2 storage ID
     uploadedAt: v.number(),
-  }),
+  }).index("by_class", ["classId"]),
 
 
   timetables: defineTable({
