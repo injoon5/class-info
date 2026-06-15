@@ -8,6 +8,7 @@ let {
 	name,
 	placeholder = '',
 	disabled = false,
+	required = false,
 	min,
 	inputmode,
 	class: klass = '',
@@ -20,6 +21,7 @@ let {
 	name?: string;
 	placeholder?: string;
 	disabled?: boolean;
+	required?: boolean;
 	min?: string | number;
 	inputmode?: 'text' | 'numeric' | 'search';
 	class?: string;
@@ -40,6 +42,7 @@ function handleInput(e: Event) {
 	{type}
 	{placeholder}
 	{disabled}
+	{required}
 	{min}
 	{inputmode}
 	{value}

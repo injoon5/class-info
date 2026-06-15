@@ -28,8 +28,7 @@ const noticeForm = writable({
 	files: [] as any[]
 });
 
-// PIN form state
-const pin = writable('');
+// PIN change form state
 let showPinForm = $state(false);
 
 const noticeTypes = ['수행평가', '숙제', '준비물', '기타'] as const;
@@ -162,40 +161,21 @@ const allGroupedNotices = $derived(overview.data?.currentGroups || []);
 
 {#if !data.isAuthenticated}
 	<!-- PIN Authentication Form -->
-	<div class="flex items-center justify-center min-h-[calc(100vh-5rem)] bg-neutral-100 dark:bg-neutral-900">
-		<div class="bg-white dark:bg-neutral-800 p-8 border border-neutral-300 dark:border-neutral-600 max-w-md w-full mx-4">
-			<h1 class="text-2xl font-bold text-neutral-800 dark:text-neutral-200 mb-6 text-center">관리자 로그인</h1>
-			
-			<form method="POST" action="?/login" use:enhance>
-				<input type="hidden" name="classId" value={classId} />
-				<div class="mb-4">
-					<label for="pin" class="block text-sm font-medium mb-2 text-neutral-600 dark:text-neutral-300">PIN</label>
-					<input 
-						id="pin"
-						name="pin"
-						type="password" 
-						bind:value={$pin}
-						class="w-full px-3 py-2 border border-neutral-400 dark:border-neutral-500 text-sm bg-white dark:bg-neutral-800 text-neutral-800 dark:text-neutral-200"
-						placeholder="관리자 PIN을 입력하세요"
-						required
-					/>
+	<div class="flex items-center justify-center min-h-[calc(100vh-9rem)] px-4">
+		<div class="w-full max-w-sm">
+			<h1 class="text-2xl font-bold text-neutral-900 dark:text-neutral-100 mb-6 text-center">관리자 로그인</h1>
+			<Card>
+				<form method="POST" action="?/login" use:enhance class="grid gap-4">
+					<input type="hidden" name="classId" value={classId} />
+					<Field label="PIN" for="pin" error={form?.error ?? ''}>
+						<Input id="pin" name="pin" type="password" placeholder="관리자 PIN을 입력하세요" required />
+					</Field>
+					<Button type="submit" full>로그인</Button>
+				</form>
+				<div class="mt-5 text-center">
+					<a href={base} class="text-sm text-neutral-500 dark:text-neutral-400 hover:text-neutral-800 dark:hover:text-neutral-200">← 홈으로 돌아가기</a>
 				</div>
-				
-				{#if form?.error}
-					<div class="mb-4 text-red-600 text-sm">{form.error}</div>
-				{/if}
-				
-				<button 
-					type="submit"
-					class="pressable-lg w-full px-4 py-2 bg-neutral-800 dark:bg-neutral-300 font-semibold text-white dark:text-black text-sm hover:bg-neutral-700 dark:hover:bg-neutral-200"
-				>
-					로그인
-				</button>
-			</form>
-			
-			<div class="mt-6 text-center">
-				<a href={base} class="text-sm text-neutral-500 dark:text-neutral-400 hover:text-neutral-800 dark:hover:text-neutral-200">← 홈으로 돌아가기</a>
-			</div>
+			</Card>
 		</div>
 	</div>
 {:else}
