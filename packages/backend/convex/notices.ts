@@ -1,13 +1,15 @@
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
+import type { Id } from "./_generated/dataModel";
 
 export const list = query({
-  handler: async (ctx) => {
+  args: { classId: v.id("classes") },
+  handler: async (ctx, { classId }) => {
     try {
       // Prefer index-based ordering
       const notices = await ctx.db
         .query("notices")
-        .withIndex("by_due_date")
+        .withIndex("by_class_due_date", (q) => q.eq("classId", classId))
         .collect();
       return notices.sort((a, b) => new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime());
     } catch (error) {
@@ -53,20 +55,20 @@ function generateRandomSlug(): string {
   return slug;
 }
 
-async function isSlugTaken(ctx: any, slug: string): Promise<boolean> {
+async function isSlugTaken(ctx: any, classId: Id<"classes">, slug: string): Promise<boolean> {
   if (!slug) return false;
   const hit = await ctx.db
     .query("notices")
-    .withIndex("by_slug", (q: any) => q.eq("slug", slug))
+    .withIndex("by_class_slug", (q: any) => q.eq("classId", classId).eq("slug", slug))
     .first();
   return Boolean(hit);
 }
 
-async function createUniqueSlug(ctx: any): Promise<string> {
+async function createUniqueSlug(ctx: any, classId: Id<"classes">): Promise<string> {
   const base = generateRandomSlug();
   let slug = base;
   let suffix = 0;
-  while (await isSlugTaken(ctx, slug)) {
+  while (await isSlugTaken(ctx, classId, slug)) {
     suffix += 1;
     const tail = suffix.toString(36);
     slug = `${base}-${tail}`.slice(0, 48);
@@ -142,11 +144,12 @@ function toMinimalNotice(n: any): MinimalNotice {
 }
 
 export const currentGroups = query({
-  handler: async (ctx) => {
+  args: { classId: v.id("classes") },
+  handler: async (ctx, { classId }) => {
     const cutoff = kstCutoffDateString();
     const valid = await ctx.db
       .query("notices")
-      .withIndex("by_due_date", q => q.gte("dueDate", cutoff))
+      .withIndex("by_class_due_date", q => q.eq("classId", classId).gte("dueDate", cutoff))
       .collect();
     const today = getNowKst();
     const groups = new Map<string, { date: string; displayDate: string; isToday: boolean; notices: MinimalNotice[] }>();
@@ -164,11 +167,12 @@ export const currentGroups = query({
 });
 
 export const pastMonths = query({
-  handler: async (ctx) => {
+  args: { classId: v.id("classes") },
+  handler: async (ctx, { classId }) => {
     const cutoff = kstCutoffDateString();
     const valid = await ctx.db
       .query("notices")
-      .withIndex("by_due_date", q => q.lt("dueDate", cutoff))
+      .withIndex("by_class_due_date", q => q.eq("classId", classId).lt("dueDate", cutoff))
       .collect();
     const monthMap = new Map<string, { monthKey: string; monthName: string; total: number }>();
     for (const n of valid) {
@@ -190,8 +194,8 @@ export const pastMonths = query({
 });
 
 export const pastByMonth = query({
-  args: { monthKey: v.string() },
-  handler: async (ctx, { monthKey }) => {
+  args: { classId: v.id("classes"), monthKey: v.string() },
+  handler: async (ctx, { classId, monthKey }) => {
     const [yearStr, monthStr] = monthKey.split('-');
     const year = Number(yearStr);
     const month = Number(monthStr);
@@ -202,7 +206,7 @@ export const pastByMonth = query({
     const upper = nextMonthStart < cutoff ? nextMonthStart : cutoff;
     const valid = await ctx.db
       .query("notices")
-      .withIndex("by_due_date", q => q.gte("dueDate", monthStart).lt("dueDate", upper))
+      .withIndex("by_class_due_date", q => q.eq("classId", classId).gte("dueDate", monthStart).lt("dueDate", upper))
       .collect();
     const today = getTodayKst();
     const groups = new Map<string, { date: string; displayDate: string; isToday: boolean; notices: MinimalNotice[] }>();
@@ -220,12 +224,13 @@ export const pastByMonth = query({
 });
 
 export const overview = query({
-  handler: async (ctx) => {
+  args: { classId: v.id("classes") },
+  handler: async (ctx, { classId }) => {
     // currentGroups logic
     const cutoff = kstCutoffDateString();
     const currentRows = await ctx.db
       .query("notices")
-      .withIndex("by_due_date", q => q.gte("dueDate", cutoff))
+      .withIndex("by_class_due_date", q => q.eq("classId", classId).gte("dueDate", cutoff))
       .collect();
     const today = getTodayKst();
     const currentMap = new Map<string, { date: string; displayDate: string; isToday: boolean; notices: MinimalNotice[] }>();
@@ -241,7 +246,7 @@ export const overview = query({
     // pastMonths logic
     const pastRows = await ctx.db
       .query("notices")
-      .withIndex("by_due_date", q => q.lt("dueDate", cutoff))
+      .withIndex("by_class_due_date", q => q.eq("classId", classId).lt("dueDate", cutoff))
       .collect();
     const monthMap = new Map<string, { monthKey: string; monthName: string; total: number }>();
     for (const n of pastRows) {
@@ -262,13 +267,13 @@ export const overview = query({
 });
 
 export const detail = query({
-  args: { id: v.string() },
-  handler: async (ctx, { id }) => {
+  args: { classId: v.id("classes"), id: v.string() },
+  handler: async (ctx, { classId, id }) => {
 
-    // Try as slug first
+    // Try as slug first (slugs are unique per class)
     let notice = await ctx.db
       .query("notices")
-      .withIndex("by_slug", q => q.eq("slug", id))
+      .withIndex("by_class_slug", q => q.eq("classId", classId).eq("slug", id))
       .first();
 
 
@@ -281,6 +286,9 @@ export const detail = query({
         notice = null;
       }
     }
+
+    // Ensure the notice belongs to the requested class
+    if (notice && notice.classId !== classId) notice = null;
 
     if (!notice) return { notice: null, files: [] as any[] };
 
@@ -300,6 +308,7 @@ export const getById = query({
 
 export const create = mutation({
   args: {
+    classId: v.id("classes"),
     title: v.string(),
     subject: v.string(),
     type: v.union(v.literal("수행평가"), v.literal("숙제"), v.literal("준비물"), v.literal("기타")),
@@ -310,7 +319,7 @@ export const create = mutation({
   },
   handler: async (ctx, args) => {
     const now = Date.now();
-    const slug = args.slug && args.slug.length > 0 ? args.slug : await createUniqueSlug(ctx);
+    const slug = args.slug && args.slug.length > 0 ? args.slug : await createUniqueSlug(ctx, args.classId);
     const noticeId = await ctx.db.insert("notices", {
       ...args,
       slug,
@@ -334,11 +343,13 @@ export const update = mutation({
   },
   handler: async (ctx, args) => {
     const { id, slug, ...updates } = args;
+    const existing = await ctx.db.get(id);
+    if (!existing) throw new Error("Notice not found");
     let finalSlug = slug;
     if (slug === undefined) {
       // keep existing slug
-    } else if (!slug || (await isSlugTaken(ctx, slug))) {
-      finalSlug = await createUniqueSlug(ctx);
+    } else if (!slug || (await isSlugTaken(ctx, existing.classId, slug))) {
+      finalSlug = await createUniqueSlug(ctx, existing.classId);
     }
     await ctx.db.patch(id, {
       ...updates,
@@ -364,7 +375,7 @@ export const backfillMissingSlugs = mutation({
     for (const n of all) {
       const hasValidSlug = typeof n.slug === 'string' && n.slug.trim().length > 0;
       if (!hasValidSlug) {
-        const slug = await createUniqueSlug(ctx);
+        const slug = await createUniqueSlug(ctx, n.classId);
         await ctx.db.patch(n._id, { slug, updatedAt: Date.now() });
         updated += 1;
         results.push({ id: String(n._id), slug });

@@ -3,18 +3,21 @@ import { useQuery } from 'convex-svelte';
 import { api } from "@class-info/backend/convex/_generated/api";
 import { page } from '$app/stores';
 import { goto } from '$app/navigation';
-import { getTypeColor, getFirstLine, formatDate, truncateTitle, formatKoreanDueDate } from '../../../lib/utils.js';
+import { getTypeColor, getFirstLine, formatDate, truncateTitle, formatKoreanDueDate } from '../../../../../lib/utils.js';
 import { marked } from 'marked';
 import type { PageData } from './$types.js';
 
 let { data }: { data: PageData } = $props();
 
+const base = `/${data.grade}/${data.classNo}`;
+const classLabel = `${data.grade}-${data.classNo} 학급`;
+
 const detail = useQuery(
 	(api as any).notices.detail,
-	() => ({ id: $page.params.id }),
-	() => ({ 
+	() => ({ classId: data.klass._id, id: $page.params.id }),
+	() => ({
 		initialData: { notice: data.notice, files: data.files },
-		keepPreviousData: true 
+		keepPreviousData: true
 	})
 );
 
@@ -53,21 +56,21 @@ $effect(() => {
 
 <svelte:head>
 	{#if detail.data?.notice}
-		<title>{detail.data.notice.subject} {detail.data.notice.title} | 1-3 학급 공지</title>
+		<title>{detail.data.notice.subject} {detail.data.notice.title} | {classLabel} 공지</title>
 		<meta name="description" content="{getFirstLine(detail.data.notice.description) || '공지 내용을 확인하세요!'}" />
 
 		<!-- Open Graph -->
-		<meta property="og:title" content="{detail.data.notice.subject} {detail.data.notice.title} | 1-3 학급 공지" />
+		<meta property="og:title" content="{detail.data.notice.subject} {detail.data.notice.title} | {classLabel} 공지" />
 		<meta property="og:description" content="{getFirstLine(detail.data.notice.description) || '공지 내용을 확인하세요!'}" />
 		<meta property="og:type" content="article" />
 		<meta property="og:site_name" content="TimeforSchool" />
 
 		<!-- Twitter Card -->
 		<meta name="twitter:card" content="summary_large_image" />
-		<meta name="twitter:title" content="{detail.data.notice.subject} {detail.data.notice.title} | 1-3 학급 공지" />
+		<meta name="twitter:title" content="{detail.data.notice.subject} {detail.data.notice.title} | {classLabel} 공지" />
 		<meta name="twitter:description" content="{getFirstLine(detail.data.notice.description) || '공지 내용을 확인하세요!'}" />
 	{:else}
-		<title>공지 상세 - 1-3 학급 공지</title>
+		<title>공지 상세 - {classLabel} 공지</title>
 		<meta name="description" content="학급 공지의 상세 내용을 확인하세요." />
 		<meta property="og:title" content="공지 상세 - 학급 공지" />
 		<meta property="og:description" content="학급 공지의 상세 내용을 확인하세요." />
@@ -80,7 +83,7 @@ $effect(() => {
 		<!-- Header -->
 		<a
 			type="button"
-			href="/notices"
+			href="{base}/notices"
 			class="sm:mb-3 mb-2 py-1 sm:py-2 text-neutral-500 dark:text-neutral-400 hover:text-neutral-800 dark:hover:text-neutral-200 transition-colors pressable"
 		>
 			← 뒤로
@@ -188,7 +191,7 @@ $effect(() => {
 	</div>
 	<div class="text-center py-3 sm:py-4 text-xs text-neutral-500 dark:text-neutral-400 space-y-1.5 sm:space-y-2">
 		<div>
-			<a href="/admin" class="text-xs text-neutral-500 dark:text-neutral-400 hover:text-neutral-800 dark:hover:text-neutral-200 underline">
+			<a href="{base}/admin" class="text-xs text-neutral-500 dark:text-neutral-400 hover:text-neutral-800 dark:hover:text-neutral-200 underline">
 				관리자
 			</a>
 		</div>

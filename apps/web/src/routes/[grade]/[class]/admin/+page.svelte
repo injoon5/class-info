@@ -5,11 +5,16 @@ import type { Id } from "@class-info/backend/convex/_generated/dataModel";
 import { writable } from 'svelte/store';
 import { enhance } from '$app/forms';
 import { onMount } from 'svelte';
-import FileUpload from '../../components/FileUpload.svelte';
+import FileUpload from '../../../../components/FileUpload.svelte';
+import { Button, Input, Field, Card } from '../../../../components/ui';
 import type { PageData, ActionData } from './$types';
 
 let { data, form }: { data: PageData; form: ActionData } = $props();
 const client = useConvexClient();
+
+const classId = data.klass._id;
+const base = `/${data.grade}/${data.classNo}`;
+const classLabel = `${data.grade}-${data.classNo}`;
 
 const showForm = writable(false);
 const editingNotice = writable<any>(null);
@@ -23,15 +28,15 @@ const noticeForm = writable({
 	files: [] as any[]
 });
 
-// PIN form state
-const pin = writable('');
+// PIN change form state
+let showPinForm = $state(false);
 
 const noticeTypes = ['수행평가', '숙제', '준비물', '기타'] as const;
 
 // Server now provides grouped current notices; fetch past months on demand
-import AdminPastMonthDetails from '../../components/AdminPastMonthDetails.svelte';
+import AdminPastMonthDetails from '../../../../components/AdminPastMonthDetails.svelte';
 import { useQuery } from 'convex-svelte';
-const overview = useQuery(api.notices.overview, {});
+const overview = useQuery((api as any).notices.overview, { classId });
 let openMonthKey = $state<string | null>(null);
 
 function resetForm() {
@@ -90,9 +95,9 @@ async function handleSubmit() {
 	
 	try {
 		if ($editingNotice) {
-			await client.mutation(api.notices.update, { id: $editingNotice._id, ...payload });
+			await client.mutation((api as any).notices.update, { id: $editingNotice._id, ...payload });
 		} else {
-			await client.mutation(api.notices.create, payload);
+			await client.mutation((api as any).notices.create, { classId, ...payload });
 		}
 		resetForm();
 	} catch (error) {
@@ -130,19 +135,19 @@ const allGroupedNotices = $derived(overview.data?.currentGroups || []);
 </script>
 
 <svelte:head>
-	<title>관리자 페이지 - 3-4 학급 공지</title>
-	<meta name="description" content="3-4 학급 공지 관리자 페이지입니다. " />
+	<title>관리자 페이지 - {classLabel} 학급 공지</title>
+	<meta name="description" content="{classLabel} 학급 공지 관리자 페이지입니다. " />
 
 	<!-- Open Graph -->
-	<meta property="og:title" content="관리자 페이지 - 3-4 학급 공지" />
-	<meta property="og:description" content="3-4 학급 공지 관리자 페이지입니다. " />
+	<meta property="og:title" content="관리자 페이지 - {classLabel} 학급 공지" />
+	<meta property="og:description" content="{classLabel} 학급 공지 관리자 페이지입니다. " />
 	<meta property="og:type" content="website" />
 	<meta property="og:site_name" content="TimeforSchool" />
-	
+
 	<!-- Twitter Card -->
 	<meta name="twitter:card" content="summary_large_image" />
-	<meta name="twitter:title" content="관리자 페이지 - 3-4 학급 공지" />
-	<meta name="twitter:description" content="3-4 학급 공지 관리자 페이지입니다. " />
+	<meta name="twitter:title" content="관리자 페이지 - {classLabel} 학급 공지" />
+	<meta name="twitter:description" content="{classLabel} 학급 공지 관리자 페이지입니다. " />
 	
 	<!-- Additional meta tags -->	
 	<meta name="robots" content="noindex, nofollow" />
@@ -156,39 +161,21 @@ const allGroupedNotices = $derived(overview.data?.currentGroups || []);
 
 {#if !data.isAuthenticated}
 	<!-- PIN Authentication Form -->
-	<div class="flex items-center justify-center min-h-[calc(100vh-5rem)] bg-neutral-100 dark:bg-neutral-900">
-		<div class="bg-white dark:bg-neutral-800 p-8 border border-neutral-300 dark:border-neutral-600 max-w-md w-full mx-4">
-			<h1 class="text-2xl font-bold text-neutral-800 dark:text-neutral-200 mb-6 text-center">관리자 로그인</h1>
-			
-			<form method="POST" action="?/login" use:enhance>
-				<div class="mb-4">
-					<label for="pin" class="block text-sm font-medium mb-2 text-neutral-600 dark:text-neutral-300">PIN</label>
-					<input 
-						id="pin"
-						name="pin"
-						type="password" 
-						bind:value={$pin}
-						class="w-full px-3 py-2 border border-neutral-400 dark:border-neutral-500 text-sm bg-white dark:bg-neutral-800 text-neutral-800 dark:text-neutral-200"
-						placeholder="관리자 PIN을 입력하세요"
-						required
-					/>
+	<div class="flex items-center justify-center min-h-[calc(100vh-9rem)] px-4">
+		<div class="w-full max-w-sm">
+			<h1 class="text-2xl font-bold text-neutral-900 dark:text-neutral-100 mb-6 text-center">관리자 로그인</h1>
+			<Card>
+				<form method="POST" action="?/login" use:enhance class="grid gap-4">
+					<input type="hidden" name="classId" value={classId} />
+					<Field label="PIN" for="pin" error={form?.error ?? ''}>
+						<Input id="pin" name="pin" type="password" placeholder="관리자 PIN을 입력하세요" required />
+					</Field>
+					<Button type="submit" full>로그인</Button>
+				</form>
+				<div class="mt-5 text-center">
+					<a href={base} class="text-sm text-neutral-500 dark:text-neutral-400 hover:text-neutral-800 dark:hover:text-neutral-200">← 홈으로 돌아가기</a>
 				</div>
-				
-				{#if form?.error}
-					<div class="mb-4 text-red-600 text-sm">{form.error}</div>
-				{/if}
-				
-				<button 
-					type="submit"
-					class="pressable-lg w-full px-4 py-2 bg-neutral-800 dark:bg-neutral-300 font-semibold text-white dark:text-black text-sm hover:bg-neutral-700 dark:hover:bg-neutral-200"
-				>
-					로그인
-				</button>
-			</form>
-			
-			<div class="mt-6 text-center">
-				<a href="/" class="text-sm text-neutral-500 dark:text-neutral-400 hover:text-neutral-800 dark:hover:text-neutral-200">← 홈으로 돌아가기</a>
-			</div>
+			</Card>
 		</div>
 	</div>
 {:else}
@@ -205,13 +192,56 @@ const allGroupedNotices = $derived(overview.data?.currentGroups || []);
 					{$showForm ? '취소' : '새 알림 추가'}
 				</button>
 
+				<button
+					onclick={() => (showPinForm = !showPinForm)}
+					class="px-3 pressable-lg font-medium sm:px-4 py-2 border border-neutral-400 dark:border-neutral-500 text-sm hover:bg-neutral-200 dark:hover:bg-neutral-600 text-neutral-800 dark:text-neutral-200 text-center w-full sm:w-auto"
+				>
+					{showPinForm ? 'PIN 변경 닫기' : 'PIN 변경'}
+				</button>
+
 				<form method="POST" action="?/logout" use:enhance class="inline">
+					<input type="hidden" name="classId" value={classId} />
 					<button type="submit" class="px-3 pressable-lg font-medium sm:px-4 py-2 border border-neutral-400 dark:border-neutral-500 text-sm hover:bg-neutral-200 dark:hover:bg-neutral-600 text-neutral-800 dark:text-neutral-200 text-center w-full sm:w-auto">
 						로그아웃
 					</button>
 				</form>
 			</div>
 		</div>
+
+		<!-- Change admin PIN -->
+		{#if showPinForm}
+			<Card class="mb-6 max-w-md">
+				<h2 class="text-lg font-semibold mb-3 text-neutral-800 dark:text-neutral-200">PIN 변경</h2>
+				<form
+					method="POST"
+					action="?/changePin"
+					use:enhance={() => {
+						return async ({ result, update }) => {
+							await update({ reset: false });
+							if (result.type === 'success' && (result.data as any)?.pinSuccess) {
+								showPinForm = false;
+							}
+						};
+					}}
+					class="grid gap-3"
+				>
+					<input type="hidden" name="classId" value={classId} />
+					<Field label="새 PIN" for="newPin">
+						<Input id="newPin" name="newPin" type="password" />
+					</Field>
+					<Field label="새 PIN 확인" for="confirmPin">
+						<Input id="confirmPin" name="confirmPin" type="password" />
+					</Field>
+					{#if form?.pinError}
+						<p class="text-sm text-red-600 dark:text-red-400">{form.pinError}</p>
+					{/if}
+					{#if form?.pinSuccess}
+						<p class="text-sm text-emerald-600 dark:text-emerald-400">PIN이 변경되었습니다.</p>
+					{/if}
+					<Button type="submit">변경</Button>
+				</form>
+			</Card>
+		{/if}
 
 		<!-- Form -->
 		{#if $showForm}
@@ -278,8 +308,9 @@ const allGroupedNotices = $derived(overview.data?.currentGroups || []);
 					
 					<div>
 						<div class="text-sm font-medium mb-1 text-neutral-600 dark:text-neutral-300">파일 첨부</div>
-						<FileUpload 
-							files={$noticeForm.files} 
+						<FileUpload
+							{classId}
+							files={$noticeForm.files}
 							onFilesChange={handleFilesChange}
 						/>
 					</div>
@@ -381,8 +412,9 @@ const allGroupedNotices = $derived(overview.data?.currentGroups || []);
 
                             {#if openMonthKey === m.monthKey}
                                 {#key m.monthKey}
-                                    <AdminPastMonthDetails 
+                                    <AdminPastMonthDetails
                                         monthKey={m.monthKey}
+                                        {classId}
                                         onEdit={(id: string) => {
                                             const all: any[] = (overview.data?.currentGroups || []).flatMap((g: any) => g.notices || []);
                                             const found = all.find((n: any) => String(n?._id) === id);
@@ -405,7 +437,7 @@ const allGroupedNotices = $derived(overview.data?.currentGroups || []);
 		<!-- Footer -->
 		<div class="text-center py-4 text-xs text-neutral-500 dark:text-neutral-400 border-t border-neutral-200 dark:border-neutral-700 mt-8">
 			{#if allGroupedNotices && allGroupedNotices.length > 0}
-				마지막 업데이트: {new Date(Math.max(...allGroupedNotices.flatMap(g => g.notices || []).map((n: any) => n.updatedAt || n.createdAt).filter(Boolean))).toLocaleString('ko-KR', { 
+				마지막 업데이트: {new Date(Math.max(...allGroupedNotices.flatMap((g: any) => g.notices || []).map((n: any) => n.updatedAt || n.createdAt).filter(Boolean))).toLocaleString('ko-KR', {
 					year: 'numeric', 
 					month: 'long', 
 					day: 'numeric', 

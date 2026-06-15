@@ -3,6 +3,7 @@ import NoticeCard from './NoticeCard.svelte';
 
 export let group: any;
 export let isPast = false;
+export let base = '';
 </script>
 
 <div class="{isPast ? 'mb-3 sm:mb-4 last:mb-0' : 'mb-4 sm:mb-6'}">
@@ -18,7 +19,7 @@ export let isPast = false;
 	
 	<div class="grid gap-1.5 sm:gap-2">
 		{#each group.notices as notice}
-			<NoticeCard {notice} {isPast} />
+			<NoticeCard {notice} {isPast} {base} />
 		{/each}
 	</div>
 </div>

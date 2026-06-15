@@ -1,10 +1,11 @@
 import type { RequestHandler } from '@sveltejs/kit';
 
+// School-level public routes (per subdomain). Class pages live under
+// /<grade>/<class> and are intentionally not enumerated here.
 const PUBLIC_ROUTES = [
 	{ path: '/', changefreq: 'daily', priority: '1.0' },
-	{ path: '/notice', changefreq: 'daily', priority: '0.9' },
 	{ path: '/meals', changefreq: 'daily', priority: '0.8' },
-	{ path: '/timetable', changefreq: 'weekly', priority: '0.7' },
+	{ path: '/calendar', changefreq: 'weekly', priority: '0.7' },
 ];
 
 export const GET: RequestHandler = ({ url }) => {

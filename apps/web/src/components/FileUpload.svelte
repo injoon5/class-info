@@ -5,6 +5,7 @@ import { api } from "@class-info/backend/convex/_generated/api";
 
 export let files: any[] = []; // Array of file IDs
 export let onFilesChange: (fileIds: any[]) => void;
+export let classId: string;
 
 const client = useConvexClient();
 const uploadFile = useUploadFile(api.files);
@@ -32,7 +33,7 @@ async function loadFiles() {
       client.query(api.files.getFile, { fileId })
     );
     const results = await Promise.all(filePromises);
-    uploadedFiles = results.filter((file): file is UploadedFile => file !== null);
+    uploadedFiles = results.filter((file) => file !== null) as UploadedFile[];
   } catch (error) {
     // console.error('Error loading files:', error);
     uploadedFiles = [];
@@ -64,7 +65,8 @@ async function handleFileUpload(fileList: FileList) {
       // console.log('Upload result (storageId):', storageId);
       
       // Update file metadata using storage ID and get the file ID back
-      const fileId = await client.mutation(api.files.updateFileMetadataByStorageId, {
+      const fileId = await client.mutation((api as any).files.updateFileMetadataByStorageId, {
+        classId,
         storageId,
         name: file.name,
         type: file.type,
@@ -87,7 +89,7 @@ async function handleFileUpload(fileList: FileList) {
 
 async function removeFile(fileId: string) {
   try {
-    await client.mutation(api.files.deleteFile, { fileId });
+    await client.mutation((api as any).files.deleteFile, { fileId });
     const updatedFiles = files.filter(id => id !== fileId);
     onFilesChange(updatedFiles);
     // Also update the local uploadedFiles array immediately
@@ -149,7 +151,7 @@ function handleDrop(e: DragEvent) {
       type="file" 
       multiple 
       accept="image/*,application/pdf"
-      onchange={(e) => e.target?.files && handleFileUpload(e.target.files)}
+      onchange={(e) => { const t = e.currentTarget as HTMLInputElement; if (t.files) handleFileUpload(t.files); }}
       class="hidden"
       id="file-upload"
       disabled={isUploading}

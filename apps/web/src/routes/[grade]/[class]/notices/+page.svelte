@@ -1,37 +1,40 @@
 <script lang="ts">
 import { useQuery } from 'convex-svelte';
 import { api } from "@class-info/backend/convex/_generated/api";
-import NoticeGroup from '../../components/NoticeGroup.svelte';
-import PastMonthDetails from '../../components/PastMonthDetails.svelte';
-import LoadingState from '../../components/LoadingState.svelte';
-import ErrorState from '../../components/ErrorState.svelte';
-import EmptyState from '../../components/EmptyState.svelte';
-import NoticeFooter from '../../components/NoticeFooter.svelte';
+import NoticeGroup from '../../../../components/NoticeGroup.svelte';
+import PastMonthDetails from '../../../../components/PastMonthDetails.svelte';
+import LoadingState from '../../../../components/LoadingState.svelte';
+import ErrorState from '../../../../components/ErrorState.svelte';
+import EmptyState from '../../../../components/EmptyState.svelte';
+import NoticeFooter from '../../../../components/NoticeFooter.svelte';
 import type { PageData } from './$types.js';
 
 let { data }: { data: PageData } = $props();
 let openMonthKey = $state<string | null>(null);
 
-const overview = useQuery(api.notices.overview, {}, () => ({
+const classId = data.klass._id;
+const base = `/${data.grade}/${data.classNo}`;
+const classLabel = `${data.grade}학년 ${data.classNo}반`;
+
+const overview = useQuery((api as any).notices.overview, { classId }, () => ({
     initialData: data,
     keepPreviousData: true,
 }));
 </script>
 
 <svelte:head>
-	<title>공지 - 1학년 3반</title>
+	<title>공지 - {classLabel}</title>
 	<meta name="description" content="수행평가, 숙제, 준비물 등 중요한 공지사항을 확인하세요." />
 
 	<!-- Open Graph -->
-	<meta property="og:title" content="공지 - 1학년 3반" />
+	<meta property="og:title" content="공지 - {classLabel}" />
 	<meta property="og:description" content="수행평가, 숙제, 준비물 등 중요한 공지사항을 확인하세요." />
-	<meta property="og:url" content="https://timefor.school/notices" />
 	<meta property="og:type" content="website" />
 	<meta property="og:site_name" content="TimeforSchool" />
 
 	<!-- Twitter Card -->
 	<meta name="twitter:card" content="summary_large_image" />
-	<meta name="twitter:title" content="공지 - 1학년 3반" />
+	<meta name="twitter:title" content="공지 - {classLabel}" />
 	<meta name="twitter:description" content="수행평가, 숙제, 준비물 등 중요한 공지사항을 확인하세요." />
 </svelte:head>
 
@@ -46,10 +49,8 @@ const overview = useQuery(api.notices.overview, {}, () => ({
         <!-- Current and Future Notices -->
         {#if overview.data?.currentGroups && overview.data.currentGroups.length > 0}
             {#each overview.data.currentGroups as group}
-                <NoticeGroup {group} />
+                <NoticeGroup {group} {base} />
             {/each}
-        {:else}
-            <EmptyState />
         {/if}
 
         {#if overview.data?.pastMonths && overview.data.pastMonths.length > 0}
@@ -68,7 +69,7 @@ const overview = useQuery(api.notices.overview, {}, () => ({
                         </summary>
                         {#if openMonthKey === month.monthKey}
                             {#key month.monthKey}
-                                <PastMonthDetails monthKey={month.monthKey} />
+                                <PastMonthDetails monthKey={month.monthKey} {classId} {base} />
                             {/key}
                         {/if}
                     </details>
@@ -79,5 +80,5 @@ const overview = useQuery(api.notices.overview, {}, () => ({
             <EmptyState />
         {/if}
     {/if}
-    <NoticeFooter notices={overview.data?.currentGroups || []} />
+    <NoticeFooter notices={overview.data?.currentGroups || []} {base} />
 </div>

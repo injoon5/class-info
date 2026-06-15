@@ -1,7 +1,7 @@
 <script lang="ts">
 import { generateCopyText } from '../lib/utils.js';
 
-let { notices }: { notices: any[] } = $props(); // groups array from server
+let { notices, base = '' }: { notices: any[]; base?: string } = $props(); // groups array from server
 
 const flat = $derived((notices || []).flatMap((g: any) => Array.isArray(g?.notices) ? g.notices : [g]));
 const latestTs = $derived(flat.length > 0 ? Math.max(...flat.map((n: any) => n?.updatedAt || n?.createdAt).filter(Boolean)) : null);
@@ -34,7 +34,7 @@ async function copyToClipboard() {
 		</button>
 	</div>
 	<div>
-		<a href="/admin" class="text-xs text-neutral-500 dark:text-neutral-400 hover:text-neutral-800 dark:hover:text-neutral-200 underline">
+		<a href="{base}/admin" class="text-xs text-neutral-500 dark:text-neutral-400 hover:text-neutral-800 dark:hover:text-neutral-200 underline">
 			관리자
 		</a>
 	</div>

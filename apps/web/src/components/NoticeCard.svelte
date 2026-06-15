@@ -1,7 +1,7 @@
 <script lang="ts">
 import { getTypeColor } from '../lib/utils.js';
 
-let { notice, isPast = false }: { notice: any; isPast?: boolean } = $props();
+let { notice, isPast = false, base = '' }: { notice: any; isPast?: boolean; base?: string } = $props();
 
 const isLink = $derived(Boolean((notice?.summary && String(notice.summary).trim()) || notice?.hasFiles));
 
@@ -17,7 +17,7 @@ const titleClass = $derived(`${isPast ? 'font-medium text-neutral-600 dark:text-
 const summaryClass = $derived(`${isPast ? 'text-neutral-500 dark:text-neutral-400 text-xs' : 'text-neutral-600 sm:mt-1 dark:text-neutral-300 text-xs sm:text-sm font-medium'} mt-0.5 line-clamp-2 overflow-hidden text-ellipsis`);
 </script>
 
-<svelte:element this={isLink ? 'a' : 'div'} class={containerClass} href={isLink ? `/notice/${notice.slug || notice._id}` : undefined}>
+<svelte:element this={isLink ? 'a' : 'div'} class={containerClass} href={isLink ? `${base}/notice/${notice.slug || notice._id}` : undefined}>
 	<div class="flex items-start justify-between gap-2 sm:gap-4">
 		<div class="flex-1 min-w-0">
 			<div class={headerGapClass}>

@@ -8,14 +8,14 @@ const convex = new ConvexHttpClient(PUBLIC_CONVEX_URL);
 
 export const POST: RequestHandler = async ({ request }) => {
 	try {
-		const { pin } = await request.json();
-		
-		if (!pin) {
+		const { pin, classId } = await request.json();
+
+		if (!pin || !classId) {
 			return json({ valid: false }, { status: 400 });
 		}
 
-		const result = await convex.query(api.settings.verifyPin, { pin });
-		
+		const result = await convex.query((api as any).settings.verifyPin, { classId, pin });
+
 		return json({ valid: result });
 	} catch (error) {
 		console.error('PIN verification error:', error);

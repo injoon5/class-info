@@ -48,6 +48,7 @@ function getWeekRangeKst(offsetWeeks: number): { start: Date; end: Date } {
 
 export const upsertMany = internalMutation({
   args: {
+    schoolId: v.id("schools"),
     meals: v.array(
       v.object({
         date: v.string(),
@@ -62,19 +63,21 @@ export const upsertMany = internalMutation({
       })
     ),
   },
-  handler: async (ctx, { meals }) => {
+  handler: async (ctx, { schoolId, meals }) => {
     let updated = 0, inserted = 0;
     for (const meal of meals) {
       const existing = await ctx.db
         .query("meals")
-        .withIndex("by_date_type", (q) => q.eq("date", meal.date).eq("mealType", meal.mealType))
+        .withIndex("by_school_date_type", (q) =>
+          q.eq("schoolId", schoolId).eq("date", meal.date).eq("mealType", meal.mealType)
+        )
         .first();
 
       if (existing) {
-        await ctx.db.patch(existing._id, { ...meal, editedAt: Date.now() });
+        await ctx.db.patch(existing._id, { ...meal, schoolId, editedAt: Date.now() });
         updated++;
       } else {
-        await ctx.db.insert("meals", { ...meal, editedAt: Date.now() });
+        await ctx.db.insert("meals", { ...meal, schoolId, editedAt: Date.now() });
         inserted++;
       }
     }
@@ -84,11 +87,12 @@ export const upsertMany = internalMutation({
 
 export const fetchAndSave = internalAction({
   args: {
+    schoolId: v.id("schools"),
     startdate: v.string(), // YYYYMMDD
     enddate: v.string(), // YYYYMMDD
     schoolcode: v.string(),
   },
-  handler: async (ctx, { startdate, enddate, schoolcode }) => {
+  handler: async (ctx, { schoolId, startdate, enddate, schoolcode }) => {
     const url = `https://api.timefor.school/lunch?startdate=${encodeURIComponent(startdate)}&enddate=${encodeURIComponent(enddate)}&schoolcode=${encodeURIComponent(schoolcode)}`;
 
     const res = await fetch(url, { headers: { Accept: "application/json" } });
@@ -116,17 +120,18 @@ export const fetchAndSave = internalAction({
 
       console.log(`[meals.fetchAndSave] range=${startdate}–${enddate} fetched=${meals.length}`);
       if (meals.length > 0) {
-        await ctx.runMutation(internal.meals.upsertMany, { meals });
+        await ctx.runMutation(internal.meals.upsertMany, { schoolId, meals });
       }
     }
   },
 });
 
 export const fetchCurrentWeek = internalAction({
-  args: { schoolcode: v.string() },
-  handler: async (ctx, { schoolcode }) => {
+  args: { schoolId: v.id("schools"), schoolcode: v.string() },
+  handler: async (ctx, { schoolId, schoolcode }) => {
     const { start, end } = getWeekRangeKst(0);
     await ctx.runAction(internal.meals.fetchAndSave, {
+      schoolId,
       startdate: formatAsYyyymmddKst(start),
       enddate: formatAsYyyymmddKst(end),
       schoolcode,
@@ -135,10 +140,11 @@ export const fetchCurrentWeek = internalAction({
 });
 
 export const fetchNextWeek = internalAction({
-  args: { schoolcode: v.string() },
-  handler: async (ctx, { schoolcode }) => {
+  args: { schoolId: v.id("schools"), schoolcode: v.string() },
+  handler: async (ctx, { schoolId, schoolcode }) => {
     const { start, end } = getWeekRangeKst(1);
     await ctx.runAction(internal.meals.fetchAndSave, {
+      schoolId,
       startdate: formatAsYyyymmddKst(start),
       enddate: formatAsYyyymmddKst(end),
       schoolcode,
@@ -146,16 +152,40 @@ export const fetchNextWeek = internalAction({
   },
 });
 
+// Cron orchestrator: refresh meals for every registered school.
+export const fetchAllSchools = internalAction({
+  args: { offsetWeeks: v.number() },
+  handler: async (ctx, { offsetWeeks }) => {
+    const schools = await ctx.runQuery(internal.schools.listAllSchools, {});
+    for (const s of schools) {
+      try {
+        const { start, end } = getWeekRangeKst(offsetWeeks);
+        await ctx.runAction(internal.meals.fetchAndSave, {
+          schoolId: s._id,
+          startdate: formatAsYyyymmddKst(start),
+          enddate: formatAsYyyymmddKst(end),
+          schoolcode: s.schoolCode,
+        });
+      } catch (err) {
+        console.error(`[meals.fetchAllSchools] failed school=${s._id}`, err);
+      }
+    }
+  },
+});
+
 export const getRange = query({
   args: {
+    schoolId: v.id("schools"),
     startdate: v.string(), // YYYYMMDD inclusive
     enddate: v.string(), // YYYYMMDD inclusive
     mealType: v.optional(v.string()),
   },
-  handler: async (ctx, { startdate, enddate, mealType }) => {
+  handler: async (ctx, { schoolId, startdate, enddate, mealType }) => {
     const results = await ctx.db
       .query("meals")
-      .withIndex("by_date", (q) => q.gte("date", startdate).lte("date", enddate))
+      .withIndex("by_school_date", (q) =>
+        q.eq("schoolId", schoolId).gte("date", startdate).lte("date", enddate)
+      )
       .collect();
     const filtered = mealType ? results.filter((m) => m.mealType === mealType) : results;
     return filtered.sort((a, b) => a.date.localeCompare(b.date));
@@ -175,15 +205,17 @@ function getDisplayWeekOffsetKst(): 0 | 1 {
 }
 
 export const getDisplayWeek = query({
-  args: {},
-  handler: async (ctx) => {
+  args: { schoolId: v.id("schools") },
+  handler: async (ctx, { schoolId }) => {
     const offset = getDisplayWeekOffsetKst();
     const { start, end } = getWeekRangeKst(offset);
     const startdate = formatAsYyyymmddKst(start);
     const enddate = formatAsYyyymmddKst(end);
     const rows = await ctx.db
       .query("meals")
-      .withIndex("by_date", (q) => q.gte("date", startdate).lte("date", enddate))
+      .withIndex("by_school_date", (q) =>
+        q.eq("schoolId", schoolId).gte("date", startdate).lte("date", enddate)
+      )
       .collect();
     const meals = rows.filter((m) => m.mealType === "중식").sort((a, b) => a.date.localeCompare(b.date));
 
@@ -202,15 +234,17 @@ export const getDisplayWeek = query({
 });
 
 export const getTwoWeeks = query({
-  args: {},
-  handler: async (ctx) => {
+  args: { schoolId: v.id("schools") },
+  handler: async (ctx, { schoolId }) => {
     const buildWeek = async (offset: number) => {
       const { start, end } = getWeekRangeKst(offset);
       const startdate = formatAsYyyymmddKst(start);
       const enddate = formatAsYyyymmddKst(end);
       const rows = await ctx.db
         .query("meals")
-        .withIndex("by_date", (q) => q.gte("date", startdate).lte("date", enddate))
+        .withIndex("by_school_date", (q) =>
+          q.eq("schoolId", schoolId).gte("date", startdate).lte("date", enddate)
+        )
         .collect();
 
       const days: { date: string; lunch: typeof rows[number] | null; dinner: typeof rows[number] | null }[] = [];
