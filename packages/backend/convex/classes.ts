@@ -67,6 +67,55 @@ export const createClass = internalMutation({
   },
 });
 
+// Public: if this school+grade+class is already registered, return its location
+// so the registration UI can redirect the user instead of creating a duplicate.
+export const findExisting = query({
+  args: { schoolCode: v.string(), grade: v.number(), classNo: v.number() },
+  handler: async (ctx, { schoolCode, grade, classNo }) => {
+    const school = await ctx.db
+      .query("schools")
+      .withIndex("by_code", (q) => q.eq("schoolCode", schoolCode))
+      .first();
+    if (!school) return null;
+    const cls = await ctx.db
+      .query("classes")
+      .withIndex("by_school_grade_class", (q) =>
+        q.eq("schoolId", school._id).eq("grade", grade).eq("classNo", classNo)
+      )
+      .first();
+    if (!cls) return null;
+    return { subdomain: school.subdomain, grade: cls.grade, classNo: cls.classNo };
+  },
+});
+
+// List the class numbers that exist for a given school + grade (registration UI).
+export const listAvailable = action({
+  args: { schoolCode: v.string(), grade: v.number() },
+  handler: async (_ctx, { schoolCode, grade }): Promise<string[]> => {
+    const url = `https://api.timefor.school/classes?schoolcode=${encodeURIComponent(
+      schoolCode
+    )}&grade=${encodeURIComponent(String(grade))}`;
+    try {
+      const res = await fetch(url, { headers: { Accept: "application/json" } });
+      const data = await res.json();
+      const rows = Array.isArray(data)
+        ? data
+        : Array.isArray((data as any)?.found)
+          ? (data as any).found
+          : [];
+      const out: string[] = [];
+      for (const x of rows) {
+        const v = String(x).trim();
+        if (v && !out.includes(v)) out.push(v);
+      }
+      return out;
+    } catch (err) {
+      console.error("[classes.listAvailable] fetch failed", err);
+      return [];
+    }
+  },
+});
+
 // ── Self-service registration ──────────────────────────────────────────────────
 
 export const register = action({

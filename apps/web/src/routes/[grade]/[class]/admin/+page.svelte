@@ -6,6 +6,7 @@ import { writable } from 'svelte/store';
 import { enhance } from '$app/forms';
 import { onMount } from 'svelte';
 import FileUpload from '../../../../components/FileUpload.svelte';
+import { Button, Input, Field, Card } from '../../../../components/ui';
 import type { PageData, ActionData } from './$types';
 
 let { data, form }: { data: PageData; form: ActionData } = $props();
@@ -29,6 +30,7 @@ const noticeForm = writable({
 
 // PIN form state
 const pin = writable('');
+let showPinForm = $state(false);
 
 const noticeTypes = ['수행평가', '숙제', '준비물', '기타'] as const;
 
@@ -210,6 +212,13 @@ const allGroupedNotices = $derived(overview.data?.currentGroups || []);
 					{$showForm ? '취소' : '새 알림 추가'}
 				</button>
 
+				<button
+					onclick={() => (showPinForm = !showPinForm)}
+					class="px-3 pressable-lg font-medium sm:px-4 py-2 border border-neutral-400 dark:border-neutral-500 text-sm hover:bg-neutral-200 dark:hover:bg-neutral-600 text-neutral-800 dark:text-neutral-200 text-center w-full sm:w-auto"
+				>
+					{showPinForm ? 'PIN 변경 닫기' : 'PIN 변경'}
+				</button>
+
 				<form method="POST" action="?/logout" use:enhance class="inline">
 					<input type="hidden" name="classId" value={classId} />
 					<button type="submit" class="px-3 pressable-lg font-medium sm:px-4 py-2 border border-neutral-400 dark:border-neutral-500 text-sm hover:bg-neutral-200 dark:hover:bg-neutral-600 text-neutral-800 dark:text-neutral-200 text-center w-full sm:w-auto">
@@ -218,6 +227,41 @@ const allGroupedNotices = $derived(overview.data?.currentGroups || []);
 				</form>
 			</div>
 		</div>
+
+		<!-- Change admin PIN -->
+		{#if showPinForm}
+			<Card class="mb-6 max-w-md">
+				<h2 class="text-lg font-semibold mb-3 text-neutral-800 dark:text-neutral-200">PIN 변경</h2>
+				<form
+					method="POST"
+					action="?/changePin"
+					use:enhance={() => {
+						return async ({ result, update }) => {
+							await update({ reset: false });
+							if (result.type === 'success' && (result.data as any)?.pinSuccess) {
+								showPinForm = false;
+							}
+						};
+					}}
+					class="grid gap-3"
+				>
+					<input type="hidden" name="classId" value={classId} />
+					<Field label="새 PIN" for="newPin">
+						<Input id="newPin" name="newPin" type="password" />
+					</Field>
+					<Field label="새 PIN 확인" for="confirmPin">
+						<Input id="confirmPin" name="confirmPin" type="password" />
+					</Field>
+					{#if form?.pinError}
+						<p class="text-sm text-red-600 dark:text-red-400">{form.pinError}</p>
+					{/if}
+					{#if form?.pinSuccess}
+						<p class="text-sm text-emerald-600 dark:text-emerald-400">PIN이 변경되었습니다.</p>
+					{/if}
+					<Button type="submit">변경</Button>
+				</form>
+			</Card>
+		{/if}
 
 		<!-- Form -->
 		{#if $showForm}

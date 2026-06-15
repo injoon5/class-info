@@ -16,6 +16,7 @@
 	const inClass = $derived(Boolean(grade && classNo));
 	const base = $derived(inClass ? `/${grade}/${classNo}` : '');
 	const schoolName = $derived((data as any)?.school?.schoolName ?? 'TimeforSchool');
+	const hasSchool = $derived(Boolean((data as any)?.school));
 	const homeHref = $derived(inClass ? base : '/');
 
 	onMount(() => {
@@ -41,8 +42,12 @@
 					>공지</a>
 					<a href="{base}/timetable" class="hover:underline p-1 sm:px-2 sm:py-1 {(page.url.pathname.startsWith(`${base}/timetable`)) ? 'underline' : ''}" aria-current={(page.url.pathname.startsWith(`${base}/timetable`)) ? 'page' : undefined}>시간표</a>
 				{/if}
-				<a href="/meals" class="hover:underline p-1 sm:px-2 sm:py-1 {(page.url.pathname.startsWith('/meals')) ? 'underline' : ''}" aria-current={(page.url.pathname.startsWith('/meals')) ? 'page' : undefined}>급식</a>
-				<a href="/calendar" class="hover:underline p-1 sm:px-2 sm:py-1 {(page.url.pathname.startsWith('/calendar')) ? 'underline' : ''}" aria-current={(page.url.pathname.startsWith('/calendar')) ? 'page' : undefined}>일정</a>
+				{#if hasSchool}
+					<a href="/meals" class="hover:underline p-1 sm:px-2 sm:py-1 {(page.url.pathname.startsWith('/meals')) ? 'underline' : ''}" aria-current={(page.url.pathname.startsWith('/meals')) ? 'page' : undefined}>급식</a>
+					<a href="/calendar" class="hover:underline p-1 sm:px-2 sm:py-1 {(page.url.pathname.startsWith('/calendar')) ? 'underline' : ''}" aria-current={(page.url.pathname.startsWith('/calendar')) ? 'page' : undefined}>일정</a>
+				{:else}
+					<a href="/register" class="hover:underline p-1 sm:px-2 sm:py-1 {(page.url.pathname.startsWith('/register')) ? 'underline' : ''}" aria-current={(page.url.pathname.startsWith('/register')) ? 'page' : undefined}>등록</a>
+				{/if}
 			</nav>
 
 		</div>

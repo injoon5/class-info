@@ -17,6 +17,7 @@ import type * as notices from "../notices.js";
 import type * as schedule from "../schedule.js";
 import type * as schools from "../schools.js";
 import type * as settings from "../settings.js";
+import type * as superadmin from "../superadmin.js";
 import type * as timetable from "../timetable.js";
 
 import type {
@@ -43,6 +44,7 @@ declare const fullApi: ApiFromModules<{
   schedule: typeof schedule;
   schools: typeof schools;
   settings: typeof settings;
+  superadmin: typeof superadmin;
   timetable: typeof timetable;
 }>;
 declare const fullApiWithMounts: typeof fullApi;
