@@ -218,7 +218,7 @@ function isToday(dateStr: string): boolean {
 		<div class="sm:col-span-2 mb-6">
 			<div class="flex items-center justify-between mb-2.5">
 				<h2 class="text-lg font-semibold text-neutral-600 dark:text-neutral-300">{cardDayLabel}급식</h2>
-				<a href="/meals" class="text-sm text-neutral-400 dark:text-neutral-500 hover:text-neutral-600 dark:hover:text-neutral-300 transition-colors duration-100">모두 보기 →</a>
+				<a href="{base}/meals" class="text-sm text-neutral-400 dark:text-neutral-500 hover:text-neutral-600 dark:hover:text-neutral-300 transition-colors duration-100">모두 보기 →</a>
 			</div>
 			<div class="bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl p-4">
 				<div class="grid grid-cols-2 gap-4">
@@ -309,7 +309,7 @@ function isToday(dateStr: string): boolean {
 		<div class="mb-6">
 			<div class="flex items-center justify-between mb-2.5">
 				<h2 class="text-lg font-semibold text-neutral-600 dark:text-neutral-300">일정</h2>
-				<a href="/calendar" class="text-sm text-neutral-400 dark:text-neutral-500 hover:text-neutral-600 dark:hover:text-neutral-300 transition-colors duration-100">모두 보기 →</a>
+				<a href="{base}/calendar" class="text-sm text-neutral-400 dark:text-neutral-500 hover:text-neutral-600 dark:hover:text-neutral-300 transition-colors duration-100">모두 보기 →</a>
 			</div>
 			{#if upcomingEvents.length === 0}
 				<div class="bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl px-4 py-6 text-center">

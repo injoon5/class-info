@@ -18,6 +18,10 @@
 	const schoolName = $derived((data as any)?.school?.schoolName ?? 'TimeforSchool');
 	const hasSchool = $derived(Boolean((data as any)?.school));
 	const homeHref = $derived(inClass ? base : '/');
+	// Meals/calendar are school-global but also reachable within a class so the
+	// user keeps the class context (and class nav) while browsing them.
+	const mealsHref = $derived(inClass ? `${base}/meals` : '/meals');
+	const calendarHref = $derived(inClass ? `${base}/calendar` : '/calendar');
 
 	onMount(() => {
 		configure({
@@ -43,8 +47,8 @@
 					<a href="{base}/timetable" class="hover:underline p-1 sm:px-2 sm:py-1 {(page.url.pathname.startsWith(`${base}/timetable`)) ? 'underline' : ''}" aria-current={(page.url.pathname.startsWith(`${base}/timetable`)) ? 'page' : undefined}>시간표</a>
 				{/if}
 				{#if hasSchool}
-					<a href="/meals" class="hover:underline p-1 sm:px-2 sm:py-1 {(page.url.pathname.startsWith('/meals')) ? 'underline' : ''}" aria-current={(page.url.pathname.startsWith('/meals')) ? 'page' : undefined}>급식</a>
-					<a href="/calendar" class="hover:underline p-1 sm:px-2 sm:py-1 {(page.url.pathname.startsWith('/calendar')) ? 'underline' : ''}" aria-current={(page.url.pathname.startsWith('/calendar')) ? 'page' : undefined}>일정</a>
+					<a href={mealsHref} class="hover:underline p-1 sm:px-2 sm:py-1 {(page.url.pathname.endsWith('/meals')) ? 'underline' : ''}" aria-current={(page.url.pathname.endsWith('/meals')) ? 'page' : undefined}>급식</a>
+					<a href={calendarHref} class="hover:underline p-1 sm:px-2 sm:py-1 {(page.url.pathname.endsWith('/calendar')) ? 'underline' : ''}" aria-current={(page.url.pathname.endsWith('/calendar')) ? 'page' : undefined}>일정</a>
 				{:else}
 					<a href="/register" class="hover:underline p-1 sm:px-2 sm:py-1 {(page.url.pathname.startsWith('/register')) ? 'underline' : ''}" aria-current={(page.url.pathname.startsWith('/register')) ? 'page' : undefined}>등록</a>
 				{/if}

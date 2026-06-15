@@ -51,8 +51,6 @@ const overview = useQuery((api as any).notices.overview, { classId }, () => ({
             {#each overview.data.currentGroups as group}
                 <NoticeGroup {group} {base} />
             {/each}
-        {:else}
-            <EmptyState />
         {/if}
 
         {#if overview.data?.pastMonths && overview.data.pastMonths.length > 0}
