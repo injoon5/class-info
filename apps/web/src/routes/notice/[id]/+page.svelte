@@ -75,84 +75,88 @@ $effect(() => {
 </svelte:head>
 
 
-<div class="min-h-screen bg-neutral-100 dark:bg-neutral-900">
-	<div class="max-w-4xl mx-auto px-4">
-		<!-- Header -->
+<div class="min-h-screen">
+	<div class="max-w-4xl mx-auto px-4 pt-3 sm:pt-4 pb-4">
+		<!-- Back link -->
 		<a
-			type="button"
 			href="/notices"
-			class="sm:mb-3 mb-2 py-1 sm:py-2 text-neutral-500 dark:text-neutral-400 hover:text-neutral-800 dark:hover:text-neutral-200 transition-colors pressable"
+			class="pressable group inline-flex items-center gap-0.5 -ml-1.5 px-1.5 py-1.5 rounded-lg text-[15px] font-medium text-neutral-500 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-neutral-200 transition-colors duration-150"
 		>
-			← 뒤로
+			<svg viewBox="0 0 20 20" fill="currentColor" class="w-4 h-4 transition-transform duration-200 ease-out group-hover:-translate-x-0.5" aria-hidden="true">
+				<path fill-rule="evenodd" d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z" clip-rule="evenodd"/>
+			</svg>
+			공지
 		</a>
 
 		<!-- Notice Detail -->
 		{#if detail.isLoading}
-			<div class="text-center py-8 text-neutral-500 dark:text-neutral-400">로딩 중...</div>
+			<div class="flex justify-center py-20" role="status" aria-label="불러오는 중">
+				<div class="spinner"></div>
+			</div>
 		{:else if detail.error}
-			<div class="text-center py-8 text-red-600">
-				<p>데이터를 불러오는 중 오류가 발생했습니다.</p>
-				<p class="text-sm mt-2">{detail.error.toString()}</p>
-				<button onclick={() => window.location.reload()} class="mt-4 px-4 py-2 bg-neutral-800 dark:bg-neutral-300 text-white dark:text-neutral-800 text-sm hover:bg-neutral-700 dark:hover:bg-neutral-200">
+			<div class="flex flex-col items-center py-20 text-center">
+				<p class="text-[15px] font-medium text-neutral-800 dark:text-neutral-200">데이터를 불러오지 못했습니다</p>
+				<p class="text-sm text-neutral-500 dark:text-neutral-400 mt-1">{detail.error.toString()}</p>
+				<button onclick={() => window.location.reload()} class="pressable mt-5 px-5 py-2.5 rounded-full bg-neutral-900 dark:bg-neutral-100 text-white dark:text-neutral-900 text-sm font-semibold hover:opacity-90 transition-opacity">
 					다시 시도
 				</button>
 			</div>
 		{:else if !detail.data?.notice}
-			<div class="text-center py-8 text-neutral-500 dark:text-neutral-400">알림을 찾을 수 없습니다.</div>
+			<div class="text-center py-20 text-[15px] text-neutral-500 dark:text-neutral-400">알림을 찾을 수 없습니다</div>
 		{:else}
-			<div class="mb-4 mt-2 sm:mt-3 bg-white dark:bg-neutral-800 border border-neutral-300 dark:border-neutral-600 rounded-lg p-4 sm:p-6">
-				<div class="mb-4">
-					<div class="flex items-center gap-2 sm:gap-3 mb-1 sm:mb-2">
-						<span class="px-2 py-1 text-sm font-medium rounded {getTypeColor(detail.data.notice.type)}">
+			<article class="card mt-2 sm:mt-3 p-4 sm:p-7">
+				<header class="mb-5">
+					<div class="flex items-center gap-2 mb-2">
+						<span class="px-2 py-0.5 text-[13px] font-semibold rounded-md {getTypeColor(detail.data.notice.type)}">
 							{detail.data.notice.type}
 						</span>
-						<span class="text-base sm:text-lg font-medium text-neutral-600 dark:text-neutral-300">
+						<span class="text-[15px] font-medium text-neutral-500 dark:text-neutral-400">
 							{detail.data.notice.subject}
 						</span>
 					</div>
-					<h2 class="text-xl sm:text-2xl font-bold text-neutral-800 dark:text-neutral-200 sm:mb-1">
+					<h2 class="text-2xl sm:text-[1.75rem] leading-tight font-bold tracking-[-0.02em] text-neutral-900 dark:text-neutral-100 mb-1.5">
 						{detail.data.notice.title}
 					</h2>
-					<p class="text-sm sm:text-base text-neutral-500 dark:text-neutral-400">
+					<p class="text-sm sm:text-[15px] text-neutral-500 dark:text-neutral-400">
 						마감일: {formatDate(detail.data.notice.dueDate)}
 					</p>
-				</div>
-				
+				</header>
+
 				{#if html}
-					<div class="border-t border-neutral-200 dark:border-neutral-700 pt-4">
-						<div class="text-sm sm:text-base text-neutral-600 dark:text-neutral-300 leading-relaxed markdown-content break-words">
+					<div class="border-t border-[var(--separator)] pt-5">
+						<div class="text-[15px] sm:text-base text-neutral-700 dark:text-neutral-300 leading-relaxed markdown-content break-words">
 							{@html html.replaceAll('<img ', '<img loading="lazy" ')}
 						</div>
 					</div>
 				{/if}
 
 				{#if detail.data.files && detail.data.files.length > 0}
-					<div class="border-t border-neutral-200 dark:border-neutral-700 pt-4 mt-6">
-						<h3 class="text-sm sm:text-base font-medium mb-3 text-neutral-600 dark:text-neutral-300">첨부 파일</h3>
+					<div class="border-t border-[var(--separator)] pt-5 mt-6">
+						<h3 class="text-[13px] font-semibold uppercase tracking-wide mb-3 text-neutral-400 dark:text-neutral-500">첨부 파일</h3>
 						<div class="space-y-2">
 							{#each detail.data.files as file}
-								<div class="flex items-center gap-3 p-3 bg-neutral-50 dark:bg-neutral-700 border border-neutral-200 dark:border-neutral-600 rounded-md">
-									<div class="flex-shrink-0">
+								<div class="flex items-center gap-3 p-3 bg-neutral-950/[0.03] dark:bg-white/[0.04] rounded-xl">
+									<div class="flex-shrink-0 w-9 h-9 rounded-lg bg-white dark:bg-white/[0.08] border border-[var(--separator)] flex items-center justify-center">
 										{#if file.type.startsWith('image/')}
-											<svg class="w-5 h-5 text-neutral-500" fill="currentColor" viewBox="0 0 20 20">
+											<svg class="w-4.5 h-4.5 text-neutral-500 dark:text-neutral-400" fill="currentColor" viewBox="0 0 20 20" aria-hidden="true">
 												<path fill-rule="evenodd" d="M4 3a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V5a2 2 0 00-2-2H4zm12 12H4l4-8 3 6 2-4 3 6z" clip-rule="evenodd"/>
 											</svg>
 										{:else}
-											<svg class="w-5 h-5 text-red-500" fill="currentColor" viewBox="0 0 20 20">
+											<svg class="w-4.5 h-4.5 text-red-500 dark:text-red-400" fill="currentColor" viewBox="0 0 20 20" aria-hidden="true">
 												<path fill-rule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4z" clip-rule="evenodd"/>
 											</svg>
 										{/if}
 									</div>
-									<div class="flex-1">
-										<a 
-											href={file.url} 
-											target="_blank" 
+									<div class="flex-1 min-w-0">
+										<a
+											href={file.url}
+											target="_blank"
 											rel="noopener noreferrer"
-											class="text-sm font-medium text-neutral-800 dark:text-neutral-200 hover:text-neutral-600 dark:hover:text-neutral-300 underline"
+											class="block text-sm font-medium text-neutral-900 dark:text-neutral-100 hover:opacity-70 transition-opacity truncate"
 										>
 											{file.name}
 										</a>
-										<p class="text-xs text-neutral-500 dark:text-neutral-400">
+										<p class="text-xs tabular-nums text-neutral-400 dark:text-neutral-500 mt-0.5">
 											{(file.size / 1024 / 1024).toFixed(2)} MB
 										</p>
 									</div>
@@ -161,7 +165,7 @@ $effect(() => {
 										target="_blank"
 										role="button"
 										rel="noopener noreferrer"
-										class="px-5 py-2 text-sm border border-neutral-300 dark:border-neutral-600 hover:bg-neutral-100 dark:hover:bg-neutral-600 text-neutral-600 dark:text-neutral-300 font-semibold inline-flex items-center justify-center rounded pressable transition-colors"
+										class="pressable px-4 py-2 text-[13px] font-semibold rounded-full bg-white dark:bg-white/[0.08] border border-[var(--separator)] text-neutral-700 dark:text-neutral-200 hover:bg-neutral-50 dark:hover:bg-white/[0.12] inline-flex items-center justify-center transition-colors duration-150"
 										data-s-event="Open File"
 									>
 										열기
@@ -173,25 +177,23 @@ $effect(() => {
 				{/if}
 
 				{#if detail.data.notice.createdAt}
-					<div class="border-t border-neutral-200 dark:border-neutral-700 pt-4 mt-6 text-xs sm:text-sm text-neutral-500 dark:text-neutral-400">
-						등록일: {new Date(detail.data.notice.createdAt).toLocaleString('ko-KR', { 
-							year: 'numeric', 
-							month: 'long', 
-							day: 'numeric', 
-							hour: '2-digit', 
-							minute: '2-digit' 
+					<div class="border-t border-[var(--separator)] pt-4 mt-6 text-xs sm:text-[13px] text-neutral-400 dark:text-neutral-500">
+						등록일: {new Date(detail.data.notice.createdAt).toLocaleString('ko-KR', {
+							year: 'numeric',
+							month: 'long',
+							day: 'numeric',
+							hour: '2-digit',
+							minute: '2-digit'
 						})}
 					</div>
 				{/if}
-			</div>
+			</article>
 		{/if}
 	</div>
-	<div class="text-center py-3 sm:py-4 text-xs text-neutral-500 dark:text-neutral-400 space-y-1.5 sm:space-y-2">
-		<div>
-			<a href="/admin" class="text-xs text-neutral-500 dark:text-neutral-400 hover:text-neutral-800 dark:hover:text-neutral-200 underline">
-				관리자
-			</a>
-		</div>
+	<div class="flex justify-center pb-6">
+		<a href="/admin" class="pressable px-3 py-1.5 rounded-full text-xs font-medium text-neutral-500 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-neutral-200 hover:bg-neutral-950/[0.04] dark:hover:bg-white/[0.06] transition-colors duration-150">
+			관리자
+		</a>
 	</div>
 </div>
 
@@ -345,9 +347,9 @@ $effect(() => {
 .markdown-content :global(img) {
 	max-width: 100%;
 	height: auto;
-	border-radius: 0.25rem;
+	border-radius: 0.75rem;
 	margin: 0.75rem 0;
-	box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+	box-shadow: 0 0 0 1px var(--separator);
 }
 
 .markdown-content :global(.video-embed) {
@@ -356,7 +358,7 @@ $effect(() => {
 	height: 0;
 	padding-bottom: 56.25%; /* 16:9 aspect ratio */
 	margin: 0.75rem 0;
-	border-radius: 0.25rem;
+	border-radius: 0.75rem;
 	overflow: hidden;
 	box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
 }

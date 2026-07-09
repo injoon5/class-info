@@ -158,21 +158,37 @@ function isToday(dateStr: string): boolean {
 	<meta name="twitter:description" content="오늘의 시간표, 급식, 공지를 한눈에 확인하세요." />
 </svelte:head>
 
-<div class="max-w-4xl mx-auto px-4 pt-3 pb-12 sm:pt-5">
+{#snippet sectionHeader(title: string, href: string, linkLabel: string)}
+	<div class="flex items-baseline justify-between mb-2.5 px-0.5">
+		<h2 class="text-[17px] font-semibold tracking-[-0.01em] text-neutral-900 dark:text-neutral-100">{title}</h2>
+		<a
+			href={href}
+			class="group flex items-center gap-px text-[13px] font-medium text-neutral-500 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-neutral-200 transition-colors duration-150 -my-1 py-1"
+			aria-label="{title} {linkLabel}"
+		>
+			{linkLabel}
+			<svg viewBox="0 0 20 20" fill="currentColor" class="w-3.5 h-3.5 transition-transform duration-200 ease-out group-hover:translate-x-0.5" aria-hidden="true">
+				<path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clip-rule="evenodd"/>
+			</svg>
+		</a>
+	</div>
+{/snippet}
+
+<div class="max-w-4xl mx-auto px-4 pt-4 pb-12 sm:pt-6">
 
 	<!-- ── Date banner ─────────────────────────────────────────────────────── -->
-	<div class="flex items-end justify-between gap-4 mb-5 sm:mb-6">
+	<div class="flex items-end justify-between gap-4 mb-6 sm:mb-7">
 		<div class="flex items-baseline gap-2.5">
-			<h1 class="text-3xl font-bold text-neutral-900 dark:text-neutral-100">
+			<h1 class="text-[2rem] leading-[1.1] font-bold tracking-[-0.02em] text-neutral-900 dark:text-neutral-100">
 				{todayMonth}월 {todayDate}일
 			</h1>
-			<span class="text-xl font-medium text-neutral-400 dark:text-neutral-500">{todayWeekday}요일</span>
+			<span class="text-xl font-medium tracking-[-0.01em] text-neutral-400 dark:text-neutral-500">{todayWeekday}요일</span>
 		</div>
 		{#if todayEvents.length > 0}
 			<div class="flex flex-col items-end gap-1">
 				{#each todayEvents as event}
 					<div class="flex items-baseline gap-2">
-						<span class="text-xl font-medium text-neutral-800 dark:text-neutral-200">{event.title}</span>
+						<span class="text-xl font-medium tracking-[-0.01em] text-neutral-800 dark:text-neutral-200">{event.title}</span>
 						{#if eventTypeLabel(event)}
 							<span class="text-base font-semibold {eventTypeCss(event)}">{eventTypeLabel(event)}</span>
 						{/if}
@@ -187,14 +203,11 @@ function isToday(dateStr: string): boolean {
 
 		<!-- Timetable -->
 		<div class="sm:col-span-1 mb-6">
-			<div class="flex items-center justify-between mb-2.5">
-				<h2 class="text-lg font-semibold text-neutral-600 dark:text-neutral-300">{cardDayLabel}시간표</h2>
-				<a href="/timetable" class="text-sm text-neutral-400 dark:text-neutral-500 hover:text-neutral-600 dark:hover:text-neutral-300 transition-colors duration-100">모두 보기 →</a>
-			</div>
-			<div class="bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl p-4">
+			{@render sectionHeader(`${cardDayLabel}시간표`, '/timetable', '모두 보기')}
+			<div class="card p-4">
 				{#if displaySchedule.length === 0}
 					<div class="flex items-center justify-center py-8">
-						<p class="text-base text-neutral-800 dark:text-neutral-200 text-center">시간표 없음</p>
+						<p class="text-[15px] text-neutral-500 dark:text-neutral-400 text-center">시간표 없음</p>
 					</div>
 				{:else}
 					<ol class="space-y-2.5">
@@ -214,17 +227,14 @@ function isToday(dateStr: string): boolean {
 
 		<!-- Meal -->
 		<div class="sm:col-span-2 mb-6">
-			<div class="flex items-center justify-between mb-2.5">
-				<h2 class="text-lg font-semibold text-neutral-600 dark:text-neutral-300">{cardDayLabel}급식</h2>
-				<a href="/meals" class="text-sm text-neutral-400 dark:text-neutral-500 hover:text-neutral-600 dark:hover:text-neutral-300 transition-colors duration-100">모두 보기 →</a>
-			</div>
-			<div class="bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl p-4">
+			{@render sectionHeader(`${cardDayLabel}급식`, '/meals', '모두 보기')}
+			<div class="card p-4">
 				<div class="grid grid-cols-2 gap-4">
 					<!-- Lunch -->
 					<div>
-						<p class="text-base font-semibold text-neutral-400 dark:text-neutral-500 mb-2">중식</p>
+						<p class="text-[13px] font-semibold uppercase tracking-wide text-neutral-400 dark:text-neutral-500 mb-2">중식</p>
 						{#if !displayLunch}
-							<p class="text-base text-neutral-800 dark:text-neutral-200">급식 정보가 없어요</p>
+							<p class="text-[15px] text-neutral-500 dark:text-neutral-400">급식 정보가 없어요</p>
 						{:else}
 							<ul class="space-y-1.5">
 								{#each displayLunch.dishes as dish}
@@ -238,9 +248,9 @@ function isToday(dateStr: string): boolean {
 					</div>
 					<!-- Dinner -->
 					<div>
-						<p class="text-base font-semibold text-neutral-400 dark:text-neutral-500 mb-2">석식</p>
+						<p class="text-[13px] font-semibold uppercase tracking-wide text-neutral-400 dark:text-neutral-500 mb-2">석식</p>
 						{#if !displayDinner}
-							<p class="text-base text-neutral-800 dark:text-neutral-200">급식 정보가 없어요</p>
+							<p class="text-[15px] text-neutral-500 dark:text-neutral-400">급식 정보가 없어요</p>
 						{:else}
 							<ul class="space-y-1.5">
 								{#each displayDinner.dishes as dish}
@@ -263,18 +273,15 @@ function isToday(dateStr: string): boolean {
 
 		<!-- Notices -->
 		<div class="mb-6">
-			<div class="flex items-center justify-between mb-2.5">
-				<h2 class="text-lg font-semibold text-neutral-600 dark:text-neutral-300">공지</h2>
-				<a href="/notices" class="text-sm text-neutral-400 dark:text-neutral-500 hover:text-neutral-600 dark:hover:text-neutral-300 transition-colors duration-100">모두 보기 →</a>
-			</div>
+			{@render sectionHeader('공지', '/notices', '모두 보기')}
 
 			{#if noticesQuery.isLoading && !noticesQuery.data}
-				<div class="bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl px-4 py-6 text-center">
-					<p class="text-base text-neutral-800 dark:text-neutral-200">불러오는 중…</p>
+				<div class="card px-4 py-8 flex justify-center">
+					<div class="spinner" role="status" aria-label="불러오는 중"></div>
 				</div>
 			{:else if !hasNotices}
-				<div class="bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl px-4 py-6 text-center">
-					<p class="text-base text-neutral-800 dark:text-neutral-200">공지가 없어요</p>
+				<div class="card px-4 py-8 text-center">
+					<p class="text-[15px] text-neutral-500 dark:text-neutral-400">공지가 없어요</p>
 				</div>
 			{:else}
 				<div class="space-y-4">
@@ -294,9 +301,9 @@ function isToday(dateStr: string): boolean {
 					{#if (noticesQuery.data?.currentGroups ?? []).length > 3}
 						<a
 							href="/notices"
-							class="block text-center text-base text-neutral-400 dark:text-neutral-500 hover:text-neutral-700 dark:hover:text-neutral-300 transition-colors duration-100 py-1"
+							class="pressable block text-center text-sm font-medium text-neutral-500 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-neutral-200 transition-colors duration-150 py-1.5"
 						>
-							+ {(noticesQuery.data?.currentGroups ?? []).length - 3}개 더 보기
+							{(noticesQuery.data?.currentGroups ?? []).length - 3}개 더 보기
 						</a>
 					{/if}
 				</div>
@@ -305,21 +312,18 @@ function isToday(dateStr: string): boolean {
 
 		<!-- Events -->
 		<div class="mb-6">
-			<div class="flex items-center justify-between mb-2.5">
-				<h2 class="text-lg font-semibold text-neutral-600 dark:text-neutral-300">일정</h2>
-				<a href="/calendar" class="text-sm text-neutral-400 dark:text-neutral-500 hover:text-neutral-600 dark:hover:text-neutral-300 transition-colors duration-100">모두 보기 →</a>
-			</div>
+			{@render sectionHeader('일정', '/calendar', '모두 보기')}
 			{#if upcomingEvents.length === 0}
-				<div class="bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl px-4 py-6 text-center">
-					<p class="text-base text-neutral-800 dark:text-neutral-200">다가오는 일정이 없어요</p>
+				<div class="card px-4 py-8 text-center">
+					<p class="text-[15px] text-neutral-500 dark:text-neutral-400">다가오는 일정이 없어요</p>
 				</div>
 			{:else}
-				<div class="bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl overflow-hidden">
+				<div class="card overflow-hidden">
 					{#each upcomingEvents as event, i (event._id ?? i)}
-						<div class="flex items-center gap-2 px-4 py-3 {i > 0 ? 'border-t border-neutral-100 dark:border-neutral-700' : ''}">
+						<div class="flex items-center gap-2.5 px-4 py-3 {i > 0 ? 'border-t border-[var(--separator)]' : ''}">
 							<span class="w-2 h-2 rounded-full shrink-0" style="background-color: {eventDotColor(event)}" aria-hidden="true"></span>
-							<span class="text-base text-neutral-800 dark:text-neutral-200 font-medium flex-1 min-w-0 truncate">{event.title}</span>
-							<span class="text-sm text-neutral-400 dark:text-neutral-500 shrink-0 text-right w-16">
+							<span class="text-[15px] text-neutral-800 dark:text-neutral-200 font-medium flex-1 min-w-0 truncate">{event.title}</span>
+							<span class="text-sm tabular-nums text-neutral-400 dark:text-neutral-500 shrink-0 text-right">
 								{isToday(event.date) ? '오늘' : formatEventDate(event.date)}
 							</span>
 						</div>

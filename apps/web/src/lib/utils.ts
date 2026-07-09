@@ -1,7 +1,7 @@
 export function getTypeColor(type: string) {
 	switch(type) {
-		case '수행평가': return 'bg-neutral-700 dark:bg-neutral-600 text-white';
-		default: return 'bg-neutral-500 dark:bg-neutral-500 text-white dark:text-neutral-200';
+		case '수행평가': return 'bg-neutral-900 dark:bg-neutral-100 text-white dark:text-neutral-900';
+		default: return 'bg-neutral-950/[0.06] dark:bg-white/[0.1] text-neutral-600 dark:text-neutral-300';
 	}
 }
 

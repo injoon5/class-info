@@ -53,20 +53,26 @@ const overview = useQuery(api.notices.overview, {}, () => ({
         {/if}
 
         {#if overview.data?.pastMonths && overview.data.pastMonths.length > 0}
-            <div class="mt-6 sm:mt-8 pt-4 sm:pt-6 border-t border-neutral-200 dark:border-neutral-700">
-                <h2 class="text-base sm:text-lg font-medium mb-1 sm:mb-2 text-neutral-500 dark:text-neutral-400">지난 알림</h2>
+            <div class="mt-8 sm:mt-10 pt-6 border-t border-[var(--separator)]">
+                <h2 class="text-[17px] font-semibold tracking-[-0.01em] mb-3 text-neutral-500 dark:text-neutral-400 px-0.5">지난 알림</h2>
                 {#each overview.data.pastMonths as month (month.monthKey)}
-                    <details class="mb-1.5 sm:mb-2 bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded" open={openMonthKey === month.monthKey}>
+                    {@const isOpen = openMonthKey === month.monthKey}
+                    <details class="card mb-2 overflow-hidden" open={isOpen}>
                         <summary
-                            class="rounded-t px-3 sm:px-4 py-2 sm:p-3 cursor-pointer hover:bg-neutral-50 dark:hover:bg-neutral-700 text-neutral-500 dark:text-neutral-400 font-medium text-sm sm:text-base"
+                            class="list-none [&::-webkit-details-marker]:hidden flex items-center justify-between px-3.5 sm:px-4 py-3 cursor-pointer select-none
+                                hover:bg-neutral-950/[0.03] dark:hover:bg-white/[0.04] active:bg-neutral-950/[0.05] dark:active:bg-white/[0.06] transition-colors duration-100
+                                text-neutral-600 dark:text-neutral-300 font-medium text-sm sm:text-[15px]"
                             onclick={(e) => {
                                 e.preventDefault();
-                                openMonthKey = openMonthKey === month.monthKey ? null : month.monthKey;
+                                openMonthKey = isOpen ? null : month.monthKey;
                             }}
                         >
-                            {month.monthName} ({month.total}개)
+                            <span>{month.monthName} <span class="text-neutral-400 dark:text-neutral-500">· {month.total}개</span></span>
+                            <svg viewBox="0 0 20 20" fill="currentColor" class="w-4 h-4 text-neutral-400 dark:text-neutral-500 transition-transform duration-200 ease-spring {isOpen ? 'rotate-90' : ''}" aria-hidden="true">
+                                <path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clip-rule="evenodd"/>
+                            </svg>
                         </summary>
-                        {#if openMonthKey === month.monthKey}
+                        {#if isOpen}
                             {#key month.monthKey}
                                 <PastMonthDetails monthKey={month.monthKey} />
                             {/key}

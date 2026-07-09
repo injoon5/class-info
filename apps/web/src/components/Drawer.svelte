@@ -97,8 +97,14 @@ let pointerStartY = 0;
 let lastPointerY = 0;
 let lastPointerTime = 0;
 let pointerVelocity = 0;
+let dragFromContent = false;
 
-function startDrag(y: number) {
+// Soft boundary: the further past the top edge, the less the panel follows
+function rubberband(overshoot: number, dimension: number, constant = 0.55): number {
+  return (overshoot * dimension * constant) / (dimension + constant * overshoot);
+}
+
+function startDrag(y: number, fromContent = false) {
   if (isClosing || !isVisible) return false;
   if (contentEl && contentEl.scrollTop > 0) return false;
   if (panelEl) panelHeight = panelEl.offsetHeight;
@@ -106,6 +112,7 @@ function startDrag(y: number) {
   lastPointerY = y;
   lastPointerTime = Date.now();
   pointerVelocity = 0;
+  dragFromContent = fromContent;
   isDragging = true;
   return true;
 }
@@ -117,7 +124,10 @@ function moveDrag(y: number) {
   if (dt > 0) pointerVelocity = (y - lastPointerY) / dt;
   lastPointerY = y;
   lastPointerTime = now;
-  dragY = Math.max(0, y - pointerStartY);
+  const raw = y - pointerStartY;
+  // Upward pulls that started on scrollable content stay with native scroll;
+  // from the handle/header they rubber-band instead of hard-stopping.
+  dragY = raw >= 0 ? raw : dragFromContent ? 0 : -rubberband(-raw, panelHeight);
 }
 
 function endDrag() {
@@ -150,12 +160,13 @@ $effect(() => {
 });
 
 function onTouchStart(e: TouchEvent) {
-  startDrag(e.touches[0].clientY);
+  const fromContent = !!(contentEl && contentEl.contains(e.target as Node));
+  startDrag(e.touches[0].clientY, fromContent);
 }
 
 function onTouchMove(e: TouchEvent) {
   moveDrag(e.touches[0].clientY);
-  if (dragY > 0) e.preventDefault();
+  if (dragY !== 0) e.preventDefault();
 }
 
 function onTouchEnd() {
@@ -217,11 +228,11 @@ function onMouseUp() {
       aria-modal="true"
       tabindex="-1"
       class="pointer-events-auto w-full sm:w-[26rem] sm:max-w-[90vw]
-             bg-white dark:bg-neutral-900
+             bg-[var(--surface)]
              rounded-t-3xl sm:rounded-2xl
              shadow-2xl flex flex-col
              max-h-[88svh] sm:max-h-[80svh]
-             sm:border sm:border-neutral-200 sm:dark:border-neutral-700
+             sm:border sm:border-[var(--separator)]
              outline-none will-change-transform"
       style={panelStyle}
       onclick={(e) => e.stopPropagation()}
@@ -229,11 +240,11 @@ function onMouseUp() {
     >
       <!-- Drag handle (mobile only) -->
       <div class="sm:hidden flex justify-center pt-3 pb-1 flex-shrink-0 touch-none select-none cursor-grab active:cursor-grabbing">
-        <div class="w-10 h-1 rounded-full bg-neutral-300 dark:bg-neutral-600"></div>
+        <div class="w-9 h-[5px] rounded-full bg-neutral-950/[0.14] dark:bg-white/[0.2]"></div>
       </div>
 
       <!-- Header: custom content + close button -->
-      <div class="px-4 pt-3 pb-4 sm:pt-4 flex items-start justify-between gap-3 flex-shrink-0 border-b border-neutral-100 dark:border-neutral-800">
+      <div class="px-4 pt-3 pb-4 sm:pt-4 flex items-start justify-between gap-3 flex-shrink-0 border-b border-[var(--separator)]">
         <div class="flex-1 min-w-0">
           {@render header()}
         </div>
@@ -258,7 +269,7 @@ function onMouseUp() {
 
       <!-- Optional footer -->
       {#if footer}
-        <div class="flex-shrink-0 border-t border-neutral-100 dark:border-neutral-800 px-4 py-4">
+        <div class="flex-shrink-0 border-t border-[var(--separator)] px-4 py-4">
           {@render footer()}
         </div>
       {/if}

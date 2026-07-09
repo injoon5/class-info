@@ -254,13 +254,13 @@ const dayNames = ['일','월','화','수','목','금','토'];
   <meta name="robots" content="noindex" />
 </svelte:head>
 
-<div class="max-w-4xl mx-auto px-4 py-2">
+<div class="max-w-4xl mx-auto px-4 pt-4 pb-12 sm:pt-5">
   <!-- Month navigation -->
-  <div class="flex items-center justify-between mb-3">
+  <div class="flex items-center justify-between mb-4">
     <button
       onclick={() => navigate(-1)}
       disabled={!canNavigate(-1)}
-      class="pressable w-9 h-9 sm:w-10 sm:h-10 flex items-center justify-center rounded-full bg-neutral-100 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-300 hover:bg-neutral-200 dark:hover:bg-neutral-700 border border-neutral-200 dark:border-neutral-700 transition-colors disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:bg-neutral-100 dark:disabled:hover:bg-neutral-800"
+      class="pressable w-9 h-9 sm:w-10 sm:h-10 flex items-center justify-center rounded-full bg-neutral-950/[0.05] dark:bg-white/[0.07] text-neutral-600 dark:text-neutral-300 hover:bg-neutral-950/[0.08] dark:hover:bg-white/[0.1] transition-colors duration-150 disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:bg-neutral-950/[0.05] dark:disabled:hover:bg-white/[0.07]"
       aria-label="이전 달"
       data-s-event="Calendar Navigate"
       data-s-event-props="direction=prev"
@@ -270,14 +270,14 @@ const dayNames = ['일','월','화','수','목','금','토'];
       </svg>
     </button>
 
-    <h2 class="text-base sm:text-lg font-semibold text-neutral-800 dark:text-neutral-200">
+    <h2 class="text-lg sm:text-xl font-bold tracking-[-0.01em] tabular-nums text-neutral-900 dark:text-neutral-100">
       {displayYear}년 {monthNames[displayMonth]}
     </h2>
 
     <button
       onclick={() => navigate(1)}
       disabled={!canNavigate(1)}
-      class="pressable w-9 h-9 sm:w-10 sm:h-10 flex items-center justify-center rounded-full bg-neutral-100 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-300 hover:bg-neutral-200 dark:hover:bg-neutral-700 border border-neutral-200 dark:border-neutral-700 transition-colors disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:bg-neutral-100 dark:disabled:hover:bg-neutral-800"
+      class="pressable w-9 h-9 sm:w-10 sm:h-10 flex items-center justify-center rounded-full bg-neutral-950/[0.05] dark:bg-white/[0.07] text-neutral-600 dark:text-neutral-300 hover:bg-neutral-950/[0.08] dark:hover:bg-white/[0.1] transition-colors duration-150 disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:bg-neutral-950/[0.05] dark:disabled:hover:bg-white/[0.07]"
       aria-label="다음 달"
       data-s-event="Calendar Navigate"
       data-s-event-props="direction=next"
@@ -291,23 +291,22 @@ const dayNames = ['일','월','화','수','목','금','토'];
   <!-- Calendar -->
   <div class="relative">
     <div
-      class="absolute left-0 top-0 bottom-0 w-6 bg-gradient-to-r from-white dark:from-neutral-900 to-transparent z-10 pointer-events-none transition-opacity duration-200"
-      style="opacity: {scrollLeft > 0 ? 1 : 0};"
+      class="absolute left-0 top-0 bottom-0 w-6 z-10 pointer-events-none transition-opacity duration-200"
+      style="background: linear-gradient(to right, var(--page), transparent); opacity: {scrollLeft > 0 ? 1 : 0};"
     ></div>
     <div
-      class="absolute right-0 top-0 bottom-0 w-6 bg-gradient-to-l from-white dark:from-neutral-900 to-transparent z-10 pointer-events-none transition-opacity duration-200"
-      style="opacity: {scrollRight > 0 ? 1 : 0};"
+      class="absolute right-0 top-0 bottom-0 w-6 z-10 pointer-events-none transition-opacity duration-200"
+      style="background: linear-gradient(to left, var(--page), transparent); opacity: {scrollRight > 0 ? 1 : 0};"
     ></div>
 
     <div class="overflow-x-auto" bind:this={scrollContainer} onscroll={updateGradients}>
-      <div class="min-w-[40rem] border border-neutral-200 dark:border-neutral-700 rounded overflow-hidden shadow-sm">
+      <div class="min-w-[40rem] card overflow-hidden">
 
         <!-- Day name header -->
-        <div class="grid grid-cols-7 bg-neutral-100 dark:bg-neutral-800 border-b border-neutral-200 dark:border-neutral-700">
+        <div class="grid grid-cols-7 border-b border-[var(--separator)]">
           {#each dayNames as name, i}
-            <div class="py-2 text-center text-sm font-medium
-              {i === 0 ? 'text-red-500 dark:text-red-400' : i === 6 ? 'text-blue-500 dark:text-blue-400' : 'text-neutral-600 dark:text-neutral-300'}
-              {i < 6 ? 'border-r border-neutral-200 dark:border-neutral-700' : ''}">
+            <div class="py-2.5 text-center text-[13px] font-semibold
+              {i === 0 ? 'text-red-500/80 dark:text-red-400/80' : i === 6 ? 'text-blue-500/80 dark:text-blue-400/80' : 'text-neutral-500 dark:text-neutral-400'}">
               {name}
             </div>
           {/each}
@@ -315,7 +314,7 @@ const dayNames = ['일','월','화','수','목','금','토'];
 
         <!-- Week rows -->
         {#each calendarWeeks as week, wi}
-          <div class="grid grid-cols-7 {wi < calendarWeeks.length - 1 ? 'border-b border-neutral-200 dark:border-neutral-700' : ''}">
+          <div class="grid grid-cols-7 {wi < calendarWeeks.length - 1 ? 'border-b border-[var(--separator)]' : ''}">
             {#each week as cell, di}
               {@const isToday = cell.yyyymmdd === todayStr}
               {@const isPast = cell.yyyymmdd !== null && cell.yyyymmdd < todayStr}
@@ -326,14 +325,13 @@ const dayNames = ['일','월','화','수','목','금','토'];
               <div
                 class="min-h-[5rem] sm:min-h-[7rem] p-1 sm:p-1.5 relative group
                   {hasEvents ? 'cursor-pointer transition-colors duration-100' : ''}
-                  {di < 6 ? 'border-r border-neutral-200 dark:border-neutral-700' : ''}
-                  {cell.day !== null && isSun ? 'bg-red-50/40 dark:bg-red-950/20' : ''}
-                  {hasEvents && isSun ? 'hover:bg-red-100/70 dark:hover:bg-red-950/40' : ''}
-                  {cell.day !== null && isSat ? 'bg-blue-50/40 dark:bg-blue-950/20' : ''}
-                  {hasEvents && isSat ? 'hover:bg-blue-100/70 dark:hover:bg-blue-950/40' : ''}
-                  {cell.day !== null && !isSun && !isSat ? 'bg-white dark:bg-neutral-900' : ''}
-                  {hasEvents && !isSun && !isSat ? 'hover:bg-neutral-50 dark:hover:bg-neutral-800/70' : ''}
-                  {cell.day === null ? 'bg-neutral-50 dark:bg-neutral-800/50' : ''}"
+                  {di < 6 ? 'border-r border-[var(--separator)]' : ''}
+                  {cell.day !== null && isSun ? 'bg-red-500/[0.04] dark:bg-red-400/[0.06]' : ''}
+                  {hasEvents && isSun ? 'hover:bg-red-500/[0.08] dark:hover:bg-red-400/[0.1]' : ''}
+                  {cell.day !== null && isSat ? 'bg-blue-500/[0.04] dark:bg-blue-400/[0.06]' : ''}
+                  {hasEvents && isSat ? 'hover:bg-blue-500/[0.08] dark:hover:bg-blue-400/[0.1]' : ''}
+                  {hasEvents && !isSun && !isSat ? 'hover:bg-neutral-950/[0.03] dark:hover:bg-white/[0.04]' : ''}
+                  {cell.day === null ? 'bg-neutral-950/[0.02] dark:bg-white/[0.02]' : ''}"
                 onclick={() => hasEvents && openDayDrawer(cell.yyyymmdd!)}
                 role={hasEvents ? 'button' : undefined}
                 tabindex={hasEvents ? 0 : undefined}
@@ -368,11 +366,11 @@ const dayNames = ['일','월','화','수','목','금','토'];
                   </div>
 
                   {#each (schoolEventsByDate[cell.yyyymmdd!] || []) as event}
-                    <div class="text-xs rounded px-1 py-0.5 mb-0.5 truncate leading-tight {getSchoolEventClass(event.eventType)}" title={event.title}>{event.title}</div>
+                    <div class="text-xs font-medium rounded-md px-1.5 py-0.5 mb-0.5 truncate leading-tight {getSchoolEventClass(event.eventType)}" title={event.title}>{event.title}</div>
                   {/each}
 
                   {#each (customEventsByDate[cell.yyyymmdd!] || []) as event}
-                    <div class="text-xs rounded px-1 py-0.5 mb-0.5 truncate leading-tight {CUSTOM_COLOR_CLASSES[event.color] ?? CUSTOM_COLOR_CLASSES.blue}" title={event.title}>{event.title}</div>
+                    <div class="text-xs font-medium rounded-md px-1.5 py-0.5 mb-0.5 truncate leading-tight {CUSTOM_COLOR_CLASSES[event.color] ?? CUSTOM_COLOR_CLASSES.blue}" title={event.title}>{event.title}</div>
                   {/each}
                 {/if}
               </div>
