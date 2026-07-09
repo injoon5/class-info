@@ -24,18 +24,18 @@ async function copyToClipboard() {
 </script>
 
 <!-- Buttons -->
-<div class="text-center py-3 sm:py-4 text-xs text-neutral-500 dark:text-neutral-400 space-y-1.5 sm:space-y-2 border-t border-neutral-200 dark:border-neutral-700 mt-6 sm:mt-8">
-	<div>
-		<button 
-			onclick={copyToClipboard}
-			class="text-xs text-neutral-500 dark:text-neutral-400 hover:text-neutral-800 dark:hover:text-neutral-200 underline"
-		>
-			알림 복사
-		</button>
-	</div>
-	<div>
-		<a href="/admin" class="text-xs text-neutral-500 dark:text-neutral-400 hover:text-neutral-800 dark:hover:text-neutral-200 underline">
-			관리자
-		</a>
-	</div>
+<div class="flex items-center justify-center gap-1 py-4 sm:py-5 border-t border-[var(--separator)] mt-8 sm:mt-10">
+	<button
+		onclick={copyToClipboard}
+		class="pressable px-3 py-1.5 rounded-full text-xs font-medium text-neutral-500 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-neutral-200 hover:bg-neutral-950/[0.04] dark:hover:bg-white/[0.06] transition-colors duration-150"
+	>
+		알림 복사
+	</button>
+	<span class="text-neutral-300 dark:text-neutral-600 text-xs" aria-hidden="true">·</span>
+	<a
+		href="/admin"
+		class="pressable px-3 py-1.5 rounded-full text-xs font-medium text-neutral-500 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-neutral-200 hover:bg-neutral-950/[0.04] dark:hover:bg-white/[0.06] transition-colors duration-150"
+	>
+		관리자
+	</a>
 </div>

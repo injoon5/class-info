@@ -1,12 +1,41 @@
 @import 'tailwindcss';
 
+/* ────────────────────────────────────────────────────────────────────────────
+   Design tokens
+   ──────────────────────────────────────────────────────────────────────────── */
+
+@theme {
+	/* Apple-style spring-feel easing (matches iOS sheet/segmented curves) */
+	--ease-spring: cubic-bezier(0.32, 0.72, 0, 1);
+	--ease-out-quart: cubic-bezier(0.25, 1, 0.5, 1);
+}
+
+:root {
+	/* Hairline separators: alpha-based so they sit on any surface */
+	--separator: rgb(0 0 0 / 0.07);
+	--separator-strong: rgb(0 0 0 / 0.12);
+	/* Elevated surface (cards, sheets) */
+	--surface: #ffffff;
+	/* Page background (matches body bg-neutral-100) */
+	--page: #f5f5f5;
+}
+
+@media (prefers-color-scheme: dark) {
+	:root {
+		--separator: rgb(255 255 255 / 0.09);
+		--separator-strong: rgb(255 255 255 / 0.16);
+		--surface: #1f1f1f;
+		--page: #171717;
+	}
+}
+
 /* CSS Custom Properties for viewport units that work with dynamic Safari UI */
 html {
-    /* Support for dynamic viewport on mobile Safari */
-    height: 100vh; /* Fallback for older browsers */
-    height: 100dvh; /* Dynamic viewport height - adapts when URL bar hides/shows */
-    scrollbar-width: thin;
-    scrollbar-color: gray transparent;
+	/* Support for dynamic viewport on mobile Safari */
+	height: 100vh; /* Fallback for older browsers */
+	height: 100dvh; /* Dynamic viewport height - adapts when URL bar hides/shows */
+	scrollbar-width: thin;
+	scrollbar-color: gray transparent;
 }
 
 /* Apply Pretendard font globally */
@@ -15,85 +44,147 @@ html {
 }
 
 body {
-    font-weight: 400;
-    -webkit-font-smoothing: antialiased;
-    -moz-osx-font-smoothing: grayscale;
-    /* iOS Safari optimizations */
-    -webkit-text-size-adjust: 100%;
-    -webkit-tap-highlight-color: rgba(0, 0, 0, 0);
-    touch-action: manipulation;
-    /* Full screen support for iOS Safari */
-    margin: 0;
-    padding: 0;
-    min-height: 100vh;
-    /* Use safe area insets to extend into notch/home indicator areas */
-    padding-top: env(safe-area-inset-top);
-    padding-bottom: env(safe-area-inset-bottom);
-    padding-left: env(safe-area-inset-left);
-    padding-right: env(safe-area-inset-right);
+	font-weight: 400;
+	line-height: 1.5;
+	-webkit-font-smoothing: antialiased;
+	-moz-osx-font-smoothing: grayscale;
+	/* iOS Safari optimizations */
+	-webkit-text-size-adjust: 100%;
+	-webkit-tap-highlight-color: rgba(0, 0, 0, 0);
+	touch-action: manipulation;
+	/* Full screen support for iOS Safari */
+	margin: 0;
+	padding: 0;
+	min-height: 100vh;
+	/* Use safe area insets to extend into notch/home indicator areas */
+	padding-top: env(safe-area-inset-top);
+	padding-bottom: env(safe-area-inset-bottom);
+	padding-left: env(safe-area-inset-left);
+	padding-right: env(safe-area-inset-right);
 }
 
 /* Focus styles: visible only when using keyboard */
 :focus {
-    outline: none;
+	outline: none;
 }
 :focus-visible {
-    outline: 2px solid rgb(59 130 246);
-    outline-offset: 2px;
+	outline: 2px solid rgb(59 130 246);
+	outline-offset: 2px;
 }
 
+/* ────────────────────────────────────────────────────────────────────────────
+   Materials & surfaces
+   ──────────────────────────────────────────────────────────────────────────── */
 
+@layer components {
+	/* Elevated content surface: one consistent card material everywhere */
+	.card {
+		background: var(--surface);
+		border: 1px solid var(--separator);
+		border-radius: 1rem;
+		box-shadow: 0 1px 2px rgb(0 0 0 / 0.03);
+	}
+	@media (prefers-color-scheme: dark) {
+		.card {
+			box-shadow: none;
+		}
+	}
+
+	/* Translucent chrome (sticky header): content scrolls underneath */
+	.material-chrome {
+		background: color-mix(in srgb, var(--page) 78%, transparent);
+		-webkit-backdrop-filter: blur(20px) saturate(180%);
+		backdrop-filter: blur(20px) saturate(180%);
+	}
+	@media (prefers-reduced-transparency: reduce) {
+		.material-chrome {
+			background: var(--page);
+			-webkit-backdrop-filter: none;
+			backdrop-filter: none;
+		}
+	}
+	@media (prefers-contrast: more) {
+		.material-chrome {
+			background: var(--page);
+			-webkit-backdrop-filter: none;
+			backdrop-filter: none;
+			border-bottom: 1px solid var(--separator-strong);
+		}
+	}
+
+	/* Activity indicator */
+	.spinner {
+		width: 1.5rem;
+		height: 1.5rem;
+		border-radius: 9999px;
+		border: 2.5px solid var(--separator);
+		border-top-color: rgb(115 115 115);
+		animation: spinner-rotate 0.8s linear infinite;
+	}
+	@keyframes spinner-rotate {
+		to { transform: rotate(360deg); }
+	}
+}
+
+/* ────────────────────────────────────────────────────────────────────────────
+   Interaction: instant press-down, smooth spring-back release
+   ──────────────────────────────────────────────────────────────────────────── */
 
 @layer utilities {
-	.pressable {
-		@apply transition-transform duration-75 ease-in-out;
+	.pressable,
+	.pressable-lg,
+	.pressable-xl {
+		transition: transform 0.35s var(--ease-out-quart);
 	}
 	.pressable:active {
-		@apply scale-[0.96];
-	}
-
-	.pressable-lg {
-		@apply transition-transform duration-75 ease-in-out;
+		transform: scale(0.96);
+		transition-duration: 0.06s;
 	}
 	.pressable-lg:active {
-		@apply scale-[0.97];
-	}
-
-	.pressable-xl {
-		@apply transition-transform duration-75 ease-in-out;
+		transform: scale(0.97);
+		transition-duration: 0.06s;
 	}
 	.pressable-xl:active {
-		@apply scale-[0.98];
+		transform: scale(0.985);
+		transition-duration: 0.06s;
 	}
 }
 
 /* Reduced motion: prefer non-animated or subtle transitions */
 @media (prefers-reduced-motion: reduce) {
-    *, *::before, *::after {
-        animation-duration: 0.001ms !important;
-        animation-iteration-count: 1 !important;
-        transition-duration: 0.001ms !important;
-        scroll-behavior: auto !important;
-    }
+	*, *::before, *::after {
+		animation-duration: 0.001ms !important;
+		animation-iteration-count: 1 !important;
+		transition-duration: 0.001ms !important;
+		scroll-behavior: auto !important;
+	}
+	.spinner {
+		animation: none;
+		border-top-color: rgb(115 115 115);
+	}
 }
 
+/* ────────────────────────────────────────────────────────────────────────────
+   Typography
+   ──────────────────────────────────────────────────────────────────────────── */
+
 h1, h2, h3, h4, h5, h6 {
-    text-wrap: balance;
+	text-wrap: balance;
 }
 
 p {
-    text-wrap: pretty;
+	text-wrap: pretty;
 }
 
 /* Heading anchor offset to avoid being hidden under sticky headers */
 h1[id], h2[id], h3[id], h4[id], h5[id], h6[id] {
-    scroll-margin-top: 96px; /* adjust if header height changes */
+	scroll-margin-top: 96px; /* adjust if header height changes */
 }
 
 /* Prevent double-tap zoom delay on iOS and reduce tap highlight per design */
 button, a, input, textarea, select {
-    touch-action: manipulation;
-    -webkit-tap-highlight-color: rgba(0, 0, 0, 0);
+	touch-action: manipulation;
+	-webkit-tap-highlight-color: rgba(0, 0, 0, 0);
 }
 
 /* Dark mode styles for markdown content */
@@ -106,38 +197,37 @@ button, a, input, textarea, select {
 	.markdown-content h6 {
 		color: rgb(229 229 229) !important; /* neutral-200 */
 	}
-	
+
 	.markdown-content strong {
 		color: rgb(255 255 255) !important;
 	}
-	
+
 	.markdown-content em,
 	.markdown-content p,
 	.markdown-content li {
 		color: rgb(212 212 212) !important; /* neutral-300 */
 	}
-	
+
 	.markdown-content code {
 		background-color: rgb(64 64 64) !important; /* neutral-700 */
 		color: rgb(255 255 255) !important;
 	}
-	
+
 	.markdown-content pre {
 		background-color: rgb(38 38 38) !important; /* neutral-800 */
 		color: rgb(229 229 229) !important; /* neutral-200 */
 	}
-	
+
 	.markdown-content blockquote {
 		border-left-color: rgb(115 115 115) !important; /* neutral-500 */
 		color: rgb(163 163 163) !important; /* neutral-400 */
 	}
-	
+
 	.markdown-content a {
 		color: rgb(96 165 250) !important; /* blue-400 */
 	}
-	
+
 	.markdown-content a:hover {
 		color: rgb(147 197 253) !important; /* blue-300 */
 	}
 }
-
