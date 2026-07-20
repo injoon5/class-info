@@ -5,6 +5,7 @@ import { api } from "@class-info/backend/convex/_generated/api";
 
 export let files: any[] = []; // Array of file IDs
 export let onFilesChange: (fileIds: any[]) => void;
+export let sessionToken: string = ''; // Bearer token for privileged mutations
 
 const client = useConvexClient();
 const uploadFile = useUploadFile(api.files);
@@ -65,6 +66,7 @@ async function handleFileUpload(fileList: FileList) {
       
       // Update file metadata using storage ID and get the file ID back
       const fileId = await client.mutation(api.files.updateFileMetadataByStorageId, {
+        sessionToken,
         storageId,
         name: file.name,
         type: file.type,
@@ -87,7 +89,7 @@ async function handleFileUpload(fileList: FileList) {
 
 async function removeFile(fileId: string) {
   try {
-    await client.mutation(api.files.deleteFile, { fileId });
+    await client.mutation(api.files.deleteFile, { sessionToken, fileId });
     const updatedFiles = files.filter(id => id !== fileId);
     onFilesChange(updatedFiles);
     // Also update the local uploadedFiles array immediately

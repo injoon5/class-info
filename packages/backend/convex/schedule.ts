@@ -1,6 +1,7 @@
 import { internalAction, internalMutation, mutation, query } from "./_generated/server";
 import { v } from "convex/values";
 import { internal } from "./_generated/api";
+import { requireAdmin } from "./auth";
 
 type ExternalScheduleEvent = {
   AA_YMD: string; // YYYYMMDD
@@ -169,11 +170,13 @@ export const getCustomEventsByYear = query({
 
 export const createCustomEvent = mutation({
   args: {
+    sessionToken: v.string(),
     date: v.string(),
     title: v.string(),
     color: v.string(),
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx, { sessionToken, ...args }) => {
+    await requireAdmin(ctx, sessionToken);
     const now = Date.now();
     return await ctx.db.insert("schedules", {
       ...args,
@@ -185,8 +188,12 @@ export const createCustomEvent = mutation({
 });
 
 export const deleteCustomEvent = mutation({
-  args: { id: v.id("schedules") },
-  handler: async (ctx, { id }) => {
+  args: { sessionToken: v.string(), id: v.id("schedules") },
+  handler: async (ctx, { sessionToken, id }) => {
+    await requireAdmin(ctx, sessionToken);
+    const existing = await ctx.db.get(id);
+    // Only allow deleting user-created events, never synced school events.
+    if (!existing || existing.source !== "custom") return;
     await ctx.db.delete(id);
   },
 });

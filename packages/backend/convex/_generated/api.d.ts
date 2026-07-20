@@ -8,10 +8,12 @@
  * @module
  */
 
+import type * as auth from "../auth.js";
 import type * as crons from "../crons.js";
 import type * as files from "../files.js";
 import type * as meals from "../meals.js";
 import type * as notices from "../notices.js";
+import type * as schedule from "../schedule.js";
 import type * as settings from "../settings.js";
 import type * as timetable from "../timetable.js";
 
@@ -30,10 +32,12 @@ import type {
  * ```
  */
 declare const fullApi: ApiFromModules<{
+  auth: typeof auth;
   crons: typeof crons;
   files: typeof files;
   meals: typeof meals;
   notices: typeof notices;
+  schedule: typeof schedule;
   settings: typeof settings;
   timetable: typeof timetable;
 }>;

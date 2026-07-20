@@ -1,14 +1,20 @@
-import { mutation, query } from "./_generated/server";
+import { internalMutation, mutation, query } from "./_generated/server";
 import { v } from "convex/values";
 import { R2 } from "@convex-dev/r2";
 import { components } from "./_generated/api";
+import { requireAdmin } from "./auth";
 
 export const r2 = new R2(components.r2);
 
 export const { generateUploadUrl, syncMetadata } = r2.clientApi({
   checkUpload: async (_ctx, _bucket) => {
-    // For now, allow all uploads - you can add authentication here later
-    // This should not return anything according to types
+    // NOTE: the R2 clientApi only passes (ctx, bucket) here — no session token —
+    // so upload-URL generation cannot be gated by our bearer-token scheme.
+    // An anonymous caller could still push objects into the bucket (a
+    // storage-fill nuisance), but cannot ATTACH them to a notice: both
+    // updateFileMetadataByStorageId and the notice create/update mutations
+    // require an admin session. Fully gating uploads needs Convex Auth
+    // (ctx.auth identity) wired through the upload flow.
   },
   onUpload: async (ctx, bucket, key) => {
     // Store file metadata in our database with custom domain URL
@@ -28,7 +34,8 @@ export const { generateUploadUrl, syncMetadata } = r2.clientApi({
   },
 });
 
-export const createFileRecord = mutation({
+// Unused by clients; kept internal-only to avoid an anonymous write path.
+export const createFileRecord = internalMutation({
   args: {
     name: v.string(),
     type: v.string(),
@@ -48,7 +55,8 @@ export const createFileRecord = mutation({
   },
 });
 
-export const updateFileMetadata = mutation({
+// Unused by clients; kept internal-only to avoid an anonymous write path.
+export const updateFileMetadata = internalMutation({
   args: {
     fileId: v.id("files"),
     name: v.string(),
@@ -66,12 +74,14 @@ export const updateFileMetadata = mutation({
 
 export const updateFileMetadataByStorageId = mutation({
   args: {
+    sessionToken: v.string(),
     storageId: v.string(),
     name: v.string(),
     type: v.string(),
     size: v.number(),
   },
-  handler: async (ctx, { storageId, name, type, size }) => {
+  handler: async (ctx, { sessionToken, storageId, name, type, size }) => {
+    await requireAdmin(ctx, sessionToken);
     const file = await ctx.db
       .query("files")
       .filter((q) => q.eq(q.field("storageId"), storageId))
@@ -99,8 +109,9 @@ export const getFile = query({
 });
 
 export const deleteFile = mutation({
-  args: { fileId: v.id("files") },
-  handler: async (ctx, { fileId }) => {
+  args: { sessionToken: v.string(), fileId: v.id("files") },
+  handler: async (ctx, { sessionToken, fileId }) => {
+    await requireAdmin(ctx, sessionToken);
     const file = await ctx.db.get(fileId);
     if (!file) {
       throw new Error("File not found");

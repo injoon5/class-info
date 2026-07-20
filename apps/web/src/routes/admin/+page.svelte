@@ -11,6 +11,9 @@ import type { PageData, ActionData } from './$types';
 let { data, form }: { data: PageData; form: ActionData } = $props();
 const client = useConvexClient();
 
+// Bearer token for privileged mutations; present only when authenticated.
+const sessionToken = $derived(data.sessionToken ?? '');
+
 const showForm = writable(false);
 const editingNotice = writable<any>(null);
 
@@ -90,9 +93,9 @@ async function handleSubmit() {
 	
 	try {
 		if ($editingNotice) {
-			await client.mutation(api.notices.update, { id: $editingNotice._id, ...payload });
+			await client.mutation(api.notices.update, { sessionToken, id: $editingNotice._id, ...payload });
 		} else {
-			await client.mutation(api.notices.create, payload);
+			await client.mutation(api.notices.create, { sessionToken, ...payload });
 		}
 		resetForm();
 	} catch (error) {
@@ -103,7 +106,7 @@ async function handleSubmit() {
 async function handleDelete(notice: any) {
 	if (confirm('정말 삭제하시겠습니까?')) {
 		try {
-			await client.mutation(api.notices.remove, { id: notice._id });
+			await client.mutation(api.notices.remove, { sessionToken, id: notice._id });
 		} catch (error) {
 			alert('삭제 중 오류가 발생했습니다.');
 		}
@@ -278,9 +281,10 @@ const allGroupedNotices = $derived(overview.data?.currentGroups || []);
 					
 					<div>
 						<div class="text-sm font-medium mb-1 text-neutral-600 dark:text-neutral-300">파일 첨부</div>
-						<FileUpload 
-							files={$noticeForm.files} 
+						<FileUpload
+							files={$noticeForm.files}
 							onFilesChange={handleFilesChange}
+							{sessionToken}
 						/>
 					</div>
 					

@@ -148,6 +148,7 @@ const CUSTOM_POPUP_STYLE: Record<string, { color: string; bg: string; labelColor
 
 // Admin state
 const isAuthenticated = data.isAuthenticated as boolean;
+const sessionToken = $derived((data.sessionToken as string | null) ?? '');
 let newEventTitle = $state('');
 let newEventColor = $state('blue');
 let isSaving = $state(false);
@@ -193,6 +194,7 @@ async function handleAddEvent() {
   isSaving = true;
   try {
     await client.mutation((api as any).schedule.createCustomEvent, {
+      sessionToken,
       date: selectedDate,
       title: newEventTitle.trim(),
       color: newEventColor,
@@ -209,7 +211,7 @@ async function handleAddEvent() {
 async function handleDeleteCustomEvent(id: string) {
   if (!confirm('이 일정을 삭제하시겠습니까?')) return;
   try {
-    await client.mutation((api as any).schedule.deleteCustomEvent, { id });
+    await client.mutation((api as any).schedule.deleteCustomEvent, { sessionToken, id });
   } catch {
     alert('삭제 중 오류가 발생했습니다.');
   }

@@ -1,5 +1,6 @@
 import { v } from "convex/values";
-import { mutation, query } from "./_generated/server";
+import { internalMutation, mutation, query } from "./_generated/server";
+import { requireAdmin } from "./auth";
 
 export const list = query({
   handler: async (ctx) => {
@@ -300,6 +301,7 @@ export const getById = query({
 
 export const create = mutation({
   args: {
+    sessionToken: v.string(),
     title: v.string(),
     subject: v.string(),
     type: v.union(v.literal("수행평가"), v.literal("숙제"), v.literal("준비물"), v.literal("기타")),
@@ -309,10 +311,12 @@ export const create = mutation({
     slug: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
+    await requireAdmin(ctx, args.sessionToken);
+    const { sessionToken: _t, ...fields } = args;
     const now = Date.now();
-    const slug = args.slug && args.slug.length > 0 ? args.slug : await createUniqueSlug(ctx);
+    const slug = fields.slug && fields.slug.length > 0 ? fields.slug : await createUniqueSlug(ctx);
     const noticeId = await ctx.db.insert("notices", {
-      ...args,
+      ...fields,
       slug,
       createdAt: now,
       updatedAt: now,
@@ -323,6 +327,7 @@ export const create = mutation({
 
 export const update = mutation({
   args: {
+    sessionToken: v.string(),
     id: v.id("notices"),
     title: v.string(),
     subject: v.string(),
@@ -333,7 +338,8 @@ export const update = mutation({
     slug: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const { id, slug, ...updates } = args;
+    await requireAdmin(ctx, args.sessionToken);
+    const { sessionToken: _t, id, slug, ...updates } = args;
     let finalSlug = slug;
     if (slug === undefined) {
       // keep existing slug
@@ -349,14 +355,16 @@ export const update = mutation({
 });
 
 export const remove = mutation({
-  args: { id: v.id("notices") },
+  args: { sessionToken: v.string(), id: v.id("notices") },
   handler: async (ctx, args) => {
+    await requireAdmin(ctx, args.sessionToken);
     await ctx.db.delete(args.id);
   },
 });
 
-// Backfill slugs for existing notices that don't have one
-export const backfillMissingSlugs = mutation({
+// Backfill slugs for existing notices that don't have one.
+// Internal-only: run via the Convex dashboard, never exposed to clients.
+export const backfillMissingSlugs = internalMutation({
   handler: async (ctx) => {
     const all = await ctx.db.query("notices").collect();
     let updated = 0;

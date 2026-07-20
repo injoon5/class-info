@@ -53,6 +53,13 @@ export default defineSchema({
     key: v.string(),
     value: v.string(),
   }).index("by_key", ["key"]),
+
+  // Admin auth sessions — bearer tokens issued after a successful PIN login.
+  sessions: defineTable({
+    token: v.string(),
+    createdAt: v.number(),
+    expiresAt: v.number(),
+  }).index("by_token", ["token"]),
   
   meals: defineTable({
     // YYYYMMDD string for the meal date (local KST date)
