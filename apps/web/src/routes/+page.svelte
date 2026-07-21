@@ -2,6 +2,7 @@
 import { useQuery } from 'convex-svelte';
 import { api } from "@class-info/backend/convex/_generated/api";
 import NoticeCard from '../components/NoticeCard.svelte';
+import { getNowInKst, yyyymmdd, WEEKDAYS_KR } from '$lib/date';
 import type { PageData } from './$types.js';
 
 let { data }: { data: PageData } = $props();
@@ -12,16 +13,6 @@ const noticesQuery = useQuery(api.notices.overview, {}, () => ({
 }));
 
 // ── Date helpers ──────────────────────────────────────────────────────────────
-function getNowInKst(): Date {
-	const now = new Date();
-	const utc = now.getTime() + now.getTimezoneOffset() * 60_000;
-	return new Date(utc + 9 * 60 * 60_000);
-}
-
-function yyyymmdd(d: Date): string {
-	return `${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, '0')}${String(d.getDate()).padStart(2, '0')}`;
-}
-
 function getMondayTime(d: Date): number {
 	const copy = new Date(d);
 	const day = copy.getDay();
@@ -30,7 +21,6 @@ function getMondayTime(d: Date): number {
 	return copy.getTime();
 }
 
-const WEEKDAYS_KR = ['일', '월', '화', '수', '목', '금', '토'];
 const kst = getNowInKst();
 const todayYyyymmdd = yyyymmdd(kst);
 const todayMonth = kst.getMonth() + 1;
@@ -64,12 +54,16 @@ const displayDay = isSchoolDay(kst) ? kst : findNextSchoolDay();
 const displayDayStr = yyyymmdd(displayDay);
 const displayDayIndex = displayDay.getDay() - 1; // 0=Mon…4=Fri
 
-// Which week's timetable to use
-const displayIsNextWeek = getMondayTime(displayDay) > getMondayTime(kst);
-const displayTimetableData = displayIsNextWeek ? data.nextWeekTimetable : data.timetable;
-const displaySchedule = (displayTimetableData?.timetable?.[displayDayIndex] ?? []) as Array<{
-	period: number; subject: string; teacher: string; replaced: boolean;
-}>;
+// Which week's timetable to use. We only hold this-week and next-week data, so
+// map by whole-week offset; anything further out has no timetable to show.
+const weekOffset = Math.round((getMondayTime(displayDay) - getMondayTime(kst)) / (7 * 24 * 60 * 60 * 1000));
+const displayTimetableData =
+	weekOffset === 0 ? data.timetable : weekOffset === 1 ? data.nextWeekTimetable : undefined;
+const displaySchedule = (
+	displayDayIndex >= 0 && displayDayIndex <= 4
+		? (displayTimetableData?.timetable?.[displayDayIndex] ?? [])
+		: []
+) as Array<{ period: number; subject: string; teacher: string; replaced: boolean }>;
 
 // Which meal day to show
 const allMealDays = [...(data.meals?.thisWeek?.days ?? []), ...(data.meals?.nextWeek?.days ?? [])];
@@ -104,8 +98,12 @@ const upcomingEvents = $derived(
 );
 
 // ── Notices ───────────────────────────────────────────────────────────────────
-const noticePreview = $derived((noticesQuery.data?.currentGroups ?? []).slice(0, 3));
+const currentGroups = $derived(noticesQuery.data?.currentGroups ?? []);
+const noticePreview = $derived(currentGroups.slice(0, 3));
 const hasNotices = $derived(noticePreview.length > 0);
+const shownNoticeCount = $derived(noticePreview.reduce((sum, g: any) => sum + (g.notices?.length ?? 0), 0));
+const totalNoticeCount = $derived(currentGroups.reduce((sum, g: any) => sum + (g.notices?.length ?? 0), 0));
+const remainingNoticeCount = $derived(totalNoticeCount - shownNoticeCount);
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 function formatEventDate(dateStr: string): string {
@@ -291,12 +289,12 @@ function isToday(dateStr: string): boolean {
 						</div>
 					{/each}
 
-					{#if (noticesQuery.data?.currentGroups ?? []).length > 3}
+					{#if remainingNoticeCount > 0}
 						<a
 							href="/notices"
 							class="block text-center text-base text-neutral-400 dark:text-neutral-500 hover:text-neutral-700 dark:hover:text-neutral-300 transition-colors duration-100 py-1"
 						>
-							+ {(noticesQuery.data?.currentGroups ?? []).length - 3}개 더 보기
+							+ {remainingNoticeCount}개 더 보기
 						</a>
 					{/if}
 				</div>

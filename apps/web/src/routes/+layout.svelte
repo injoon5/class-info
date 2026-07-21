@@ -4,7 +4,6 @@
 	import { setupConvex } from 'convex-svelte';
 	import { page } from '$app/state';
 	import { onMount } from 'svelte';
-	import { browser } from '$app/environment';
 	import { configure } from 'onedollarstats';
 
 	const { children } = $props();

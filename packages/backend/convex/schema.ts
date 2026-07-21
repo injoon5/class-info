@@ -21,7 +21,7 @@ export default defineSchema({
     url: v.string(), // R2 URL
     storageId: v.string(), // R2 storage ID
     uploadedAt: v.number(),
-  }),
+  }).index("by_storage_id", ["storageId"]),
 
 
   timetables: defineTable({
@@ -47,7 +47,7 @@ export default defineSchema({
     update_date: v.string(),
     week: v.number(),
     editedAt: v.number(),
-  }),
+  }).index("by_week", ["week"]),
   
   settings: defineTable({
     key: v.string(),
@@ -74,7 +74,8 @@ export default defineSchema({
     loadedAt: v.string(), // LOAD_DTM from source (YYYYMMDD)
     editedAt: v.number(),
   })
-    .index("by_date", ["date"]) // query by day/week
+    // by_date_type also serves date-only range queries via its "date" prefix,
+    // so a separate by_date index would be redundant write overhead.
     .index("by_date_type", ["date", "mealType"]),
 
   schedules: defineTable({
@@ -86,5 +87,7 @@ export default defineSchema({
     color: v.optional(v.string()), // "blue"|"green"|"purple"|"orange"|"pink"|"teal" — custom only
     createdAt: v.number(),
     updatedAt: v.number(),
-  }).index("by_date", ["date"]),
+  })
+    .index("by_date", ["date"])
+    .index("by_source_date", ["source", "date"]),
 });

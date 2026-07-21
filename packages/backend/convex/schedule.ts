@@ -24,6 +24,14 @@ export const upsertManySchoolEvents = internalMutation({
     enddate: v.string(),
   },
   handler: async (ctx, { events, startdate, enddate }) => {
+    // Never wipe the range on an empty payload — a transient upstream failure
+    // (INFO-200 / network) would otherwise delete every school event in the
+    // window with nothing to re-insert.
+    if (events.length === 0) {
+      console.log(`[schedule.upsertManySchoolEvents] range=${startdate}–${enddate} skipped (no events)`);
+      return;
+    }
+
     const existing = await ctx.db
       .query("schedules")
       .withIndex("by_date", (q) => q.gte("date", startdate).lte("date", enddate))
@@ -142,31 +150,22 @@ export const fetchScheduleWindow = internalAction({
   },
 });
 
-export const getSchoolEventsByYear = query({
-  args: { year: v.string() },
-  handler: async (ctx, { year }) => {
-    const all = await ctx.db
-      .query("schedules")
-      .withIndex("by_date", (q) =>
-        q.gte("date", `${year}0101`).lte("date", `${year}1231`)
-      )
-      .collect();
-    return all.filter((e) => e.source === "school");
-  },
-});
+function eventsByYear(source: "school" | "custom") {
+  return query({
+    args: { year: v.string() },
+    handler: async (ctx, { year }) => {
+      return await ctx.db
+        .query("schedules")
+        .withIndex("by_source_date", (q) =>
+          q.eq("source", source).gte("date", `${year}0101`).lte("date", `${year}1231`)
+        )
+        .collect();
+    },
+  });
+}
 
-export const getCustomEventsByYear = query({
-  args: { year: v.string() },
-  handler: async (ctx, { year }) => {
-    const all = await ctx.db
-      .query("schedules")
-      .withIndex("by_date", (q) =>
-        q.gte("date", `${year}0101`).lte("date", `${year}1231`)
-      )
-      .collect();
-    return all.filter((e) => e.source === "custom");
-  },
-});
+export const getSchoolEventsByYear = eventsByYear("school");
+export const getCustomEventsByYear = eventsByYear("custom");
 
 export const createCustomEvent = mutation({
   args: {

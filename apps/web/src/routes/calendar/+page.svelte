@@ -1,26 +1,14 @@
 <script lang="ts">
-import { onMount } from 'svelte';
 import { useQuery, useConvexClient } from 'convex-svelte';
 import { api } from "@class-info/backend/convex/_generated/api";
+import type { Id } from "@class-info/backend/convex/_generated/dataModel";
 import Drawer from '../../components/Drawer.svelte';
+import HScroll from '../../components/HScroll.svelte';
+import { getNowInKst, toYyyymmdd } from '$lib/date';
 import type { PageData } from './$types.js';
 
 let { data }: { data: PageData } = $props();
 const client = useConvexClient();
-
-function getNowInKst(): Date {
-  const now = new Date();
-  const utc = now.getTime() + now.getTimezoneOffset() * 60_000;
-  return new Date(utc + 9 * 60 * 60_000);
-}
-
-function pad2(n: number): string {
-  return String(n).padStart(2, '0');
-}
-
-function toYyyymmdd(year: number, month: number, day: number): string {
-  return `${year}${pad2(month + 1)}${pad2(day)}`;
-}
 
 function parseDateStr(yyyymmdd: string) {
   const y = Number(yyyymmdd.slice(0, 4));
@@ -39,13 +27,13 @@ let displayYear = $state(data.year as number);
 let displayMonth = $state(nowKst.getMonth()); // 0-11
 
 const schoolEventsQuery = useQuery(
-  (api as any).schedule.getSchoolEventsByYear,
+  api.schedule.getSchoolEventsByYear,
   () => ({ year: String(displayYear) }),
   () => ({ initialData: data.schoolEvents, keepPreviousData: true })
 );
 
 const customEventsQuery = useQuery(
-  (api as any).schedule.getCustomEventsByYear,
+  api.schedule.getCustomEventsByYear,
   () => ({ year: String(displayYear) }),
   () => ({ initialData: data.customEvents, keepPreviousData: true })
 );
@@ -193,7 +181,7 @@ async function handleAddEvent() {
   if (!newEventTitle.trim() || !selectedDate || isSaving) return;
   isSaving = true;
   try {
-    await client.mutation((api as any).schedule.createCustomEvent, {
+    await client.mutation(api.schedule.createCustomEvent, {
       sessionToken,
       date: selectedDate,
       title: newEventTitle.trim(),
@@ -211,32 +199,11 @@ async function handleAddEvent() {
 async function handleDeleteCustomEvent(id: string) {
   if (!confirm('이 일정을 삭제하시겠습니까?')) return;
   try {
-    await client.mutation((api as any).schedule.deleteCustomEvent, { sessionToken, id });
+    await client.mutation(api.schedule.deleteCustomEvent, { sessionToken, id: id as Id<'schedules'> });
   } catch {
     alert('삭제 중 오류가 발생했습니다.');
   }
 }
-
-// ── Calendar scroll gradients ────────────────────────────────────────────────
-
-let scrollContainer = $state<HTMLDivElement | undefined>();
-let scrollLeft = $state(0);
-let scrollRight = $state(0);
-
-function updateGradients() {
-  if (!scrollContainer) return;
-  const { scrollLeft: left, scrollWidth, clientWidth } = scrollContainer;
-  const hasOverflow = scrollWidth > clientWidth;
-  scrollLeft = hasOverflow ? left : 0;
-  scrollRight = hasOverflow ? scrollWidth - clientWidth - left : 0;
-}
-
-onMount(() => {
-  updateGradients();
-  const ro = new ResizeObserver(() => updateGradients());
-  if (scrollContainer) ro.observe(scrollContainer);
-  return () => ro.disconnect();
-});
 
 const monthNames = ['1월','2월','3월','4월','5월','6월','7월','8월','9월','10월','11월','12월'];
 const dayNames = ['일','월','화','수','목','금','토'];
@@ -291,17 +258,7 @@ const dayNames = ['일','월','화','수','목','금','토'];
   </div>
 
   <!-- Calendar -->
-  <div class="relative">
-    <div
-      class="absolute left-0 top-0 bottom-0 w-6 bg-gradient-to-r from-white dark:from-neutral-900 to-transparent z-10 pointer-events-none transition-opacity duration-200"
-      style="opacity: {scrollLeft > 0 ? 1 : 0};"
-    ></div>
-    <div
-      class="absolute right-0 top-0 bottom-0 w-6 bg-gradient-to-l from-white dark:from-neutral-900 to-transparent z-10 pointer-events-none transition-opacity duration-200"
-      style="opacity: {scrollRight > 0 ? 1 : 0};"
-    ></div>
-
-    <div class="overflow-x-auto" bind:this={scrollContainer} onscroll={updateGradients}>
+  <HScroll>
       <div class="min-w-[40rem] border border-neutral-200 dark:border-neutral-700 rounded overflow-hidden shadow-sm">
 
         <!-- Day name header -->
@@ -383,8 +340,7 @@ const dayNames = ['일','월','화','수','목','금','토'];
         {/each}
 
       </div>
-    </div>
-  </div>
+  </HScroll>
 
   <!-- Legend -->
   <div class="mt-3 flex flex-wrap gap-x-3 gap-y-1 text-xs text-neutral-500 dark:text-neutral-400">

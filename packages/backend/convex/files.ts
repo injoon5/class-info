@@ -1,7 +1,8 @@
-import { internalMutation, mutation, query } from "./_generated/server";
+import { internalMutation, mutation, query, type MutationCtx } from "./_generated/server";
 import { v } from "convex/values";
 import { R2 } from "@convex-dev/r2";
 import { components } from "./_generated/api";
+import type { Id } from "./_generated/dataModel";
 import { requireAdmin } from "./auth";
 
 export const r2 = new R2(components.r2);
@@ -84,9 +85,9 @@ export const updateFileMetadataByStorageId = mutation({
     await requireAdmin(ctx, sessionToken);
     const file = await ctx.db
       .query("files")
-      .filter((q) => q.eq(q.field("storageId"), storageId))
+      .withIndex("by_storage_id", (q) => q.eq("storageId", storageId))
       .first();
-    
+
     if (!file) {
       throw new Error("File not found");
     }
@@ -108,6 +109,25 @@ export const getFile = query({
   },
 });
 
+// Delete file records and their backing R2 objects. Shared by deleteFile and
+// notices.remove (cascade) so a deleted notice never orphans its attachments.
+export async function deleteFilesByIds(
+  ctx: MutationCtx,
+  fileIds: Id<"files">[]
+): Promise<void> {
+  for (const fileId of fileIds) {
+    const file = await ctx.db.get(fileId);
+    if (!file) continue;
+    try {
+      await r2.deleteObject(ctx, file.storageId);
+    } catch (error) {
+      console.error("Failed to delete file from R2:", error);
+      // Continue with database deletion even if R2 deletion fails.
+    }
+    await ctx.db.delete(fileId);
+  }
+}
+
 export const deleteFile = mutation({
   args: { sessionToken: v.string(), fileId: v.id("files") },
   handler: async (ctx, { sessionToken, fileId }) => {
@@ -116,32 +136,6 @@ export const deleteFile = mutation({
     if (!file) {
       throw new Error("File not found");
     }
-    
-    // Delete from R2 storage
-    try {
-      await r2.deleteObject(ctx, file.storageId);
-    } catch (error) {
-      console.error("Failed to delete file from R2:", error);
-      // Continue with database deletion even if R2 deletion fails
-    }
-    
-    // Delete from database
-    await ctx.db.delete(fileId);
-  },
-});
-
-export const getNoticeFiles = query({
-  args: { noticeId: v.id("notices") },
-  handler: async (ctx, { noticeId }) => {
-    const notice = await ctx.db.get(noticeId);
-    if (!notice?.files) {
-      return [];
-    }
-    
-    const files = await Promise.all(
-      notice.files.map(fileId => ctx.db.get(fileId))
-    );
-    
-    return files.filter(Boolean);
+    await deleteFilesByIds(ctx, [fileId]);
   },
 });

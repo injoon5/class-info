@@ -1,10 +1,10 @@
 import type { RequestHandler } from '@sveltejs/kit';
 
+// Only indexable routes belong here. /meals, /timetable and /calendar all set
+// <meta name="robots" content="noindex">, so they are intentionally omitted.
 const PUBLIC_ROUTES = [
 	{ path: '/', changefreq: 'daily', priority: '1.0' },
-	{ path: '/notice', changefreq: 'daily', priority: '0.9' },
-	{ path: '/meals', changefreq: 'daily', priority: '0.8' },
-	{ path: '/timetable', changefreq: 'weekly', priority: '0.7' },
+	{ path: '/notices', changefreq: 'daily', priority: '0.9' },
 ];
 
 export const GET: RequestHandler = ({ url }) => {

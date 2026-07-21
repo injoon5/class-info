@@ -3,10 +3,6 @@ import { generateCopyText } from '../lib/utils.js';
 
 let { notices }: { notices: any[] } = $props(); // groups array from server
 
-const flat = $derived((notices || []).flatMap((g: any) => Array.isArray(g?.notices) ? g.notices : [g]));
-const latestTs = $derived(flat.length > 0 ? Math.max(...flat.map((n: any) => n?.updatedAt || n?.createdAt).filter(Boolean)) : null);
-
-
 async function copyToClipboard() {
 	const text = generateCopyText(notices || []);
 	if (!text) {

@@ -1,12 +1,9 @@
 <script lang="ts">
     import { page } from '$app/state';
-
-    let { status, error } = $props();
-    // console.log(status, error);
 </script>
 
 <svelte:head>
-	<title>{status === 404 ? '페이지를 찾을 수 없습니다' : '문제가 발생했습니다'}</title>
+	<title>{page.status === 404 ? '페이지를 찾을 수 없습니다' : '문제가 발생했습니다'}</title>
 	<meta name="robots" content="noindex" />
 </svelte:head>
 

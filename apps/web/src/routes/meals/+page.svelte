@@ -1,11 +1,13 @@
 <script lang="ts">
-import { onMount } from 'svelte';
 import { useQuery } from 'convex-svelte';
 import { api } from "@class-info/backend/convex/_generated/api";
 import LoadingState from '../../components/LoadingState.svelte';
 import ErrorState from '../../components/ErrorState.svelte';
 import EmptyState from '../../components/EmptyState.svelte';
 import Drawer from '../../components/Drawer.svelte';
+import HScroll from '../../components/HScroll.svelte';
+import SegmentedControl from '../../components/SegmentedControl.svelte';
+import { createBlurPulse } from '$lib/blurPulse.svelte';
 import type { PageData } from './$types.js';
 
 type MealDoc = {
@@ -20,55 +22,31 @@ type MealDoc = {
   editedAt: number;
 };
 
-function getNowInKst(): Date {
-  const now = new Date();
-  const utc = now.getTime() + now.getTimezoneOffset() * 60_000;
-  return new Date(utc + 9 * 60 * 60_000);
-}
-
 let { data }: { data: PageData } = $props();
 
 let selectedMealType = $state("중식");
 
-let gridBlurred = $state(false);
-let blurTimerId: ReturnType<typeof setTimeout> | null = null;
-let effectMounted = false;
-
-$effect(() => {
-  selectedMealType;
-  if (!effectMounted) { effectMounted = true; return; }
-  gridBlurred = true;
-  if (blurTimerId !== null) clearTimeout(blurTimerId);
-  blurTimerId = setTimeout(() => { gridBlurred = false; blurTimerId = null; }, 200);
-  return () => { if (blurTimerId !== null) { clearTimeout(blurTimerId); blurTimerId = null; } };
-});
-
-// Scroll gradient state
-let scrollContainer = $state<HTMLDivElement>();
-let leftGradient = $state<HTMLDivElement>();
-let rightGradient = $state<HTMLDivElement>();
-let scrollLeft = $state(0);
-let scrollRight = $state(0);
-
-function updateGradients() {
-  if (!scrollContainer) return;
-  const { scrollLeft: left, scrollWidth, clientWidth } = scrollContainer;
-  const hasOverflow = scrollWidth > clientWidth;
-  scrollLeft = hasOverflow ? left : 0;
-  scrollRight = hasOverflow ? scrollWidth - clientWidth - left : 0;
-}
+const blur = createBlurPulse();
+$effect(() => { selectedMealType; blur.pulse(); });
 
 const mealsQuery = useQuery(
-  (api as any).meals.getTwoWeeks,
+  api.meals.getTwoWeeks,
   () => ({}),
   () => ({ initialData: data.twoWeeks, keepPreviousData: true })
 );
 
-let hasDinner = $derived(
-  (mealsQuery.data?.availableMealTypes ?? []).includes("석식")
-);
+const availableMealTypes = $derived(mealsQuery.data?.availableMealTypes ?? []);
+const hasDinner = $derived(availableMealTypes.includes("석식"));
 
-function mealKey(type: string): string {
+// If the selected meal type is no longer available (e.g. dinner data cleared
+// while it was selected), fall back to lunch so the view can't dead-end.
+$effect(() => {
+  if (availableMealTypes.length > 0 && !availableMealTypes.includes(selectedMealType)) {
+    selectedMealType = availableMealTypes[0];
+  }
+});
+
+function mealKey(type: string): 'lunch' | 'dinner' {
   return type === '중식' ? 'lunch' : 'dinner';
 }
 
@@ -96,13 +74,6 @@ function openMealDrawer(day: any) {
   if (!meal) return;
   selectedMeal = { meal, dateInfo: formatDateFull(day.date) };
 }
-
-onMount(() => {
-  updateGradients();
-  const resizeObserver = new ResizeObserver(() => { updateGradients(); });
-  if (scrollContainer) resizeObserver.observe(scrollContainer);
-  return () => { resizeObserver.disconnect(); };
-});
 </script>
 
 <svelte:head>
@@ -110,7 +81,7 @@ onMount(() => {
   <meta name="description" content="정확한 급식을 한 눈에 확인하세요. " />
   <meta property="og:title" content="급식 - 1학년 3반" />
   <meta property="og:description" content="정확한 급식을 한 눈에 확인하세요. " />
-  <meta property="og:url" content="https://timefor.school" />
+  <meta property="og:url" content="https://timefor.school/meals" />
   <meta property="og:type" content="website" />
   <meta property="og:site_name" content="TimeforSchool" />
   <meta name="twitter:card" content="summary_large_image" />
@@ -124,50 +95,21 @@ onMount(() => {
     <LoadingState />
   {:else if mealsQuery.error}
     <ErrorState error={mealsQuery.error} />
-  {:else if !mealsQuery.data || ((mealsQuery.data.thisWeek?.days ?? []).every((d: any) => d[mealKey(selectedMealType)] === null) && (mealsQuery.data.nextWeek?.days ?? []).every((d: any) => d[mealKey(selectedMealType)] === null))}
+  {:else if !mealsQuery.data || availableMealTypes.length === 0}
     <EmptyState />
   {:else}
     {#if hasDinner}
-      <div class="flex justify-center mb-3">
-        <div class="relative flex w-full rounded-xl bg-neutral-200 dark:bg-neutral-800 p-1 shadow-inner transition-colors h-9 sm:h-11 text-sm sm:text-base">
-          <div
-            class="absolute top-1 h-7 sm:h-9 w-[calc(50%-0.25rem)] rounded-lg bg-white dark:bg-neutral-700 shadow transition-transform duration-300 ease-in-out z-0"
-            style="transform: translateX({selectedMealType === '중식' ? 0 : 100}%);"
-            aria-hidden="true"
-          ></div>
-          <button
-            class="flex-1 relative z-10 px-3 py-1 rounded-lg font-medium transition-colors
-              {selectedMealType === '중식' ? 'text-neutral-900 dark:text-neutral-100' : 'text-neutral-600 dark:text-neutral-300'}"
-            onclick={() => selectedMealType = '중식'}
-            aria-pressed={selectedMealType === '중식'}
-            type="button"
-            data-s-event="Meal Type Toggle"
-            data-s-event-props="type=lunch"
-          >중식</button>
-          <button
-            class="flex-1 relative z-10 px-3 py-1 rounded-lg font-medium transition-colors
-              {selectedMealType === '석식' ? 'text-neutral-900 dark:text-neutral-100' : 'text-neutral-600 dark:text-neutral-300'}"
-            onclick={() => selectedMealType = '석식'}
-            aria-pressed={selectedMealType === '석식'}
-            type="button"
-            data-s-event="Meal Type Toggle"
-            data-s-event-props="type=dinner"
-          >석식</button>
-        </div>
+      <div class="mb-3">
+        <SegmentedControl
+          bind:value={selectedMealType}
+          options={[
+            { value: '중식', label: '중식', event: 'Meal Type Toggle', eventProps: 'type=lunch' },
+            { value: '석식', label: '석식', event: 'Meal Type Toggle', eventProps: 'type=dinner' }
+          ]}
+        />
       </div>
     {/if}
-    <div class="relative">
-      <!-- Left gradient -->
-      <div class="absolute left-0 top-0 bottom-0 w-8 bg-gradient-to-r from-white dark:from-neutral-900 to-transparent z-10 pointer-events-none transition-opacity duration-200"
-           style="opacity: {scrollLeft > 0 ? 1 : 0};"
-           bind:this={leftGradient}></div>
-      <!-- Right gradient -->
-      <div class="absolute right-0 top-0 bottom-0 w-8 bg-gradient-to-l from-white dark:from-neutral-900 to-transparent z-10 pointer-events-none transition-opacity duration-200"
-           style="opacity: {scrollRight > 0 ? 1 : 0};"
-           bind:this={rightGradient}></div>
-
-      <div class="overflow-x-auto relative" bind:this={scrollContainer} onscroll={updateGradients}
-        style="transition: filter 150ms ease, opacity 150ms ease; {gridBlurred ? 'filter: blur(4px); opacity: 0.7;' : ''}">
+    <HScroll blurred={blur.blurred}>
         {#each [
           { days: mealsQuery.data.thisWeek.days, class: "" },
           { days: mealsQuery.data.nextWeek.days, class: "mt-3" }
@@ -203,8 +145,7 @@ onMount(() => {
           {/each}
         </div>
         {/each}
-      </div>
-    </div>
+    </HScroll>
     <div class="block sm:hidden mt-1 text-center text-xs text-neutral-500 select-none pointer-events-none">
       좌우로 스크롤하세요 →
     </div>

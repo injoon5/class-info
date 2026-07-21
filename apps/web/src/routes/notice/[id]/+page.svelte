@@ -1,8 +1,7 @@
 <script lang="ts">
 import { useQuery } from 'convex-svelte';
 import { api } from "@class-info/backend/convex/_generated/api";
-import { page } from '$app/stores';
-import { goto } from '$app/navigation';
+import { page } from '$app/state';
 import { getTypeColor, getFirstLine, formatDate } from '../../../lib/utils.js';
 import { renderMarkdown } from '$lib/markdown';
 import type { PageData } from './$types.js';
@@ -10,8 +9,8 @@ import type { PageData } from './$types.js';
 let { data }: { data: PageData } = $props();
 
 const detail = useQuery(
-	(api as any).notices.detail,
-	() => ({ id: $page.params.id }),
+	api.notices.detail,
+	() => ({ id: page.params.id ?? '' }),
 	() => ({ 
 		initialData: { notice: data.notice, files: data.files },
 		keepPreviousData: true 

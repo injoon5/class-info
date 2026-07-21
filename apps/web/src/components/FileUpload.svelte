@@ -2,15 +2,18 @@
 import { useConvexClient } from 'convex-svelte';
 import { useUploadFile } from "@convex-dev/r2/svelte";
 import { api } from "@class-info/backend/convex/_generated/api";
+import type { Id } from "@class-info/backend/convex/_generated/dataModel";
 
-export let files: any[] = []; // Array of file IDs
-export let onFilesChange: (fileIds: any[]) => void;
-export let sessionToken: string = ''; // Bearer token for privileged mutations
+let {
+  files = [],
+  onFilesChange,
+  sessionToken = ''
+}: { files: any[]; onFilesChange: (fileIds: any[]) => void; sessionToken?: string } = $props();
 
 const client = useConvexClient();
 const uploadFile = useUploadFile(api.files);
-let isUploading = false;
-let dragOver = false;
+let isUploading = $state(false);
+let dragOver = $state(false);
 
 interface UploadedFile {
   _id: string;
@@ -20,23 +23,32 @@ interface UploadedFile {
   url: string;
 }
 
-let uploadedFiles: UploadedFile[] = [];
+let uploadedFiles = $state<UploadedFile[]>([]);
 
-// Load existing files when component mounts
-$: if (files.length > 0) {
-  loadFiles();
-}
-
-async function loadFiles() {
-  try {
-    const filePromises = files.map(fileId => 
-      client.query(api.files.getFile, { fileId })
-    );
-    const results = await Promise.all(filePromises);
-    uploadedFiles = results.filter((file): file is UploadedFile => file !== null);
-  } catch (error) {
-    // console.error('Error loading files:', error);
+// Keep the displayed list in sync with the `files` prop. Reload when it has
+// entries; clear when it empties (e.g. after cancelling/resetting the form) so
+// a previous notice's attachments don't linger. A load token guards against
+// overlapping async loads clobbering each other.
+let loadToken = 0;
+$effect(() => {
+  const ids = files;
+  if (ids.length === 0) {
     uploadedFiles = [];
+    return;
+  }
+  loadFiles(ids);
+});
+
+async function loadFiles(ids: any[]) {
+  const token = ++loadToken;
+  try {
+    const results = await Promise.all(
+      ids.map((fileId) => client.query(api.files.getFile, { fileId: fileId as Id<'files'> }))
+    );
+    if (token !== loadToken) return; // a newer load superseded this one
+    uploadedFiles = results.filter((f) => f !== null) as UploadedFile[];
+  } catch {
+    if (token === loadToken) uploadedFiles = [];
   }
 }
 
@@ -89,7 +101,7 @@ async function handleFileUpload(fileList: FileList) {
 
 async function removeFile(fileId: string) {
   try {
-    await client.mutation(api.files.deleteFile, { sessionToken, fileId });
+    await client.mutation(api.files.deleteFile, { sessionToken, fileId: fileId as Id<'files'> });
     const updatedFiles = files.filter(id => id !== fileId);
     onFilesChange(updatedFiles);
     // Also update the local uploadedFiles array immediately
@@ -151,7 +163,7 @@ function handleDrop(e: DragEvent) {
       type="file" 
       multiple 
       accept="image/*,application/pdf"
-      onchange={(e) => e.target?.files && handleFileUpload(e.target.files)}
+      onchange={(e) => { const t = e.currentTarget as HTMLInputElement; if (t.files) handleFileUpload(t.files); }}
       class="hidden"
       id="file-upload"
       disabled={isUploading}

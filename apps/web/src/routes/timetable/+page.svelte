@@ -1,48 +1,23 @@
 <script lang="ts">
-import { onMount } from 'svelte';
 import { useQuery } from 'convex-svelte';
 import { api } from "@class-info/backend/convex/_generated/api";
 import LoadingState from '../../components/LoadingState.svelte';
 import ErrorState from '../../components/ErrorState.svelte';
 import EmptyState from '../../components/EmptyState.svelte';
+import HScroll from '../../components/HScroll.svelte';
+import SegmentedControl from '../../components/SegmentedControl.svelte';
+import { createBlurPulse } from '$lib/blurPulse.svelte';
 import type { PageData } from './$types.js';
 
 let { data }: { data: PageData } = $props();
 
-let selectedWeek: number = $state(0); // 0: this week, 1: next week
+let selectedWeek = $state(0); // 0: this week, 1: next week
 
-let gridBlurred = $state(false);
-let blurTimerId: ReturnType<typeof setTimeout> | null = null;
-let effectMounted = false;
-
-$effect(() => {
-  selectedWeek;
-  if (!effectMounted) { effectMounted = true; return; }
-  gridBlurred = true;
-  if (blurTimerId !== null) clearTimeout(blurTimerId);
-  blurTimerId = setTimeout(() => { gridBlurred = false; blurTimerId = null; }, 200);
-  return () => { if (blurTimerId !== null) { clearTimeout(blurTimerId); blurTimerId = null; } };
-});
-
-// Scroll gradient state
-let scrollContainer = $state<HTMLDivElement>();
-let leftGradient = $state<HTMLDivElement>();
-let rightGradient = $state<HTMLDivElement>();
-let scrollLeft = $state(0);
-let scrollRight = $state(0);
-
-function updateGradients() {
-	if (!scrollContainer) return;
-	
-	const { scrollLeft: left, scrollWidth, clientWidth } = scrollContainer;
-	const hasOverflow = scrollWidth > clientWidth;
-	
-	scrollLeft = hasOverflow ? left : 0;
-	scrollRight = hasOverflow ? scrollWidth - clientWidth - left : 0;
-}
+const blur = createBlurPulse();
+$effect(() => { selectedWeek; blur.pulse(); });
 
 const timetableQuery = useQuery(
-	(api as any).timetable.getByWeek,
+	api.timetable.getByWeek,
 	() => ({ week: selectedWeek }),
 	() => ({
 		initialData: selectedWeek === 0 ? data.timetable : undefined,
@@ -54,7 +29,7 @@ const dayNames = ['월', '화', '수', '목', '금'];
 
 function getMaxPeriods(): number {
 	const tt = (timetableQuery.data?.timetable || []) as Array<Array<{ period: number }>>;
-	return tt.reduce((max: number, day: Array<{ period: number }>) => Math.max(max, day.length), 0);
+	return tt.reduce((max: number, day) => Math.max(max, day.length), 0);
 }
 
 function getPeriodLabel(period: number): string {
@@ -62,23 +37,6 @@ function getPeriodLabel(period: number): string {
 	const label = times[period - 1];
 	return label ? label.replace(/^.*\(([^)]+)\)$/, '$1') : "?";
 }
-
-onMount(() => {
-	updateGradients();
-	
-	// Handle resize events
-	const resizeObserver = new ResizeObserver(() => {
-		updateGradients();
-	});
-	
-	if (scrollContainer) {
-		resizeObserver.observe(scrollContainer);
-	}
-	
-	return () => {
-		resizeObserver.disconnect();
-	};
-});
 </script>
 
 
@@ -89,7 +47,7 @@ onMount(() => {
 	<!-- Open Graph -->
 	<meta property="og:title" content="시간표 - 1학년 3반" />
 	<meta property="og:description" content="정확한 시간표를 변경사항까지 한 번에 확인하세요. " />
-	<meta property="og:url" content="https://timefor.school" />
+	<meta property="og:url" content="https://timefor.school/timetable" />
 	<meta property="og:type" content="website" />
 	<meta property="og:site_name" content="TimeforSchool" />
 
@@ -102,41 +60,14 @@ onMount(() => {
 
 <div class="max-w-4xl mx-auto px-4 pt-4 pb-1 sm:pt-5 sm:pb-0 sm:px-4">
 	<!-- Header: Week Selector -->
-	<div class="flex justify-center mb-3">
-		<div class="relative flex w-full rounded-xl bg-neutral-200 dark:bg-neutral-800 p-1 shadow-inner transition-colors h-9 sm:h-11 text-sm sm:text-base">
-			<!-- Sliding indicator -->
-			<div
-				class="absolute top-1 h-7 sm:h-9 w-[calc(50%-0.25rem)] rounded-lg bg-white dark:bg-neutral-700 shadow transition-transform duration-300 ease-in-out z-0"
-				style="transform: translateX({(selectedWeek * 100)}%);"
-				aria-hidden="true"
-			></div>
-			<button
-				class="flex-1 relative z-10 px-3 py-1 rounded-lg font-medium transition-colors
-					{selectedWeek === 0
-						? 'text-neutral-900 dark:text-neutral-100'
-						: 'text-neutral-600 dark:text-neutral-300'}"
-				onclick={() => selectedWeek = 0}
-				aria-pressed={selectedWeek === 0}
-				type="button"
-				data-s-event="Week Toggle"
-				data-s-event-props="week=this"
-			>
-				이번 주
-			</button>
-			<button
-				class="flex-1 relative z-10 px-3 py-1 rounded-lg font-medium transition-colors
-					{selectedWeek === 1
-						? 'text-neutral-900 dark:text-neutral-100'
-						: 'text-neutral-600 dark:text-neutral-300'}"
-				onclick={() => selectedWeek = 1}
-				aria-pressed={selectedWeek === 1}
-				type="button"
-				data-s-event="Week Toggle"
-				data-s-event-props="week=next"
-			>
-				다음 주
-			</button>
-		</div>
+	<div class="mb-3">
+		<SegmentedControl
+			bind:value={selectedWeek}
+			options={[
+				{ value: 0, label: '이번 주', event: 'Week Toggle', eventProps: 'week=this' },
+				{ value: 1, label: '다음 주', event: 'Week Toggle', eventProps: 'week=next' }
+			]}
+		/>
 	</div>
 
 	{#if timetableQuery.isLoading}
@@ -146,19 +77,7 @@ onMount(() => {
 	{:else if !timetableQuery.data}
 		<EmptyState />
 	{:else}
-		<div class="relative">
-			<!-- Left gradient -->
-			<div class="absolute left-0 top-0 bottom-0 w-8 bg-gradient-to-r from-white dark:from-neutral-900 to-transparent z-10 pointer-events-none transition-opacity duration-200" 
-				 style="opacity: {scrollLeft > 0 ? 1 : 0};" 
-				 bind:this={leftGradient}></div>
-			
-			<!-- Right gradient -->
-			<div class="absolute right-0 top-0 bottom-0 w-8 bg-gradient-to-l from-white dark:from-neutral-900 to-transparent z-10 pointer-events-none transition-opacity duration-200"
-				 style="opacity: {scrollRight > 0 ? 1 : 0};"
-				 bind:this={rightGradient}></div>
-			
-			<div class="overflow-x-auto" bind:this={scrollContainer} onscroll={updateGradients}
-				style="transition: filter 150ms ease, opacity 150ms ease; {gridBlurred ? 'filter: blur(4px); opacity: 0.7;' : ''}">
+		<HScroll blurred={blur.blurred}>
 				<table class="w-full min-w-[18rem] table-fixed border border-neutral-200 dark:border-neutral-700 border-collapse shadow-sm mx-auto">
 				<thead>
 					<tr class="bg-neutral-100 dark:bg-neutral-800">
@@ -194,8 +113,7 @@ onMount(() => {
 					{/each}
 				</tbody>
 			</table>
-			</div>
-		</div>
+		</HScroll>
 		{#if timetableQuery.data}
 			<p class="mt-3 text-xs text-neutral-500 dark:text-neutral-400 pb-10">
 				업데이트: {new Date(timetableQuery.data.editedAt).toLocaleString('ko-KR', {

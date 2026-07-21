@@ -26,7 +26,7 @@ const groups = useQuery(api.notices.pastByMonth, { monthKey });
                             <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
                                 <div class="flex-1 min-w-0">
                                     <div class="flex items-center gap-2 mb-1">
-                                        <span class="px-1.5 py-0.5 text-xs font-medium rounded opacity-75 ${getTypeColor(notice.type)}">
+                                        <span class="px-1.5 py-0.5 text-xs font-medium rounded opacity-75 {getTypeColor(notice.type)}">
                                             {notice.type}
                                         </span>
                                         <span class="text-xs font-medium text-neutral-500 dark:text-neutral-400">

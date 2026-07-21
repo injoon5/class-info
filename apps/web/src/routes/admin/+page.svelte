@@ -4,8 +4,8 @@ import { api } from "@class-info/backend/convex/_generated/api";
 import type { Id } from "@class-info/backend/convex/_generated/dataModel";
 import { writable } from 'svelte/store';
 import { enhance } from '$app/forms';
-import { onMount } from 'svelte';
 import FileUpload from '../../components/FileUpload.svelte';
+import { getTypeColor } from '$lib/utils';
 import type { PageData, ActionData } from './$types';
 
 let { data, form }: { data: PageData; form: ActionData } = $props();
@@ -52,20 +52,28 @@ function resetForm() {
 
 async function editNotice(noticeOrId: any) {
 	const id = typeof noticeOrId === 'string' ? noticeOrId : String(noticeOrId?._id);
+	// Always load the authoritative record. The list/overview projection is a
+	// MinimalNotice (no description/files), so editing from it and saving would
+	// wipe those fields — never fall back to it.
 	let full: any = null;
 	try {
 		full = await client.query(api.notices.getById, { id: id as unknown as Id<'notices'> });
-	} catch {}
-	const notice = full || noticeOrId || {};
+	} catch {
+		full = null;
+	}
+	if (!full) {
+		alert('알림을 불러오지 못했습니다. 다시 시도해주세요.');
+		return;
+	}
 	noticeForm.set({
-		title: notice.title || '',
-		subject: notice.subject || '',
-		type: notice.type || '숙제',
-		description: typeof notice.description === 'string' ? notice.description : '',
-		dueDate: notice.dueDate || '',
-		files: Array.isArray(notice.files) ? notice.files : []
+		title: full.title || '',
+		subject: full.subject || '',
+		type: full.type || '숙제',
+		description: typeof full.description === 'string' ? full.description : '',
+		dueDate: full.dueDate || '',
+		files: Array.isArray(full.files) ? full.files : []
 	});
-	editingNotice.set({ _id: id, ...notice });
+	editingNotice.set({ _id: id, ...full });
 	showForm.set(true);
 	setTimeout(() => {
 		window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -113,39 +121,34 @@ async function handleDelete(notice: any) {
 	}
 }
 
-function formatDate(dateStr: string) {
-	const date = new Date(dateStr);
-	return `${date.getMonth() + 1}/${date.getDate()}`;
-}
-
-function getTypeColor(type: string) {
-	switch(type) {
-		case '수행평가': return 'bg-neutral-700 dark:bg-neutral-500 text-white';
-		case '숙제': return 'bg-neutral-600 dark:bg-neutral-400 text-white';
-		case '준비물': return 'bg-neutral-500 dark:bg-neutral-400 text-white';
-		case '기타': return 'bg-neutral-400 dark:bg-neutral-500 text-neutral-800 dark:text-neutral-200';
-		default: return 'bg-neutral-300 dark:bg-neutral-500 text-neutral-800 dark:text-neutral-200';
-	}
-}
-
 // Grouped notices from overview
 const allGroupedNotices = $derived(overview.data?.currentGroups || []);
+
+// Most recent notice timestamp, or null when there are none (avoids Math.max()
+// returning -Infinity → "Invalid Date").
+const lastUpdatedTs = $derived.by(() => {
+	const ts = allGroupedNotices
+		.flatMap((g: any) => g.notices || [])
+		.map((n: any) => n.updatedAt || n.createdAt)
+		.filter((t: any): t is number => typeof t === 'number');
+	return ts.length > 0 ? Math.max(...ts) : null;
+});
 </script>
 
 <svelte:head>
-	<title>관리자 페이지 - 3-4 학급 공지</title>
-	<meta name="description" content="3-4 학급 공지 관리자 페이지입니다. " />
+	<title>관리자 페이지 - 1학년 3반 공지</title>
+	<meta name="description" content="1학년 3반 공지 관리자 페이지입니다. " />
 
 	<!-- Open Graph -->
-	<meta property="og:title" content="관리자 페이지 - 3-4 학급 공지" />
-	<meta property="og:description" content="3-4 학급 공지 관리자 페이지입니다. " />
+	<meta property="og:title" content="관리자 페이지 - 1학년 3반 공지" />
+	<meta property="og:description" content="1학년 3반 공지 관리자 페이지입니다. " />
 	<meta property="og:type" content="website" />
 	<meta property="og:site_name" content="TimeforSchool" />
 	
 	<!-- Twitter Card -->
 	<meta name="twitter:card" content="summary_large_image" />
-	<meta name="twitter:title" content="관리자 페이지 - 3-4 학급 공지" />
-	<meta name="twitter:description" content="3-4 학급 공지 관리자 페이지입니다. " />
+	<meta name="twitter:title" content="관리자 페이지 - 1학년 3반 공지" />
+	<meta name="twitter:description" content="1학년 3반 공지 관리자 페이지입니다. " />
 	
 	<!-- Additional meta tags -->	
 	<meta name="robots" content="noindex, nofollow" />
@@ -309,6 +312,11 @@ const allGroupedNotices = $derived(overview.data?.currentGroups || []);
 		<!-- Notice List -->
 		{#if overview.isLoading}
 			<div class="text-center py-8 text-neutral-500 dark:text-neutral-400">로딩 중...</div>
+        {:else if overview.error}
+			<div class="text-center py-8 text-red-600 dark:text-red-400">
+				<p>알림을 불러오는 중 오류가 발생했습니다.</p>
+				<button onclick={() => window.location.reload()} class="mt-3 px-4 py-2 bg-neutral-800 dark:bg-neutral-300 text-white dark:text-neutral-900 text-sm hover:bg-neutral-700 dark:hover:bg-neutral-200">다시 시도</button>
+			</div>
         {:else}
 			<!-- Current and Future Notices -->
             {#if allGroupedNotices && allGroupedNotices.length > 0}
@@ -408,13 +416,13 @@ const allGroupedNotices = $derived(overview.data?.currentGroups || []);
 		
 		<!-- Footer -->
 		<div class="text-center py-4 text-xs text-neutral-500 dark:text-neutral-400 border-t border-neutral-200 dark:border-neutral-700 mt-8">
-			{#if allGroupedNotices && allGroupedNotices.length > 0}
-				마지막 업데이트: {new Date(Math.max(...allGroupedNotices.flatMap(g => g.notices || []).map((n: any) => n.updatedAt || n.createdAt).filter(Boolean))).toLocaleString('ko-KR', { 
-					year: 'numeric', 
-					month: 'long', 
-					day: 'numeric', 
-					hour: '2-digit', 
-					minute: '2-digit' 
+			{#if lastUpdatedTs !== null}
+				마지막 업데이트: {new Date(lastUpdatedTs).toLocaleString('ko-KR', {
+					year: 'numeric',
+					month: 'long',
+					day: 'numeric',
+					hour: '2-digit',
+					minute: '2-digit'
 				})}
 			{:else}
 				마지막 업데이트: 데이터 없음
