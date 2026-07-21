@@ -20,12 +20,12 @@ function htmlToMarkdown(html: string): string {
 		.replace(/<p[^>]*>/gi, '')
 		.replace(/<\/div>/gi, '\n')
 		.replace(/<[^>]+>/g, '')
-		.replace(/&amp;/g, '&')
 		.replace(/&lt;/g, '<')
 		.replace(/&gt;/g, '>')
 		.replace(/&quot;/g, '"')
 		.replace(/&#39;/g, "'")
 		.replace(/&nbsp;/g, ' ')
+		.replace(/&amp;/g, '&') // must be last so "&amp;lt;" -> "&lt;", not "<"
 		.replace(/\n{3,}/g, '\n\n')
 		.trim();
 }
@@ -49,6 +49,7 @@ export const handle: Handle = async ({ event, resolve }) => {
 				},
 			});
 		}
+		response.headers.append('Vary', 'Accept');
 		return response;
 	}
 

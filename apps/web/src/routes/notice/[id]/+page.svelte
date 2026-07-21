@@ -1,17 +1,16 @@
 <script lang="ts">
 import { useQuery } from 'convex-svelte';
 import { api } from "@class-info/backend/convex/_generated/api";
-import { page } from '$app/stores';
-import { goto } from '$app/navigation';
-import { getTypeColor, getFirstLine, formatDate, truncateTitle, formatKoreanDueDate } from '../../../lib/utils.js';
-import { marked } from 'marked';
+import { page } from '$app/state';
+import { getTypeColor, getFirstLine, formatDate } from '../../../lib/utils.js';
+import { renderMarkdown } from '$lib/markdown';
 import type { PageData } from './$types.js';
 
 let { data }: { data: PageData } = $props();
 
 const detail = useQuery(
-	(api as any).notices.detail,
-	() => ({ id: $page.params.id }),
+	api.notices.detail,
+	() => ({ id: page.params.id ?? '' }),
 	() => ({ 
 		initialData: { notice: data.notice, files: data.files },
 		keepPreviousData: true 
@@ -20,34 +19,13 @@ const detail = useQuery(
 
 let html = $state<string | null>(data.prerenderedHtml || null);
 
-function renderMarkdown(text: string) {
-	// Convert single line breaks to double line breaks for proper markdown parsing
-	let processedText = text
-		.replace(/\r\n/g, '\n') // Normalize line endings
-		.replace(/([^\n])\n([^\n])/g, '$1\n\n$2'); // Convert single newlines to double newlines
-	
-	// Convert YouTube links to embeds BEFORE markdown processing to avoid duplication
-	processedText = processedText.replace(
-		/(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/watch\?v=|youtu\.be\/)([a-zA-Z0-9_-]{11})(?:[&?]t=(\d+)s?)?/g,
-		(match, videoId, timestamp) => {
-			const startParam = timestamp ? `?start=${timestamp}` : '';
-			return `\n\n<div class="video-embed"><iframe src="https://www.youtube.com/embed/${videoId}${startParam}" frameborder="0" allowfullscreen></iframe></div>\n\n`;
-		}
-	);
-	
-	return marked.parse(processedText);
-}
-
 $effect(() => {
-	if (detail.data?.notice?.description) {
-		const run = async () => {
-			const result = renderMarkdown(detail.data!.notice!.description);
-			html = typeof result === 'string' ? result : await result;
-		};
-		// Lazy render markdown when idle
-		if (typeof requestIdleCallback !== 'undefined') requestIdleCallback(run);
-		else setTimeout(run, 0);
-	}
+	const description = detail.data?.notice?.description;
+	if (!description) return;
+	const run = () => { html = renderMarkdown(description); };
+	// Lazy render markdown when idle
+	if (typeof requestIdleCallback !== 'undefined') requestIdleCallback(run);
+	else setTimeout(run, 0);
 });
 </script>
 
@@ -121,7 +99,7 @@ $effect(() => {
 				{#if html}
 					<div class="border-t border-neutral-200 dark:border-neutral-700 pt-4">
 						<div class="text-sm sm:text-base text-neutral-600 dark:text-neutral-300 leading-relaxed markdown-content break-words">
-							{@html html.replaceAll('<img ', '<img loading="lazy" ')}
+							{@html html}
 						</div>
 					</div>
 				{/if}

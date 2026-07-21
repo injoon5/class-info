@@ -198,6 +198,31 @@ function onMouseMove(e: MouseEvent) {
 function onMouseUp() {
   endDrag();
 }
+
+// ── Keyboard: Escape to close, Tab to trap focus within the dialog ────────────
+
+function onPanelKeydown(e: KeyboardEvent) {
+  if (e.key === 'Escape') {
+    e.stopPropagation();
+    close();
+    return;
+  }
+  if (e.key !== 'Tab' || !panelEl) return;
+  const focusables = panelEl.querySelectorAll<HTMLElement>(
+    'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
+  );
+  if (focusables.length === 0) return;
+  const first = focusables[0];
+  const last = focusables[focusables.length - 1];
+  const active = document.activeElement;
+  if (e.shiftKey && (active === first || active === panelEl)) {
+    e.preventDefault();
+    last.focus();
+  } else if (!e.shiftKey && active === last) {
+    e.preventDefault();
+    first.focus();
+  }
+}
 </script>
 
 {#if mounted}
@@ -225,7 +250,7 @@ function onMouseUp() {
              outline-none will-change-transform"
       style={panelStyle}
       onclick={(e) => e.stopPropagation()}
-      onkeydown={(e) => { if (e.key === 'Escape') close(); e.stopPropagation(); }}
+      onkeydown={onPanelKeydown}
     >
       <!-- Drag handle (mobile only) -->
       <div class="sm:hidden flex justify-center pt-3 pb-1 flex-shrink-0 touch-none select-none cursor-grab active:cursor-grabbing">

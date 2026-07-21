@@ -3,8 +3,5 @@ import { sveltekit } from '@sveltejs/kit/vite';
 import { defineConfig } from 'vite';
 
 export default defineConfig({
-	plugins: [tailwindcss(), sveltekit()], 
-	server: {
-		allowedHosts: ['localhost', '7942e0e5d40c.ngrok-free.app', '192.168.219.138']
-	}
+	plugins: [tailwindcss(), sveltekit()]
 });

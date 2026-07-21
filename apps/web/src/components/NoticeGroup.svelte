@@ -1,8 +1,7 @@
 <script lang="ts">
 import NoticeCard from './NoticeCard.svelte';
 
-export let group: any;
-export let isPast = false;
+let { group, isPast = false }: { group: any; isPast?: boolean } = $props();
 </script>
 
 <div class="{isPast ? 'mb-3 sm:mb-4 last:mb-0' : 'mb-4 sm:mb-6'}">

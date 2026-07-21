@@ -1,7 +1,7 @@
 import { internalAction, internalMutation, query } from "./_generated/server";
 import { v } from "convex/values";
 import { internal } from "./_generated/api";
-import { Id } from "./_generated/dataModel";
+import type { Id } from "./_generated/dataModel";
 
 export const upsert = internalMutation({
   args: {
@@ -29,7 +29,7 @@ export const upsert = internalMutation({
   ): Promise<Id<"timetables">> => {
     const existing = await ctx.db
       .query("timetables")
-      .filter((q) => q.eq(q.field("week"), week))
+      .withIndex("by_week", (q) => q.eq("week", week))
       .first();
 
     if (existing) {
@@ -100,7 +100,7 @@ export const getByWeek = query({
   handler: async (ctx, { week }) => {
     return await ctx.db
       .query("timetables")
-      .filter((q) => q.eq(q.field("week"), week))
+      .withIndex("by_week", (q) => q.eq("week", week))
       .first();
   },
 });
