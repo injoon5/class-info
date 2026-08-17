@@ -36,7 +36,7 @@ const overview = useQuery(api.notices.overview, {}, () => ({
 </svelte:head>
 
 
-<div class="max-w-4xl mx-auto p-4">
+<div class="max-w-4xl mx-auto px-4 pt-5 pb-4 sm:pt-6">
 	<!-- Notice Board -->
     {#if overview.isLoading}
         <LoadingState />
@@ -53,12 +53,12 @@ const overview = useQuery(api.notices.overview, {}, () => ({
         {/if}
 
         {#if overview.data?.pastMonths && overview.data.pastMonths.length > 0}
-            <div class="mt-6 sm:mt-8 pt-4 sm:pt-6 border-t border-neutral-200 dark:border-neutral-700">
-                <h2 class="text-base sm:text-lg font-medium mb-1 sm:mb-2 text-neutral-500 dark:text-neutral-400">지난 알림</h2>
+            <div class="mt-6 sm:mt-8 pt-4 sm:pt-6 border-t border-border">
+                <h2 class="text-base sm:text-lg font-semibold tracking-tight mb-2 sm:mb-3 text-muted-foreground">지난 알림</h2>
                 {#each overview.data.pastMonths as month (month.monthKey)}
-                    <details class="mb-1.5 sm:mb-2 bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded" open={openMonthKey === month.monthKey}>
+                    <details class="mb-1.5 sm:mb-2 bg-card border border-border rounded-xl overflow-hidden" open={openMonthKey === month.monthKey}>
                         <summary
-                            class="rounded-t px-3 sm:px-4 py-2 sm:p-3 cursor-pointer hover:bg-neutral-50 dark:hover:bg-neutral-700 text-neutral-500 dark:text-neutral-400 font-medium text-sm sm:text-base"
+                            class="px-3 sm:px-4 py-2.5 sm:py-3 cursor-pointer transition-colors pointer:hover:bg-muted text-muted-foreground font-medium text-sm sm:text-base tabular-nums"
                             onclick={(e) => {
                                 e.preventDefault();
                                 openMonthKey = openMonthKey === month.monthKey ? null : month.monthKey;

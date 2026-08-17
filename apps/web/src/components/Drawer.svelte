@@ -228,7 +228,7 @@ function onPanelKeydown(e: KeyboardEvent) {
 {#if mounted}
   <!-- Backdrop -->
   <div
-    class="fixed inset-0 bg-black/60 dark:bg-black/70 z-50 backdrop-blur-[2px]"
+    class="fixed inset-0 bg-black/40 dark:bg-black/60 z-50 backdrop-blur-sm"
     style="opacity: {backdropOpacity}; transition: opacity {isDragging ? 0 : TRANSITION_MS}ms;"
     role="presentation"
     onclick={close}
@@ -242,11 +242,11 @@ function onPanelKeydown(e: KeyboardEvent) {
       aria-modal="true"
       tabindex="-1"
       class="pointer-events-auto w-full sm:w-[26rem] sm:max-w-[90vw]
-             bg-white dark:bg-neutral-900
+             bg-card text-card-foreground
              rounded-t-3xl sm:rounded-2xl
              shadow-2xl flex flex-col
              max-h-[88svh] sm:max-h-[80svh]
-             sm:border sm:border-neutral-200 sm:dark:border-neutral-700
+             border border-border
              outline-none will-change-transform"
       style={panelStyle}
       onclick={(e) => e.stopPropagation()}
@@ -254,17 +254,17 @@ function onPanelKeydown(e: KeyboardEvent) {
     >
       <!-- Drag handle (mobile only) -->
       <div class="sm:hidden flex justify-center pt-3 pb-1 flex-shrink-0 touch-none select-none cursor-grab active:cursor-grabbing">
-        <div class="w-10 h-1 rounded-full bg-neutral-300 dark:bg-neutral-600"></div>
+        <div class="w-10 h-1 rounded-full bg-border"></div>
       </div>
 
       <!-- Header: custom content + close button -->
-      <div class="px-4 pt-3 pb-4 sm:pt-4 flex items-start justify-between gap-3 flex-shrink-0 border-b border-neutral-100 dark:border-neutral-800">
+      <div class="px-4 pt-3 pb-4 sm:pt-4 flex items-start justify-between gap-3 flex-shrink-0 border-b border-border">
         <div class="flex-1 min-w-0">
           {@render header()}
         </div>
         <button
           onclick={close}
-          class="pressable flex-shrink-0 flex items-center justify-center w-8 h-8 rounded-full text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-200 hover:bg-neutral-100 dark:hover:bg-neutral-800 active:scale-90 active:bg-neutral-200 dark:active:bg-neutral-700 transition-all duration-75 mt-0.5"
+          class="pressable flex-shrink-0 flex items-center justify-center w-8 h-8 rounded-full text-muted-foreground pointer:hover:text-foreground pointer:hover:bg-muted active:scale-90 transition-colors duration-100 mt-0.5"
           aria-label="닫기"
         >
           <svg viewBox="0 0 20 20" fill="currentColor" class="w-5 h-5">
@@ -283,7 +283,7 @@ function onPanelKeydown(e: KeyboardEvent) {
 
       <!-- Optional footer -->
       {#if footer}
-        <div class="flex-shrink-0 border-t border-neutral-100 dark:border-neutral-800 px-4 py-4">
+        <div class="flex-shrink-0 border-t border-border px-4 py-4">
           {@render footer()}
         </div>
       {/if}

@@ -9,16 +9,17 @@
 
 <div class="min-h-[60vh]">
 	<div class="max-w-4xl mx-auto p-4">
-		<div class="flex flex-col items-center text-center gap-4 py-16">
-            <h2 class="text-[3rem] font-semibold text-neutral-800 dark:text-neutral-200">{page.status === 404 ? '404' : page.status}</h2>
-			<h2 class="text-2xl font-semibold text-neutral-800 dark:text-neutral-200">
-                {page.status === 404 ? '페이지를 찾을 수 없습니다' : '문제가 발생했습니다'}
+		<div class="flex flex-col items-center text-center gap-3 py-20">
+			<p class="text-6xl font-bold tracking-tight tabular-nums text-foreground">{page.status === 404 ? '404' : page.status}</p>
+			<h2 class="text-2xl font-semibold tracking-tight text-foreground">
+				{page.status === 404 ? '페이지를 찾을 수 없습니다' : '문제가 발생했습니다'}
 			</h2>
-            {#if page.error?.message}
-                <p class="text-neutral-600 dark:text-neutral-400">{page.error.message}</p>
+			{#if page.error?.message}
+				<p class="text-muted-foreground">{page.error.message}</p>
 			{/if}
-
-
+			<a href="/" class="pressable mt-3 rounded-full bg-primary px-5 py-2.5 text-sm font-medium text-primary-foreground transition-opacity pointer:hover:opacity-90">
+				홈으로 돌아가기
+			</a>
 		</div>
 	</div>
 </div>

@@ -20,18 +20,17 @@ async function copyToClipboard() {
 </script>
 
 <!-- Buttons -->
-<div class="text-center py-3 sm:py-4 text-xs text-neutral-500 dark:text-neutral-400 space-y-1.5 sm:space-y-2 border-t border-neutral-200 dark:border-neutral-700 mt-6 sm:mt-8">
-	<div>
-		<button 
-			onclick={copyToClipboard}
-			class="text-xs text-neutral-500 dark:text-neutral-400 hover:text-neutral-800 dark:hover:text-neutral-200 underline"
-		>
-			알림 복사
-		</button>
-	</div>
-	<div>
-		<a href="/admin" class="text-xs text-neutral-500 dark:text-neutral-400 hover:text-neutral-800 dark:hover:text-neutral-200 underline">
-			관리자
-		</a>
-	</div>
+<div class="flex items-center justify-center gap-3 py-4 mt-6 sm:mt-8 border-t border-border text-xs text-muted-foreground">
+	<button
+		onclick={copyToClipboard}
+		class="pressable rounded-full border border-border px-3 py-1.5 font-medium text-muted-foreground transition-colors pointer:hover:text-foreground pointer:hover:bg-muted"
+	>
+		알림 복사
+	</button>
+	<a
+		href="/admin"
+		class="pressable rounded-full px-3 py-1.5 font-medium text-muted-foreground transition-colors pointer:hover:text-foreground pointer:hover:bg-muted"
+	>
+		관리자
+	</a>
 </div>

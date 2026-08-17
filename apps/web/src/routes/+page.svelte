@@ -121,10 +121,10 @@ function eventTypeLabel(event: any): string {
 
 function eventTypeCss(event: any): string {
 	switch (event.eventType) {
-		case '공휴일': return 'text-red-500 dark:text-red-400';
+		case '공휴일': return 'text-red-600 dark:text-red-400';
 		case '휴업일':
-		case '재량휴업일': return 'text-amber-500 dark:text-amber-400';
-		default: return 'text-sky-500 dark:text-sky-400';
+		case '재량휴업일': return 'text-amber-700 dark:text-amber-400';
+		default: return 'text-sky-700 dark:text-sky-400';
 	}
 }
 
@@ -156,129 +156,128 @@ function isToday(dateStr: string): boolean {
 	<meta name="twitter:description" content="오늘의 시간표, 급식, 공지를 한눈에 확인하세요." />
 </svelte:head>
 
-<div class="max-w-4xl mx-auto px-4 pt-3 pb-12 sm:pt-5">
+<div class="max-w-4xl mx-auto px-4 pt-6 pb-16 sm:pt-8">
 
-	<!-- ── Date banner ─────────────────────────────────────────────────────── -->
-	<div class="flex items-end justify-between gap-4 mb-5 sm:mb-6">
-		<div class="flex items-baseline gap-2.5">
-			<h1 class="text-3xl font-bold text-neutral-900 dark:text-neutral-100">
-				{todayMonth}월 {todayDate}일
-			</h1>
-			<span class="text-xl font-medium text-neutral-400 dark:text-neutral-500">{todayWeekday}요일</span>
-		</div>
+	<!-- ── Date hero ───────────────────────────────────────────────────────── -->
+	<header class="flex flex-wrap items-baseline justify-between gap-x-5 gap-y-1.5 mb-6 sm:mb-7">
+		<h1 class="flex items-baseline gap-2">
+			<span class="text-2xl sm:text-3xl font-bold tracking-tight text-foreground">{todayMonth}월 {todayDate}일</span>
+			<span class="text-base sm:text-lg font-medium text-muted-foreground">{todayWeekday}요일</span>
+		</h1>
 		{#if todayEvents.length > 0}
-			<div class="flex flex-col items-end gap-1">
+			<div class="flex flex-wrap items-baseline gap-x-4 gap-y-1 text-base sm:text-lg">
 				{#each todayEvents as event}
-					<div class="flex items-baseline gap-2">
-						<span class="text-xl font-medium text-neutral-800 dark:text-neutral-200">{event.title}</span>
+					<span class="inline-flex items-baseline gap-1.5">
+						<span class="font-semibold text-foreground">{event.title}</span>
 						{#if eventTypeLabel(event)}
-							<span class="text-base font-semibold {eventTypeCss(event)}">{eventTypeLabel(event)}</span>
+							<span class="text-xs sm:text-sm font-semibold {eventTypeCss(event)}">{eventTypeLabel(event)}</span>
 						{/if}
-					</div>
+					</span>
 				{/each}
 			</div>
 		{/if}
-	</div>
+	</header>
 
-	<!-- ── Quick info: timetable (1) + meal (2) ───────────────────────────── -->
-	<div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+	<!-- Row 1: timetable (1/3) + meal (2/3) -->
+	<div class="grid grid-cols-1 sm:grid-cols-3 gap-5 sm:items-start mb-5 sm:mb-6">
 
 		<!-- Timetable -->
-		<div class="sm:col-span-1 mb-6">
-			<div class="flex items-center justify-between mb-2.5">
-				<h2 class="text-lg font-semibold text-neutral-600 dark:text-neutral-300">{cardDayLabel}시간표</h2>
-				<a href="/timetable" class="text-sm text-neutral-400 dark:text-neutral-500 hover:text-neutral-600 dark:hover:text-neutral-300 transition-colors duration-100">모두 보기 →</a>
+		<section class="sm:col-span-1">
+			<div class="flex items-baseline justify-between mb-2.5">
+				<h2 class="text-sm font-semibold text-muted-foreground">{cardDayLabel}시간표</h2>
+				<a href="/timetable" aria-label="시간표 모두 보기" class="text-xs font-medium text-muted-foreground transition-colors duration-100 pointer:hover:text-foreground">모두 보기 <span aria-hidden="true">→</span></a>
 			</div>
-			<div class="bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl p-4">
+			<div class="bg-card border border-border rounded-2xl p-4">
 				{#if displaySchedule.length === 0}
 					<div class="flex items-center justify-center py-8">
-						<p class="text-base text-neutral-800 dark:text-neutral-200 text-center">시간표 없음</p>
+						<p class="text-sm text-muted-foreground text-center">시간표가 없어요</p>
 					</div>
 				{:else}
 					<ol class="space-y-2.5">
 						{#each displaySchedule as slot}
-							<li class="flex items-center gap-2.5">
-								<span class="text-base tabular-nums font-normal text-neutral-400 dark:text-neutral-500 shrink-0 w-5 text-center">{slot.period}</span>
-								<span class="text-base font-semibold leading-snug truncate min-w-0 flex-1 {slot.replaced ? 'text-amber-500 dark:text-amber-400' : 'text-neutral-800 dark:text-neutral-200'}">{slot.subject}</span>
+							<li class="flex items-center gap-3">
+								<span class="text-sm tabular-nums text-muted-foreground shrink-0 w-4 text-center">{slot.period}</span>
+								<span class="text-[15px] font-semibold leading-snug truncate min-w-0 flex-1 {slot.replaced ? 'text-amber-700 dark:text-amber-400' : 'text-foreground'}">{slot.subject}</span>
 								{#if slot.teacher}
-									<span class="text-sm text-neutral-400 dark:text-neutral-500 shrink-0">{slot.teacher}</span>
+									<span class="text-xs text-muted-foreground shrink-0">{slot.teacher}</span>
 								{/if}
 							</li>
 						{/each}
 					</ol>
 				{/if}
 			</div>
-		</div>
+		</section>
 
 		<!-- Meal -->
-		<div class="sm:col-span-2 mb-6">
-			<div class="flex items-center justify-between mb-2.5">
-				<h2 class="text-lg font-semibold text-neutral-600 dark:text-neutral-300">{cardDayLabel}급식</h2>
-				<a href="/meals" class="text-sm text-neutral-400 dark:text-neutral-500 hover:text-neutral-600 dark:hover:text-neutral-300 transition-colors duration-100">모두 보기 →</a>
+		<section class="sm:col-span-2">
+			<div class="flex items-baseline justify-between mb-2.5">
+				<h2 class="text-sm font-semibold text-muted-foreground">{cardDayLabel}급식</h2>
+				<a href="/meals" aria-label="급식 모두 보기" class="text-xs font-medium text-muted-foreground transition-colors duration-100 pointer:hover:text-foreground">모두 보기 <span aria-hidden="true">→</span></a>
 			</div>
-			<div class="bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl p-4">
-				<div class="grid grid-cols-2 gap-4">
+			<div class="bg-card border border-border rounded-2xl p-4">
+				<!-- gap-0 + symmetric padding keeps the divider on the card's exact center at every width -->
+				<div class="grid grid-cols-2">
 					<!-- Lunch -->
-					<div>
-						<p class="text-base font-semibold text-neutral-400 dark:text-neutral-500 mb-2">중식</p>
+					<div class="pr-4 sm:pr-6">
+						<p class="text-xs font-semibold text-muted-foreground mb-2">중식</p>
 						{#if !displayLunch}
-							<p class="text-base text-neutral-800 dark:text-neutral-200">급식 정보가 없어요</p>
+							<p class="text-sm text-muted-foreground">급식 정보가 없어요</p>
 						{:else}
 							<ul class="space-y-1.5">
 								{#each displayLunch.dishes as dish}
-									<li class="text-base text-neutral-700 dark:text-neutral-300 leading-snug truncate max-w-full overflow-hidden whitespace-nowrap">{dish}</li>
+									<li class="text-[15px] text-foreground leading-snug truncate max-w-full overflow-hidden whitespace-nowrap">{dish}</li>
 								{/each}
 							</ul>
 							{#if displayLunch.calories}
-								<p class="mt-2 text-sm text-neutral-400 dark:text-neutral-500">{displayLunch.calories}</p>
+								<p class="mt-2.5 text-xs text-muted-foreground tabular-nums">{displayLunch.calories}</p>
 							{/if}
 						{/if}
 					</div>
 					<!-- Dinner -->
-					<div>
-						<p class="text-base font-semibold text-neutral-400 dark:text-neutral-500 mb-2">석식</p>
+					<div class="border-l border-border pl-4 sm:pl-6">
+						<p class="text-xs font-semibold text-muted-foreground mb-2">석식</p>
 						{#if !displayDinner}
-							<p class="text-base text-neutral-800 dark:text-neutral-200">급식 정보가 없어요</p>
+							<p class="text-sm text-muted-foreground">급식 정보가 없어요</p>
 						{:else}
 							<ul class="space-y-1.5">
 								{#each displayDinner.dishes as dish}
-									<li class="text-base text-neutral-700 dark:text-neutral-300 leading-snug truncate max-w-full overflow-hidden whitespace-nowrap">{dish}</li>
+									<li class="text-[15px] text-foreground leading-snug truncate max-w-full overflow-hidden whitespace-nowrap">{dish}</li>
 								{/each}
 							</ul>
 							{#if displayDinner.calories}
-								<p class="mt-2 text-sm text-neutral-400 dark:text-neutral-500">{displayDinner.calories}</p>
+								<p class="mt-2.5 text-xs text-muted-foreground tabular-nums">{displayDinner.calories}</p>
 							{/if}
 						{/if}
 					</div>
 				</div>
 			</div>
-		</div>
+		</section>
 
 	</div>
 
-	<!-- ── Notices + Events ────────────────────────────────────────────────── -->
-	<div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+	<!-- Row 2: notices + events, equal 1:1 with aligned tops -->
+	<div class="grid grid-cols-1 sm:grid-cols-2 gap-5">
 
 		<!-- Notices -->
-		<div class="mb-6">
-			<div class="flex items-center justify-between mb-2.5">
-				<h2 class="text-lg font-semibold text-neutral-600 dark:text-neutral-300">공지</h2>
-				<a href="/notices" class="text-sm text-neutral-400 dark:text-neutral-500 hover:text-neutral-600 dark:hover:text-neutral-300 transition-colors duration-100">모두 보기 →</a>
+		<section>
+			<div class="flex items-baseline justify-between mb-2.5">
+				<h2 class="text-sm font-semibold text-muted-foreground">공지</h2>
+				<a href="/notices" aria-label="공지 모두 보기" class="text-xs font-medium text-muted-foreground transition-colors duration-100 pointer:hover:text-foreground">모두 보기 <span aria-hidden="true">→</span></a>
 			</div>
 
 			{#if noticesQuery.isLoading && !noticesQuery.data}
-				<div class="bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl px-4 py-6 text-center">
-					<p class="text-base text-neutral-800 dark:text-neutral-200">불러오는 중…</p>
+				<div class="bg-card border border-border rounded-2xl px-4 py-8 text-center">
+					<p class="text-sm text-muted-foreground">불러오는 중…</p>
 				</div>
 			{:else if !hasNotices}
-				<div class="bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl px-4 py-6 text-center">
-					<p class="text-base text-neutral-800 dark:text-neutral-200">공지가 없어요</p>
+				<div class="bg-card border border-border rounded-2xl px-4 py-8 text-center">
+					<p class="text-sm text-muted-foreground">공지가 없어요</p>
 				</div>
 			{:else}
 				<div class="space-y-4">
 					{#each noticePreview as group}
 						<div>
-							<p class="text-xs font-semibold text-neutral-400 dark:text-neutral-500 uppercase tracking-wide mb-2 pl-0.5">
+							<p class="text-xs font-semibold text-muted-foreground mb-2">
 								{group.displayDate}
 							</p>
 							<div class="grid gap-1.5">
@@ -292,39 +291,39 @@ function isToday(dateStr: string): boolean {
 					{#if remainingNoticeCount > 0}
 						<a
 							href="/notices"
-							class="block text-center text-base text-neutral-400 dark:text-neutral-500 hover:text-neutral-700 dark:hover:text-neutral-300 transition-colors duration-100 py-1"
+							class="block text-center text-sm text-muted-foreground transition-colors duration-100 pointer:hover:text-foreground py-1"
 						>
 							+ {remainingNoticeCount}개 더 보기
 						</a>
 					{/if}
 				</div>
 			{/if}
-		</div>
+		</section>
 
 		<!-- Events -->
-		<div class="mb-6">
-			<div class="flex items-center justify-between mb-2.5">
-				<h2 class="text-lg font-semibold text-neutral-600 dark:text-neutral-300">일정</h2>
-				<a href="/calendar" class="text-sm text-neutral-400 dark:text-neutral-500 hover:text-neutral-600 dark:hover:text-neutral-300 transition-colors duration-100">모두 보기 →</a>
+		<section>
+			<div class="flex items-baseline justify-between mb-2.5">
+				<h2 class="text-sm font-semibold text-muted-foreground">일정</h2>
+				<a href="/calendar" aria-label="일정 모두 보기" class="text-xs font-medium text-muted-foreground transition-colors duration-100 pointer:hover:text-foreground">모두 보기 <span aria-hidden="true">→</span></a>
 			</div>
 			{#if upcomingEvents.length === 0}
-				<div class="bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl px-4 py-6 text-center">
-					<p class="text-base text-neutral-800 dark:text-neutral-200">다가오는 일정이 없어요</p>
+				<div class="bg-card border border-border rounded-2xl px-4 py-8 text-center">
+					<p class="text-sm text-muted-foreground">다가오는 일정이 없어요</p>
 				</div>
 			{:else}
-				<div class="bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl overflow-hidden">
+				<div class="bg-card border border-border rounded-2xl overflow-hidden divide-y divide-border">
 					{#each upcomingEvents as event, i (event._id ?? i)}
-						<div class="flex items-center gap-2 px-4 py-3 {i > 0 ? 'border-t border-neutral-100 dark:border-neutral-700' : ''}">
+						<div class="flex items-center gap-2.5 px-4 py-3">
 							<span class="w-2 h-2 rounded-full shrink-0" style="background-color: {eventDotColor(event)}" aria-hidden="true"></span>
-							<span class="text-base text-neutral-800 dark:text-neutral-200 font-medium flex-1 min-w-0 truncate">{event.title}</span>
-							<span class="text-sm text-neutral-400 dark:text-neutral-500 shrink-0 text-right w-16">
+							<span class="text-[15px] text-foreground font-medium flex-1 min-w-0 truncate">{event.title}</span>
+							<span class="text-xs tabular-nums shrink-0 text-right {isToday(event.date) ? 'font-semibold text-foreground' : 'text-muted-foreground'}">
 								{isToday(event.date) ? '오늘' : formatEventDate(event.date)}
 							</span>
 						</div>
 					{/each}
 				</div>
 			{/if}
-		</div>
+		</section>
 
 	</div>
 

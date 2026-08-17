@@ -11,9 +11,9 @@ const groups = useQuery(api.notices.pastByMonth, { monthKey });
 
 <div class="px-3 sm:px-4 py-2 pb-3 sm:pb-4">
 	{#if groups.isLoading}
-		<div class="text-sm text-neutral-400 dark:text-neutral-500">불러오는 중…</div>
+		<div class="text-sm text-muted-foreground">불러오는 중…</div>
 	{:else if groups.error}
-		<div class="text-sm text-red-500">오류가 발생했습니다.</div>
+		<div class="text-sm text-destructive">오류가 발생했습니다.</div>
 	{:else}
 		{#each groups.data as group}
 			<NoticeGroup {group} isPast={true} />

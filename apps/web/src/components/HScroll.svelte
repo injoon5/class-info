@@ -27,11 +27,11 @@ onMount(() => {
 
 <div class="relative">
 	<div
-		class="absolute left-0 top-0 bottom-0 w-8 bg-gradient-to-r from-white dark:from-neutral-900 to-transparent z-10 pointer-events-none transition-opacity duration-200"
+		class="absolute left-0 top-0 bottom-0 w-8 bg-gradient-to-r from-background to-transparent z-10 pointer-events-none transition-opacity duration-200"
 		style="opacity: {scrollLeft > 0 ? 1 : 0};"
 	></div>
 	<div
-		class="absolute right-0 top-0 bottom-0 w-8 bg-gradient-to-l from-white dark:from-neutral-900 to-transparent z-10 pointer-events-none transition-opacity duration-200"
+		class="absolute right-0 top-0 bottom-0 w-8 bg-gradient-to-l from-background to-transparent z-10 pointer-events-none transition-opacity duration-200"
 		style="opacity: {scrollRight > 0 ? 1 : 0};"
 	></div>
 

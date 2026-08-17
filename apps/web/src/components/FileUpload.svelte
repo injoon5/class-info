@@ -153,32 +153,32 @@ function handleDrop(e: DragEvent) {
 
 <div class="space-y-3">
   <!-- File Upload Area -->
-  <div 
-    class="border-2 border-dashed {dragOver ? 'border-neutral-500 bg-neutral-50 dark:bg-neutral-700' : 'border-neutral-300 dark:border-neutral-600'} p-4 text-center transition-colors"
+  <div
+    class="border-2 border-dashed rounded-xl {dragOver ? 'border-ring bg-muted' : 'border-border'} p-5 text-center transition-colors"
     ondragover={handleDragOver}
     ondragleave={handleDragLeave}
     ondrop={handleDrop}
   >
-    <input 
-      type="file" 
-      multiple 
+    <input
+      type="file"
+      multiple
       accept="image/*,application/pdf"
       onchange={(e) => { const t = e.currentTarget as HTMLInputElement; if (t.files) handleFileUpload(t.files); }}
       class="hidden"
       id="file-upload"
       disabled={isUploading}
     />
-    
+
     {#if isUploading}
-      <p class="text-neutral-500 dark:text-neutral-400">파일 업로드 중...</p>
+      <p class="text-sm text-muted-foreground">파일 업로드 중...</p>
     {:else}
       <label for="file-upload" class="cursor-pointer">
-        <p class="text-neutral-600 dark:text-neutral-300 mb-2">
+        <p class="text-sm text-muted-foreground mb-3">
           이미지나 PDF 파일을 드래그하거나 클릭해서 업로드하세요
         </p>
-        <button 
+        <button
           type="button"
-          class="px-4 py-2 border pressable-lg sm:pressable border-neutral-400 dark:border-neutral-500 text-sm hover:bg-neutral-100 dark:hover:bg-neutral-600 text-neutral-800 dark:text-neutral-200"
+          class="pressable-lg sm:pressable rounded-full px-4 py-2 border border-border text-sm font-medium text-foreground transition-colors pointer:hover:bg-muted"
           onclick={() => document.getElementById('file-upload')?.click()}
         >
           파일 추가
@@ -190,17 +190,17 @@ function handleDrop(e: DragEvent) {
   <!-- File List -->
   {#if uploadedFiles.length > 0}
     <div class="space-y-2">
-      <h4 class="text-sm font-medium text-neutral-600 dark:text-neutral-300">첨부된 파일</h4>
-      <div class="space-y-1">
+      <h4 class="text-sm font-medium text-muted-foreground">첨부된 파일</h4>
+      <div class="space-y-1.5">
         {#each uploadedFiles as file}
-          <div 
-            class="flex items-center justify-between p-2 bg-neutral-50 dark:bg-neutral-700 border border-neutral-200 dark:border-neutral-600 group"
+          <div
+            class="flex items-center justify-between gap-2 p-2 rounded-xl bg-muted/50 border border-border group"
             title="클릭하면 마크다운 코드를 복사할 수 있습니다"
           >
             <div class="flex items-center gap-2 flex-1 min-w-0">
               <div class="flex-shrink-0">
                 {#if file.type.startsWith('image/')}
-                  <svg class="w-4 h-4 text-neutral-500" fill="currentColor" viewBox="0 0 20 20">
+                  <svg class="w-4 h-4 text-muted-foreground" fill="currentColor" viewBox="0 0 20 20">
                     <path fill-rule="evenodd" d="M4 3a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V5a2 2 0 00-2-2H4zm12 12H4l4-8 3 6 2-4 3 6z" clip-rule="evenodd"/>
                   </svg>
                 {:else}
@@ -210,15 +210,15 @@ function handleDrop(e: DragEvent) {
                 {/if}
               </div>
               <div class="flex-1 min-w-0">
-                <p class="text-sm text-neutral-800 dark:text-neutral-200 truncate">{file.name}</p>
-                <p class="text-xs text-neutral-500 dark:text-neutral-400">{formatFileSize(file.size)}</p>
+                <p class="text-sm text-foreground truncate">{file.name}</p>
+                <p class="text-xs text-muted-foreground tabular-nums">{formatFileSize(file.size)}</p>
               </div>
             </div>
-            <div class="flex items-center gap-2 flex-shrink-0">
+            <div class="flex items-center gap-1.5 flex-shrink-0">
               <button
                 type="button"
                 onclick={() => copyMarkdownToClipboard(file)}
-                class="pressable px-3 py-2 text-sm border border-neutral-300 dark:border-neutral-600 hover:bg-neutral-200 dark:hover:bg-neutral-500 text-neutral-600 dark:text-neutral-300"
+                class="pressable rounded-lg px-2.5 py-1.5 text-sm font-medium border border-border text-foreground transition-colors pointer:hover:bg-muted"
                 title="마크다운 복사"
               >
                 복사
@@ -226,7 +226,7 @@ function handleDrop(e: DragEvent) {
               <button
                 type="button"
                 onclick={() => removeFile(file._id)}
-                class="pressable px-3 py-2 text-sm bg-red-600 dark:bg-red-500 text-white hover:bg-red-700 dark:hover:bg-red-600"
+                class="pressable rounded-lg px-2.5 py-1.5 text-sm font-medium border border-border text-destructive transition-colors pointer:hover:bg-destructive/10"
                 title="파일 삭제"
               >
                 삭제
@@ -235,7 +235,7 @@ function handleDrop(e: DragEvent) {
           </div>
         {/each}
       </div>
-      <p class="text-xs text-neutral-500 dark:text-neutral-400 hidden sm:block">
+      <p class="text-xs text-muted-foreground hidden sm:block">
         파일에 마우스를 올리면 마크다운 복사 버튼이 나타납니다.
       </p>
     </div>
