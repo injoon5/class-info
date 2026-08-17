@@ -36,7 +36,7 @@
 					{@const active = item.match(page.url.pathname)}
 					<a
 						href={item.href}
-						class="rounded-md px-1.5 py-1 transition-colors duration-100
+						class="rounded-md px-1.5 py-2 sm:px-2 transition-colors duration-100
 							{active
 								? 'font-bold text-foreground'
 								: 'font-medium text-muted-foreground pointer:hover:text-foreground'}"
