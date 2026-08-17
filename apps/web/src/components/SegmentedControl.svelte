@@ -18,16 +18,16 @@ function select(v: Value) {
 </script>
 
 <div class="flex justify-center">
-	<div class="relative flex w-full rounded-xl bg-neutral-200 dark:bg-neutral-800 p-1 shadow-inner transition-colors h-9 sm:h-11 text-sm sm:text-base">
+	<div class="relative flex w-full rounded-xl bg-muted p-1 h-10 sm:h-11 text-sm sm:text-base">
 		<div
-			class="absolute top-1 h-7 sm:h-9 w-[calc(50%-0.25rem)] rounded-lg bg-white dark:bg-neutral-700 shadow transition-transform duration-300 ease-in-out z-0"
+			class="absolute top-1 h-8 sm:h-9 w-[calc(50%-0.25rem)] rounded-lg bg-card shadow-sm ring-1 ring-black/[0.04] dark:ring-white/[0.06] transition-transform duration-300 ease-out z-0"
 			style="transform: translateX({activeIndex * 100}%);"
 			aria-hidden="true"
 		></div>
 		{#each options as option}
 			<button
-				class="flex-1 relative z-10 px-3 py-1 rounded-lg font-medium transition-colors
-					{value === option.value ? 'text-neutral-900 dark:text-neutral-100' : 'text-neutral-600 dark:text-neutral-300'}"
+				class="flex-1 relative z-10 px-3 py-1 rounded-lg font-medium transition-colors duration-150
+					{value === option.value ? 'text-foreground' : 'text-muted-foreground pointer:hover:text-foreground'}"
 				onclick={() => select(option.value)}
 				aria-pressed={value === option.value}
 				type="button"

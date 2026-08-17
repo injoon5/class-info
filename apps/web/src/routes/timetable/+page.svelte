@@ -78,34 +78,34 @@ function getPeriodLabel(period: number): string {
 		<EmptyState />
 	{:else}
 		<HScroll blurred={blur.blurred}>
-				<table class="w-full min-w-[18rem] table-fixed border border-neutral-200 dark:border-neutral-700 border-collapse shadow-sm mx-auto">
+				<table class="w-full min-w-[18rem] table-fixed border border-border border-collapse overflow-hidden rounded-2xl mx-auto">
 				<thead>
-					<tr class="bg-neutral-100 dark:bg-neutral-800">
-						<th class="px-1 py-3 text-center text-base sm:text-lg text-neutral-600 dark:text-neutral-300 border border-neutral-200 dark:border-neutral-700"> </th>
+					<tr class="bg-muted">
+						<th class="px-1 py-3 text-center text-base sm:text-lg text-muted-foreground border border-border"> </th>
 						{#each dayNames as name}
-							<th class="px-1 py-2 text-center text-base font-medium sm:text-lg text-neutral-600 dark:text-neutral-300 border border-neutral-200 dark:border-neutral-700">{name}</th>
+							<th class="px-1 py-2 text-center text-base font-semibold sm:text-lg text-foreground border border-border">{name}</th>
 						{/each}
 					</tr>
 				</thead>
 				<tbody>
 					{#each Array(getMaxPeriods()) as _, i}
 						<tr>
-							<td class=" py-3 sm:py-6 border border-neutral-200 dark:border-neutral-700 text-neutral-700 dark:text-neutral-200 whitespace-nowrap text-center bg-neutral-100 dark:bg-neutral-800">
-								<div class="text-base sm:text-lg font-medium">{i + 1}교시</div>
-								<div class="text-sm sm:text-lg text-neutral-500 dark:text-neutral-400">{getPeriodLabel(i + 1)}</div>
+							<td class=" py-3 sm:py-6 border border-border text-muted-foreground whitespace-nowrap text-center bg-muted">
+								<div class="text-base sm:text-lg font-semibold text-foreground">{i + 1}교시</div>
+								<div class="text-sm sm:text-base text-muted-foreground tabular-nums">{getPeriodLabel(i + 1)}</div>
 							</td>
 							{#each (timetableQuery.data?.timetable || []) as day}
-								<td class="border border-neutral-200 dark:border-neutral-700 py-3 sm:py-6 text-center {day[i]?.replaced ? 'bg-yellow-100 dark:bg-yellow-900/20' : 'bg-neutral-50 dark:bg-neutral-900'}">
+								<td class="border border-border py-3 sm:py-6 text-center {day[i]?.replaced ? 'bg-amber-100/70 dark:bg-amber-900/20' : 'bg-card'}">
 									{#if day[i]}
 										<!-- Subject cell -->
 										<div class="flex items-center justify-center gap-2">
 											<div>
-												<span class="text-md sm:text-xl font-semibold text-neutral-800 dark:text-neutral-200">{day[i].subject}</span>
+												<span class="text-[15px] sm:text-xl font-semibold {day[i].replaced ? 'text-amber-700 dark:text-amber-300' : 'text-foreground'}">{day[i].subject}</span>
 											</div>
 										</div>
-										<div class="text-sm sm:text-lg mt-0.5 font-medium text-neutral-500 dark:text-neutral-400">{day[i].teacher}</div>
+										<div class="text-sm sm:text-base mt-0.5 font-medium text-muted-foreground">{day[i].teacher}</div>
 									{:else}
-										<span class="text-neutral-400 text-base sm:text-lg">-</span>
+										<span class="text-muted-foreground/50 text-base sm:text-lg">-</span>
 									{/if}
 								</td>
 							{/each}
@@ -115,7 +115,7 @@ function getPeriodLabel(period: number): string {
 			</table>
 		</HScroll>
 		{#if timetableQuery.data}
-			<p class="mt-3 text-xs text-neutral-500 dark:text-neutral-400 pb-10">
+			<p class="mt-3 text-xs text-muted-foreground pb-10">
 				업데이트: {new Date(timetableQuery.data.editedAt).toLocaleString('ko-KR', {
 					year: 'numeric',
 					month: 'long',

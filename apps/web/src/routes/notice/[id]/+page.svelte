@@ -53,66 +53,66 @@ $effect(() => {
 </svelte:head>
 
 
-<div class="min-h-screen bg-neutral-100 dark:bg-neutral-900">
-	<div class="max-w-4xl mx-auto px-4">
+<div class="min-h-screen">
+	<div class="max-w-4xl mx-auto px-4 pt-4 pb-2">
 		<!-- Header -->
 		<a
 			type="button"
 			href="/notices"
-			class="sm:mb-3 mb-2 py-1 sm:py-2 text-neutral-500 dark:text-neutral-400 hover:text-neutral-800 dark:hover:text-neutral-200 transition-colors pressable"
+			class="inline-flex items-center gap-1 sm:mb-3 mb-2 py-1 sm:py-2 text-sm text-muted-foreground pointer:hover:text-foreground transition-colors pressable"
 		>
 			← 뒤로
 		</a>
 
 		<!-- Notice Detail -->
 		{#if detail.isLoading}
-			<div class="text-center py-8 text-neutral-500 dark:text-neutral-400">로딩 중...</div>
+			<div class="text-center py-8 text-muted-foreground">로딩 중...</div>
 		{:else if detail.error}
-			<div class="text-center py-8 text-red-600">
+			<div class="text-center py-8 text-destructive">
 				<p>데이터를 불러오는 중 오류가 발생했습니다.</p>
 				<p class="text-sm mt-2">{detail.error.toString()}</p>
-				<button onclick={() => window.location.reload()} class="mt-4 px-4 py-2 bg-neutral-800 dark:bg-neutral-300 text-white dark:text-neutral-800 text-sm hover:bg-neutral-700 dark:hover:bg-neutral-200">
+				<button onclick={() => window.location.reload()} class="pressable mt-4 rounded-full px-4 py-2 bg-primary text-primary-foreground text-sm font-medium transition-opacity pointer:hover:opacity-90">
 					다시 시도
 				</button>
 			</div>
 		{:else if !detail.data?.notice}
-			<div class="text-center py-8 text-neutral-500 dark:text-neutral-400">알림을 찾을 수 없습니다.</div>
+			<div class="text-center py-8 text-muted-foreground">알림을 찾을 수 없습니다.</div>
 		{:else}
-			<div class="mb-4 mt-2 sm:mt-3 bg-white dark:bg-neutral-800 border border-neutral-300 dark:border-neutral-600 rounded-lg p-4 sm:p-6">
+			<div class="mb-4 mt-2 sm:mt-3 bg-card border border-border rounded-2xl p-4 sm:p-6">
 				<div class="mb-4">
-					<div class="flex items-center gap-2 sm:gap-3 mb-1 sm:mb-2">
-						<span class="px-2 py-1 text-sm font-medium rounded {getTypeColor(detail.data.notice.type)}">
+					<div class="flex items-center gap-2 sm:gap-3 mb-1.5 sm:mb-2">
+						<span class="px-2 py-1 text-sm font-semibold rounded-md {getTypeColor(detail.data.notice.type)}">
 							{detail.data.notice.type}
 						</span>
-						<span class="text-base sm:text-lg font-medium text-neutral-600 dark:text-neutral-300">
+						<span class="text-base sm:text-lg font-medium text-muted-foreground">
 							{detail.data.notice.subject}
 						</span>
 					</div>
-					<h2 class="text-xl sm:text-2xl font-bold text-neutral-800 dark:text-neutral-200 sm:mb-1">
+					<h2 class="text-xl sm:text-2xl font-bold tracking-tight text-foreground sm:mb-1">
 						{detail.data.notice.title}
 					</h2>
-					<p class="text-sm sm:text-base text-neutral-500 dark:text-neutral-400">
+					<p class="text-sm sm:text-base text-muted-foreground">
 						마감일: {formatDate(detail.data.notice.dueDate)}
 					</p>
 				</div>
-				
+
 				{#if html}
-					<div class="border-t border-neutral-200 dark:border-neutral-700 pt-4">
-						<div class="text-sm sm:text-base text-neutral-600 dark:text-neutral-300 leading-relaxed markdown-content break-words">
+					<div class="border-t border-border pt-4">
+						<div class="text-sm sm:text-base leading-relaxed markdown-content break-words">
 							{@html html}
 						</div>
 					</div>
 				{/if}
 
 				{#if detail.data.files && detail.data.files.length > 0}
-					<div class="border-t border-neutral-200 dark:border-neutral-700 pt-4 mt-6">
-						<h3 class="text-sm sm:text-base font-medium mb-3 text-neutral-600 dark:text-neutral-300">첨부 파일</h3>
+					<div class="border-t border-border pt-4 mt-6">
+						<h3 class="text-sm sm:text-base font-semibold mb-3 text-foreground">첨부 파일</h3>
 						<div class="space-y-2">
 							{#each detail.data.files as file}
-								<div class="flex items-center gap-3 p-3 bg-neutral-50 dark:bg-neutral-700 border border-neutral-200 dark:border-neutral-600 rounded-md">
+								<div class="flex items-center gap-3 p-3 bg-muted/50 border border-border rounded-xl">
 									<div class="flex-shrink-0">
 										{#if file.type.startsWith('image/')}
-											<svg class="w-5 h-5 text-neutral-500" fill="currentColor" viewBox="0 0 20 20">
+											<svg class="w-5 h-5 text-muted-foreground" fill="currentColor" viewBox="0 0 20 20">
 												<path fill-rule="evenodd" d="M4 3a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V5a2 2 0 00-2-2H4zm12 12H4l4-8 3 6 2-4 3 6z" clip-rule="evenodd"/>
 											</svg>
 										{:else}
@@ -121,16 +121,16 @@ $effect(() => {
 											</svg>
 										{/if}
 									</div>
-									<div class="flex-1">
-										<a 
-											href={file.url} 
-											target="_blank" 
+									<div class="flex-1 min-w-0">
+										<a
+											href={file.url}
+											target="_blank"
 											rel="noopener noreferrer"
-											class="text-sm font-medium text-neutral-800 dark:text-neutral-200 hover:text-neutral-600 dark:hover:text-neutral-300 underline"
+											class="text-sm font-medium text-foreground pointer:hover:text-muted-foreground underline break-all"
 										>
 											{file.name}
 										</a>
-										<p class="text-xs text-neutral-500 dark:text-neutral-400">
+										<p class="text-xs text-muted-foreground tabular-nums">
 											{(file.size / 1024 / 1024).toFixed(2)} MB
 										</p>
 									</div>
@@ -139,7 +139,7 @@ $effect(() => {
 										target="_blank"
 										role="button"
 										rel="noopener noreferrer"
-										class="px-5 py-2 text-sm border border-neutral-300 dark:border-neutral-600 hover:bg-neutral-100 dark:hover:bg-neutral-600 text-neutral-600 dark:text-neutral-300 font-semibold inline-flex items-center justify-center rounded pressable transition-colors"
+										class="shrink-0 px-4 py-2 text-sm border border-border pointer:hover:bg-muted text-foreground font-semibold inline-flex items-center justify-center rounded-lg pressable transition-colors"
 										data-s-event="Open File"
 									>
 										열기
@@ -151,7 +151,7 @@ $effect(() => {
 				{/if}
 
 				{#if detail.data.notice.createdAt}
-					<div class="border-t border-neutral-200 dark:border-neutral-700 pt-4 mt-6 text-xs sm:text-sm text-neutral-500 dark:text-neutral-400">
+					<div class="border-t border-border pt-4 mt-6 text-xs sm:text-sm text-muted-foreground">
 						등록일: {new Date(detail.data.notice.createdAt).toLocaleString('ko-KR', { 
 							year: 'numeric', 
 							month: 'long', 
@@ -164,12 +164,10 @@ $effect(() => {
 			</div>
 		{/if}
 	</div>
-	<div class="text-center py-3 sm:py-4 text-xs text-neutral-500 dark:text-neutral-400 space-y-1.5 sm:space-y-2">
-		<div>
-			<a href="/admin" class="text-xs text-neutral-500 dark:text-neutral-400 hover:text-neutral-800 dark:hover:text-neutral-200 underline">
-				관리자
-			</a>
-		</div>
+	<div class="text-center py-4">
+		<a href="/admin" class="pressable inline-block rounded-full px-3 py-1.5 text-xs font-medium text-muted-foreground transition-colors pointer:hover:text-foreground pointer:hover:bg-muted">
+			관리자
+		</a>
 	</div>
 </div>
 
@@ -177,7 +175,6 @@ $effect(() => {
 .markdown-content :global(h1) {
 	font-size: 1.5rem;
 	font-weight: bold;
-	color: #262626;
 	margin-top: 1rem;
 	margin-bottom: 0.5rem;
 }
@@ -193,7 +190,6 @@ $effect(() => {
 .markdown-content :global(h2) {
 	font-size: 1.25rem;
 	font-weight: bold;
-	color: #262626;
 	margin-top: 0.75rem;
 	margin-bottom: 0.5rem;
 }
@@ -203,14 +199,13 @@ $effect(() => {
 @media (min-width: 640px) {
 	.markdown-content :global(h2) {
 		font-size: 1.5rem;
-		
+
 	}
 }
 
 .markdown-content :global(h3) {
 	font-size: 1.125rem;
 	font-weight: bold;
-	color: #262626;
 	margin-top: 0.75rem;
 	margin-bottom: 0.5rem;
 }
@@ -228,7 +223,6 @@ $effect(() => {
 .markdown-content :global(h6) {
 	font-size: 1rem;
 	font-weight: bold;
-	color: #262626;
 	margin-top: 0.75rem;
 	margin-bottom: 0.5rem;
 }
@@ -271,7 +265,6 @@ $effect(() => {
 
 .markdown-content :global(strong) {
 	font-weight: bold;
-	color: #262626;
 }
 
 .markdown-content :global(em) {
@@ -279,7 +272,6 @@ $effect(() => {
 }
 
 .markdown-content :global(code) {
-	background-color: #f0f0f0;
 	padding: 0.125rem 0.25rem;
 	font-size: 0.75rem;
 	font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
@@ -292,9 +284,8 @@ $effect(() => {
 }
 
 .markdown-content :global(pre) {
-	background-color: #f5f5f5;
 	padding: 0.75rem;
-	border-radius: 0.25rem;
+	border-radius: 0.5rem;
 	margin-bottom: 0.75rem;
 	overflow-x: auto;
 }
@@ -305,27 +296,23 @@ $effect(() => {
 }
 
 .markdown-content :global(blockquote) {
-	border-left: 4px solid #d1d1d1;
+	border-left-width: 3px;
+	border-left-style: solid;
 	padding-left: 0.75rem;
-	color: #666666;
 	font-style: italic;
 	margin-bottom: 0.75rem;
 }
 
 .markdown-content :global(a) {
-	color: #3d3d3d;
 	text-decoration: underline;
-}
-.markdown-content :global(a:hover) {
-	color: #262626;
 }
 
 .markdown-content :global(img) {
 	max-width: 100%;
 	height: auto;
-	border-radius: 0.25rem;
+	border-radius: 0.5rem;
 	margin: 0.75rem 0;
-	box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+	box-shadow: 0 0 0 1px oklch(0 0 0 / 0.1);
 }
 
 .markdown-content :global(.video-embed) {
@@ -350,7 +337,7 @@ $effect(() => {
 
 .markdown-content :global(hr) {
 	border: none;
-	border-top: 1px solid #e0e0e0;
+	border-top: 1px solid var(--border);
 	margin: 1.5rem 0;
 }
 </style>

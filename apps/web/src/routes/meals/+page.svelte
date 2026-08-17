@@ -8,7 +8,10 @@ import Drawer from '../../components/Drawer.svelte';
 import HScroll from '../../components/HScroll.svelte';
 import SegmentedControl from '../../components/SegmentedControl.svelte';
 import { createBlurPulse } from '$lib/blurPulse.svelte';
+import { getNowInKst, yyyymmdd } from '$lib/date';
 import type { PageData } from './$types.js';
+
+const todayStr = yyyymmdd(getNowInKst());
 
 type MealDoc = {
   _id: string;
@@ -114,31 +117,33 @@ function openMealDrawer(day: any) {
           { days: mealsQuery.data.thisWeek.days, class: "" },
           { days: mealsQuery.data.nextWeek.days, class: "mt-3" }
         ] as week}
-        <div class={`mb-4 grid grid-cols-5 sm:grid-cols-5 min-w-[37rem] divide-x divide-neutral-200 dark:divide-neutral-700 border border-neutral-200 dark:border-neutral-700 rounded-lg`}>
+        <div class={`mb-4 grid grid-cols-5 sm:grid-cols-5 min-w-[37rem] divide-x divide-border border border-border rounded-2xl overflow-hidden`}>
           {#each week.days as day}
             {@const hasMeal = !!(day as any)[mealKey(selectedMealType)]}
+            {@const isTodayCol = day.date === todayStr}
             <button
               type="button"
               onclick={() => openMealDrawer(day)}
               disabled={!hasMeal}
-              class="bg-white dark:bg-neutral-900 p-2 sm:px-3 sm:py-2 first:rounded-l-lg last:rounded-r-lg flex flex-col justify-between min-h-[15rem] text-left w-full
-                {hasMeal ? 'cursor-pointer hover:bg-neutral-50 dark:hover:bg-neutral-800/70 transition-colors' : 'cursor-default'}"
+              class="relative p-2.5 sm:px-3 sm:py-3 flex flex-col justify-between min-h-[15rem] text-left w-full transition-colors
+                {isTodayCol ? 'bg-muted/60' : 'bg-card'}
+                {hasMeal ? 'cursor-pointer pointer:hover:bg-muted' : 'cursor-default'}"
             >
               <div>
-                <h2 class="text-base sm:text-lg font-bold text-neutral-800 dark:text-neutral-100">{formatDateKorean(day.date)}</h2>
+                <h2 class="text-sm sm:text-base font-semibold {isTodayCol ? 'text-foreground' : 'text-muted-foreground'}">{formatDateKorean(day.date)}</h2>
                 {#if hasMeal}
-                  <ul class="mt-2 space-y-1 text-neutral-800 dark:text-neutral-200">
+                  <ul class="mt-2.5 space-y-1 text-foreground">
                     {#each (day as any)[mealKey(selectedMealType)].dishes as dish}
-                      <li class="text-sm sm:text-base truncate max-w-full overflow-hidden whitespace-nowrap" title={dish}>{dish}</li>
+                      <li class="text-sm sm:text-[15px] leading-snug truncate max-w-full overflow-hidden whitespace-nowrap" title={dish}>{dish}</li>
                     {/each}
                   </ul>
                 {:else}
-                  <p class="mt-2 text-neutral-500">급식 정보가 없습니다</p>
+                  <p class="mt-2.5 text-sm text-muted-foreground">급식 정보가 없습니다</p>
                 {/if}
               </div>
-              <div class="mt-2 min-h-[1.5rem] flex items-end">
+              <div class="mt-2 min-h-[1.25rem] flex items-end">
                 {#if (day as any)[mealKey(selectedMealType)]?.calories}
-                  <p class="text-sm sm:text-base text-neutral-500">{(day as any)[mealKey(selectedMealType)].calories}</p>
+                  <p class="text-xs sm:text-sm text-muted-foreground tabular-nums">{(day as any)[mealKey(selectedMealType)].calories}</p>
                 {/if}
               </div>
             </button>
@@ -146,7 +151,7 @@ function openMealDrawer(day: any) {
         </div>
         {/each}
     </HScroll>
-    <div class="block sm:hidden mt-1 text-center text-xs text-neutral-500 select-none pointer-events-none">
+    <div class="block sm:hidden mt-1.5 text-center text-xs text-muted-foreground select-none pointer-events-none">
       좌우로 스크롤하세요 →
     </div>
   {/if}
@@ -159,15 +164,15 @@ function openMealDrawer(day: any) {
 >
   {#snippet header()}
     {#if selectedMeal}
-      <p class="text-xs font-medium text-neutral-400 dark:text-neutral-500 mb-1 tracking-wide">
+      <p class="text-xs font-medium text-muted-foreground mb-1 tracking-wide tabular-nums">
         {selectedMeal.dateInfo.year}년
       </p>
       <div class="flex items-baseline gap-2 flex-wrap">
-        <h2 class="text-2xl font-bold leading-none text-neutral-900 dark:text-neutral-100">
+        <h2 class="text-2xl font-bold tracking-tight leading-none text-foreground">
           {selectedMeal.dateInfo.month}월 {selectedMeal.dateInfo.day}일
         </h2>
-        <span class="text-base text-neutral-500 dark:text-neutral-400 leading-none">{selectedMeal.dateInfo.weekday}요일</span>
-        <span class="text-xs font-semibold px-2 py-0.5 rounded-full bg-neutral-100 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-400 leading-none">
+        <span class="text-base text-muted-foreground leading-none">{selectedMeal.dateInfo.weekday}요일</span>
+        <span class="text-xs font-semibold px-2 py-0.5 rounded-full bg-muted text-muted-foreground leading-none">
           {selectedMeal.meal.mealType}
         </span>
       </div>
@@ -178,9 +183,9 @@ function openMealDrawer(day: any) {
   {#if selectedMeal}
     <ul class="space-y-2">
       {#each selectedMeal.meal.dishes as dish}
-        <li class="flex items-start gap-2.5 py-2 border-b border-neutral-100 dark:border-neutral-800 last:border-0">
-          <span class="mt-1.5 w-1.5 h-1.5 rounded-full bg-neutral-300 dark:bg-neutral-600 flex-shrink-0"></span>
-          <span class="text-sm text-neutral-800 dark:text-neutral-100 leading-snug">{dish}</span>
+        <li class="flex items-start gap-2.5 py-2 border-b border-border last:border-0">
+          <span class="mt-1.5 w-1.5 h-1.5 rounded-full bg-muted-foreground/50 flex-shrink-0"></span>
+          <span class="text-sm text-foreground leading-snug">{dish}</span>
         </li>
       {/each}
     </ul>
@@ -192,20 +197,20 @@ function openMealDrawer(day: any) {
             return idx !== -1 ? [s.slice(0, idx).trim(), s.slice(idx + 3).trim()] : [s, ''];
           })
         : []}
-      <div class="mt-4 pt-4 border-t border-neutral-100 dark:border-neutral-800">
+      <div class="mt-4 pt-4 border-t border-border">
         {#if selectedMeal.meal.calories}
           <div class="flex items-center gap-2 mb-3">
-            <span class="text-xs font-semibold text-neutral-400 dark:text-neutral-500 uppercase tracking-wide">열량</span>
-            <span class="text-sm text-neutral-700 dark:text-neutral-300">{selectedMeal.meal.calories}</span>
+            <span class="text-xs font-semibold text-muted-foreground uppercase tracking-wide">열량</span>
+            <span class="text-sm text-foreground tabular-nums">{selectedMeal.meal.calories}</span>
           </div>
         {/if}
         {#if nutrientRows.length > 0}
-          <p class="text-xs font-semibold text-neutral-400 dark:text-neutral-500 uppercase tracking-wide mb-2">영양</p>
+          <p class="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">영양</p>
           <div class="grid grid-cols-3 gap-x-4 gap-y-1.5">
             {#each nutrientRows as [name, value]}
-              <div class="flex items-baseline justify-between gap-1 border-b border-neutral-100 dark:border-neutral-800 pb-1.5">
-                <span class="text-xs text-neutral-500 dark:text-neutral-400 truncate">{name}</span>
-                <span class="text-xs font-medium text-neutral-700 dark:text-neutral-300 tabular-nums flex-shrink-0">{value}</span>
+              <div class="flex items-baseline justify-between gap-1 border-b border-border pb-1.5">
+                <span class="text-xs text-muted-foreground truncate">{name}</span>
+                <span class="text-xs font-medium text-foreground tabular-nums flex-shrink-0">{value}</span>
               </div>
             {/each}
           </div>
