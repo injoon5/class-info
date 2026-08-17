@@ -90,9 +90,9 @@ function getPeriodLabel(period: number): string {
 				<tbody>
 					{#each Array(getMaxPeriods()) as _, i}
 						<tr>
-							<td class=" py-3 sm:py-6 border border-border text-muted-foreground whitespace-nowrap text-center bg-muted">
-								<div class="text-base sm:text-lg font-semibold text-foreground">{i + 1}교시</div>
-								<div class="text-sm sm:text-base text-muted-foreground tabular-nums">{getPeriodLabel(i + 1)}</div>
+							<td class="px-0.5 py-3 sm:py-6 border border-border text-muted-foreground text-center bg-muted">
+								<div class="text-sm sm:text-lg font-semibold text-foreground whitespace-nowrap">{i + 1}교시</div>
+								<div class="text-[11px] sm:text-base text-muted-foreground tabular-nums leading-tight">{getPeriodLabel(i + 1)}</div>
 							</td>
 							{#each (timetableQuery.data?.timetable || []) as day}
 								<td class="border border-border py-3 sm:py-6 text-center {day[i]?.replaced ? 'bg-amber-100/70 dark:bg-amber-900/20' : 'bg-card'}">

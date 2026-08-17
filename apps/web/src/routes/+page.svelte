@@ -121,10 +121,10 @@ function eventTypeLabel(event: any): string {
 
 function eventTypeCss(event: any): string {
 	switch (event.eventType) {
-		case '공휴일': return 'text-red-500 dark:text-red-400';
+		case '공휴일': return 'text-red-600 dark:text-red-400';
 		case '휴업일':
-		case '재량휴업일': return 'text-amber-500 dark:text-amber-400';
-		default: return 'text-sky-500 dark:text-sky-400';
+		case '재량휴업일': return 'text-amber-700 dark:text-amber-400';
+		default: return 'text-sky-700 dark:text-sky-400';
 	}
 }
 
@@ -201,7 +201,7 @@ function isToday(dateStr: string): boolean {
 						{#each displaySchedule as slot}
 							<li class="flex items-center gap-3">
 								<span class="text-sm tabular-nums text-muted-foreground shrink-0 w-4 text-center">{slot.period}</span>
-								<span class="text-[15px] font-semibold leading-snug truncate min-w-0 flex-1 {slot.replaced ? 'text-amber-600 dark:text-amber-400' : 'text-foreground'}">{slot.subject}</span>
+								<span class="text-[15px] font-semibold leading-snug truncate min-w-0 flex-1 {slot.replaced ? 'text-amber-700 dark:text-amber-400' : 'text-foreground'}">{slot.subject}</span>
 								{#if slot.teacher}
 									<span class="text-xs text-muted-foreground shrink-0">{slot.teacher}</span>
 								{/if}
@@ -222,7 +222,7 @@ function isToday(dateStr: string): boolean {
 				<div class="grid grid-cols-2 gap-4 sm:gap-6">
 					<!-- Lunch -->
 					<div>
-						<p class="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">중식</p>
+						<p class="text-xs font-semibold text-muted-foreground mb-2">중식</p>
 						{#if !displayLunch}
 							<p class="text-sm text-muted-foreground">급식 정보가 없어요</p>
 						{:else}
@@ -238,7 +238,7 @@ function isToday(dateStr: string): boolean {
 					</div>
 					<!-- Dinner -->
 					<div class="border-l border-border pl-4 sm:pl-6">
-						<p class="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">석식</p>
+						<p class="text-xs font-semibold text-muted-foreground mb-2">석식</p>
 						{#if !displayDinner}
 							<p class="text-sm text-muted-foreground">급식 정보가 없어요</p>
 						{:else}

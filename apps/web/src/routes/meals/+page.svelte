@@ -200,12 +200,12 @@ function openMealDrawer(day: any) {
       <div class="mt-4 pt-4 border-t border-border">
         {#if selectedMeal.meal.calories}
           <div class="flex items-center gap-2 mb-3">
-            <span class="text-xs font-semibold text-muted-foreground uppercase tracking-wide">열량</span>
+            <span class="text-xs font-semibold text-muted-foreground">열량</span>
             <span class="text-sm text-foreground tabular-nums">{selectedMeal.meal.calories}</span>
           </div>
         {/if}
         {#if nutrientRows.length > 0}
-          <p class="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">영양</p>
+          <p class="text-xs font-semibold text-muted-foreground mb-2">영양</p>
           <div class="grid grid-cols-3 gap-x-4 gap-y-1.5">
             {#each nutrientRows as [name, value]}
               <div class="flex items-baseline justify-between gap-1 border-b border-border pb-1.5">

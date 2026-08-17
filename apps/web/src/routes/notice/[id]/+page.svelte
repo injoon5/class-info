@@ -314,6 +314,9 @@ $effect(() => {
 	margin: 0.75rem 0;
 	box-shadow: 0 0 0 1px oklch(0 0 0 / 0.1);
 }
+:global(.dark) .markdown-content :global(img) {
+	box-shadow: 0 0 0 1px oklch(1 0 0 / 0.1);
+}
 
 .markdown-content :global(.video-embed) {
 	position: relative;
