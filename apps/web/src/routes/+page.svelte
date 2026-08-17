@@ -165,12 +165,12 @@ function isToday(dateStr: string): boolean {
 			<span class="text-base sm:text-lg font-medium text-muted-foreground">{todayWeekday}요일</span>
 		</h1>
 		{#if todayEvents.length > 0}
-			<div class="flex flex-wrap items-baseline gap-x-4 gap-y-1 text-sm">
+			<div class="flex flex-wrap items-baseline gap-x-4 gap-y-1 text-base sm:text-lg">
 				{#each todayEvents as event}
 					<span class="inline-flex items-baseline gap-1.5">
-						<span class="font-medium text-foreground">{event.title}</span>
+						<span class="font-semibold text-foreground">{event.title}</span>
 						{#if eventTypeLabel(event)}
-							<span class="text-xs font-semibold {eventTypeCss(event)}">{eventTypeLabel(event)}</span>
+							<span class="text-xs sm:text-sm font-semibold {eventTypeCss(event)}">{eventTypeLabel(event)}</span>
 						{/if}
 					</span>
 				{/each}
@@ -183,7 +183,7 @@ function isToday(dateStr: string): boolean {
 
 		<!-- Timetable -->
 		<section class="sm:col-span-1">
-			<div class="flex items-baseline justify-between mb-2.5 px-0.5">
+			<div class="flex items-baseline justify-between mb-2.5">
 				<h2 class="text-sm font-semibold text-muted-foreground">{cardDayLabel}시간표</h2>
 				<a href="/timetable" aria-label="시간표 모두 보기" class="text-xs font-medium text-muted-foreground transition-colors duration-100 pointer:hover:text-foreground">모두 보기 <span aria-hidden="true">→</span></a>
 			</div>
@@ -210,7 +210,7 @@ function isToday(dateStr: string): boolean {
 
 		<!-- Meal -->
 		<section class="sm:col-span-2">
-			<div class="flex items-baseline justify-between mb-2.5 px-0.5">
+			<div class="flex items-baseline justify-between mb-2.5">
 				<h2 class="text-sm font-semibold text-muted-foreground">{cardDayLabel}급식</h2>
 				<a href="/meals" aria-label="급식 모두 보기" class="text-xs font-medium text-muted-foreground transition-colors duration-100 pointer:hover:text-foreground">모두 보기 <span aria-hidden="true">→</span></a>
 			</div>
@@ -260,7 +260,7 @@ function isToday(dateStr: string): boolean {
 
 		<!-- Notices -->
 		<section>
-			<div class="flex items-baseline justify-between mb-2.5 px-0.5">
+			<div class="flex items-baseline justify-between mb-2.5">
 				<h2 class="text-sm font-semibold text-muted-foreground">공지</h2>
 				<a href="/notices" aria-label="공지 모두 보기" class="text-xs font-medium text-muted-foreground transition-colors duration-100 pointer:hover:text-foreground">모두 보기 <span aria-hidden="true">→</span></a>
 			</div>
@@ -277,7 +277,7 @@ function isToday(dateStr: string): boolean {
 				<div class="space-y-4">
 					{#each noticePreview as group}
 						<div>
-							<p class="text-xs font-semibold text-muted-foreground mb-2 pl-0.5">
+							<p class="text-xs font-semibold text-muted-foreground mb-2">
 								{group.displayDate}
 							</p>
 							<div class="grid gap-1.5">
@@ -302,7 +302,7 @@ function isToday(dateStr: string): boolean {
 
 		<!-- Events -->
 		<section>
-			<div class="flex items-baseline justify-between mb-2.5 px-0.5">
+			<div class="flex items-baseline justify-between mb-2.5">
 				<h2 class="text-sm font-semibold text-muted-foreground">일정</h2>
 				<a href="/calendar" aria-label="일정 모두 보기" class="text-xs font-medium text-muted-foreground transition-colors duration-100 pointer:hover:text-foreground">모두 보기 <span aria-hidden="true">→</span></a>
 			</div>
