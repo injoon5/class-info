@@ -302,7 +302,7 @@ const dayNames = ['일','월','화','수','목','금','토'];
                 {#if cell.day !== null}
                   <div class="flex items-center justify-between mb-0.5">
                     <span
-                      class="text-base leading-none w-7 h-7 sm:w-8 sm:h-8 flex items-center justify-center flex-shrink-0 tabular-nums
+                      class="text-sm sm:text-base w-7 h-7 sm:w-8 sm:h-8 inline-flex items-center justify-center flex-shrink-0 tabular-nums leading-none pt-px
                         {isToday
                           ? 'rounded-full bg-primary text-primary-foreground font-bold'
                           : isSun

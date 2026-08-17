@@ -98,7 +98,7 @@ $effect(() => {
 
 				{#if html}
 					<div class="border-t border-border pt-4">
-						<div class="text-sm sm:text-base leading-relaxed markdown-content break-words">
+						<div class="text-sm sm:text-base leading-relaxed markdown-content break-words max-w-[42rem]">
 							{@html html}
 						</div>
 					</div>

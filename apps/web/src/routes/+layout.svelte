@@ -29,23 +29,20 @@
 	<header class="sticky top-0 z-30 bg-background/85 backdrop-blur-md border-b border-border">
 		<div class="max-w-4xl mx-auto flex items-center justify-between gap-3 px-4 h-14">
 			<a href="/" class="shrink-0 pressable" aria-label="홈">
-				<span class="text-lg font-semibold tracking-tight text-foreground">TimeforSchool</span>
+				<span class="text-base sm:text-lg font-bold tracking-tight text-foreground">TimeforSchool</span>
 			</a>
-			<nav class="flex items-center gap-0.5 text-sm">
+			<nav class="flex items-center gap-1 sm:gap-2 text-[15px]">
 				{#each navItems as item}
 					{@const active = item.match(page.url.pathname)}
 					<a
 						href={item.href}
-						class="relative rounded-full px-2.5 py-1.5 font-medium transition-colors duration-100
+						class="rounded-md px-1.5 py-1 transition-colors duration-100
 							{active
-								? 'text-foreground'
-								: 'text-muted-foreground pointer:hover:text-foreground pointer:hover:bg-muted'}"
+								? 'font-bold text-foreground'
+								: 'font-medium text-muted-foreground pointer:hover:text-foreground'}"
 						aria-current={active ? 'page' : undefined}
 					>
 						{item.label}
-						{#if active}
-							<span class="absolute inset-x-2.5 -bottom-px h-0.5 rounded-full bg-foreground" aria-hidden="true"></span>
-						{/if}
 					</a>
 				{/each}
 			</nav>
