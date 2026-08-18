@@ -3,7 +3,7 @@
 </script>
 
 <svelte:head>
-	<title>{page.status === 404 ? '페이지를 찾을 수 없습니다' : '문제가 발생했습니다'}</title>
+	<title>{page.status === 404 ? '페이지를 찾을 수 없어요' : '문제가 생겼어요'}</title>
 	<meta name="robots" content="noindex" />
 </svelte:head>
 
@@ -12,7 +12,7 @@
 		<div class="flex flex-col items-center text-center gap-3 py-20">
 			<p class="text-6xl font-bold tracking-tight tabular-nums text-foreground" aria-hidden="true">{page.status}</p>
 			<h1 class="text-2xl font-semibold tracking-tight text-foreground">
-				{page.status === 404 ? '페이지를 찾을 수 없습니다' : '문제가 발생했습니다'}
+				{page.status === 404 ? '페이지를 찾을 수 없어요' : '문제가 생겼어요'}
 			</h1>
 			{#if page.error?.message}
 				<p class="text-muted-foreground">{page.error.message}</p>

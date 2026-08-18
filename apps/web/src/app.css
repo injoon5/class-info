@@ -116,23 +116,28 @@ html {
 }
 
 @layer utilities {
-	.pressable {
-		@apply transition-transform duration-75 ease-out;
-	}
-	.pressable:active {
-		@apply scale-[0.96];
-	}
+	/* Buttons and rows. */
+	.pressable,
 	.pressable-lg {
-		@apply transition-transform duration-75 ease-out;
+		@apply transition-transform duration-150 ease-out;
 	}
+	.pressable:active,
 	.pressable-lg:active {
-		@apply scale-[0.97];
+		@apply scale-95;
 	}
+	/* Large tappable surfaces — a full card travelling 5% reads as a lurch. */
 	.pressable-xl {
-		@apply transition-transform duration-75 ease-out;
+		@apply transition-transform duration-150 ease-out;
 	}
 	.pressable-xl:active {
-		@apply scale-[0.98];
+		@apply scale-[0.97];
+	}
+	/* 32px icon buttons, which need a deeper press to register at that size. */
+	.pressable-icon {
+		@apply transition-transform duration-150 ease-out;
+	}
+	.pressable-icon:active {
+		@apply scale-90;
 	}
 }
 
@@ -140,8 +145,17 @@ html {
 	*, *::before, *::after {
 		animation-duration: 0.001ms !important;
 		animation-iteration-count: 1 !important;
-		transition-duration: 0.001ms !important;
 		scroll-behavior: auto !important;
+		/* Movement goes; color/opacity feedback stays, so controls still
+		   answer a press. */
+		transition-property: color, background-color, border-color,
+			text-decoration-color, fill, stroke, opacity, box-shadow !important;
+	}
+	.pressable:active,
+	.pressable-lg:active,
+	.pressable-xl:active,
+	.pressable-icon:active {
+		transform: none;
 	}
 }
 

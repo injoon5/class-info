@@ -6,7 +6,7 @@ import { getNowInKst, yyyymmdd, WEEKDAYS_KR } from '$lib/date';
 import { eventDotClass } from '$lib/utils';
 import type { PageData } from './$types.js';
 
-let { data }: { data: PageData } = $props();
+const { data }: { data: PageData } = $props();
 
 const noticesQuery = useQuery(api.notices.overview, {}, () => ({
 	initialData: data.noticesOverview,
@@ -193,12 +193,12 @@ function isToday(dateStr: string): boolean {
 		<section class="sm:col-span-1">
 			<div class="flex items-baseline justify-between mb-2.5">
 				<h2 class="text-sm font-semibold text-muted-foreground">{cardDayLabel}시간표</h2>
-				<a href="/timetable" aria-label="시간표 모두 보기" class="text-xs font-medium text-muted-foreground transition-colors duration-100 pointer:hover:text-foreground">모두 보기 <span aria-hidden="true">→</span></a>
+				<a href="/timetable" aria-label="시간표 모두 보기" class="text-xs font-medium text-muted-foreground transition-colors duration-150 pointer:hover:text-foreground">모두 보기 <span aria-hidden="true">→</span></a>
 			</div>
 			<div class="bg-card border border-border rounded-2xl p-4">
 				{#if displaySchedule.length === 0}
 					<div class="flex items-center justify-center py-8">
-						<p class="text-sm text-muted-foreground text-center">시간표가 없습니다</p>
+						<p class="text-sm text-muted-foreground text-center">시간표가 없어요</p>
 					</div>
 				{:else}
 					<ol class="space-y-2.5">
@@ -220,7 +220,7 @@ function isToday(dateStr: string): boolean {
 		<section class="sm:col-span-2">
 			<div class="flex items-baseline justify-between mb-2.5">
 				<h2 class="text-sm font-semibold text-muted-foreground">{cardDayLabel}급식</h2>
-				<a href="/meals" aria-label="급식 모두 보기" class="text-xs font-medium text-muted-foreground transition-colors duration-100 pointer:hover:text-foreground">모두 보기 <span aria-hidden="true">→</span></a>
+				<a href="/meals" aria-label="급식 모두 보기" class="text-xs font-medium text-muted-foreground transition-colors duration-150 pointer:hover:text-foreground">모두 보기 <span aria-hidden="true">→</span></a>
 			</div>
 			<div class="bg-card border border-border rounded-2xl p-4">
 				<!-- gap-0 + symmetric padding keeps the divider on the card's exact center at every width -->
@@ -229,7 +229,7 @@ function isToday(dateStr: string): boolean {
 					<div class={displayDinner ? 'pr-4 sm:pr-6' : ''}>
 						<p class="text-xs font-semibold text-muted-foreground mb-2">중식</p>
 						{#if !displayLunch}
-							<p class="text-sm text-muted-foreground">급식 정보가 없습니다</p>
+							<p class="text-sm text-muted-foreground">급식 정보가 없어요</p>
 						{:else}
 							<ul class="space-y-1.5">
 								{#each displayLunch.dishes as dish}
@@ -268,7 +268,7 @@ function isToday(dateStr: string): boolean {
 		<section>
 			<div class="flex items-baseline justify-between mb-2.5">
 				<h2 class="text-sm font-semibold text-muted-foreground">공지</h2>
-				<a href="/notices" aria-label="공지 모두 보기" class="text-xs font-medium text-muted-foreground transition-colors duration-100 pointer:hover:text-foreground">모두 보기 <span aria-hidden="true">→</span></a>
+				<a href="/notices" aria-label="공지 모두 보기" class="text-xs font-medium text-muted-foreground transition-colors duration-150 pointer:hover:text-foreground">모두 보기 <span aria-hidden="true">→</span></a>
 			</div>
 
 			{#if noticesQuery.isLoading && !noticesQuery.data}
@@ -277,17 +277,17 @@ function isToday(dateStr: string): boolean {
 				</div>
 			{:else if !hasNotices}
 				<div class="bg-card border border-border rounded-2xl px-4 py-8 text-center">
-					<p class="text-sm text-muted-foreground">등록된 공지가 없습니다</p>
+					<p class="text-sm text-muted-foreground">등록된 공지가 없어요</p>
 				</div>
 			{:else}
 				<div class="space-y-4">
-					{#each noticePreview as group}
+					{#each noticePreview as group (group.date)}
 						<div>
 							<p class="text-xs font-semibold text-muted-foreground mb-2">
 								{group.displayDate}
 							</p>
 							<div class="grid gap-1.5">
-								{#each group.notices as notice}
+								{#each group.notices as notice (notice._id)}
 									<NoticeCard {notice} />
 								{/each}
 							</div>
@@ -297,7 +297,7 @@ function isToday(dateStr: string): boolean {
 					{#if remainingNoticeCount > 0}
 						<a
 							href="/notices"
-							class="block text-center text-sm text-muted-foreground transition-colors duration-100 pointer:hover:text-foreground py-1"
+							class="block text-center text-sm text-muted-foreground transition-colors duration-150 pointer:hover:text-foreground py-1"
 						>
 							+ {remainingNoticeCount}개 더 보기
 						</a>
@@ -310,11 +310,11 @@ function isToday(dateStr: string): boolean {
 		<section>
 			<div class="flex items-baseline justify-between mb-2.5">
 				<h2 class="text-sm font-semibold text-muted-foreground">일정</h2>
-				<a href="/calendar" aria-label="일정 모두 보기" class="text-xs font-medium text-muted-foreground transition-colors duration-100 pointer:hover:text-foreground">모두 보기 <span aria-hidden="true">→</span></a>
+				<a href="/calendar" aria-label="일정 모두 보기" class="text-xs font-medium text-muted-foreground transition-colors duration-150 pointer:hover:text-foreground">모두 보기 <span aria-hidden="true">→</span></a>
 			</div>
 			{#if upcomingEvents.length === 0}
 				<div class="bg-card border border-border rounded-2xl px-4 py-8 text-center">
-					<p class="text-sm text-muted-foreground">다가오는 일정이 없습니다</p>
+					<p class="text-sm text-muted-foreground">다가오는 일정이 없어요</p>
 				</div>
 			{:else}
 				<div class="bg-card border border-border rounded-2xl overflow-hidden divide-y divide-border">

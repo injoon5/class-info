@@ -9,7 +9,7 @@ import EmptyState from '../../components/EmptyState.svelte';
 import NoticeFooter from '../../components/NoticeFooter.svelte';
 import type { PageData } from './$types.js';
 
-let { data }: { data: PageData } = $props();
+const { data }: { data: PageData } = $props();
 let openMonthKey = $state<string | null>(null);
 
 const overview = useQuery(api.notices.overview, {}, () => ({
@@ -46,7 +46,7 @@ const overview = useQuery(api.notices.overview, {}, () => ({
     {:else}
         <!-- Current and Future Notices -->
         {#if overview.data?.currentGroups && overview.data.currentGroups.length > 0}
-            {#each overview.data.currentGroups as group}
+            {#each overview.data.currentGroups as group (group.date)}
                 <NoticeGroup {group} />
             {/each}
         {/if}

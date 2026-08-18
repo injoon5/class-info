@@ -11,7 +11,7 @@ import { formatAbsolute, formatRelative } from '$lib/date';
 import { onMount } from 'svelte';
 import type { PageData } from './$types.js';
 
-let { data }: { data: PageData } = $props();
+const { data }: { data: PageData } = $props();
 
 let selectedWeek = $state(0); // 0: this week, 1: next week
 

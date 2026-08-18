@@ -9,7 +9,7 @@ import LoadingState from '../../../components/LoadingState.svelte';
 import ErrorState from '../../../components/ErrorState.svelte';
 import type { PageData } from './$types.js';
 
-let { data }: { data: PageData } = $props();
+const { data }: { data: PageData } = $props();
 
 const detail = useQuery(
 	api.notices.detail,
@@ -72,7 +72,7 @@ $effect(() => {
 		{:else if detail.error}
 			<ErrorState error={detail.error} />
 		{:else if !detail.data?.notice}
-			<div class="text-center py-16 text-sm text-muted-foreground">공지를 찾을 수 없습니다</div>
+			<div class="text-center py-16 text-sm text-muted-foreground">공지를 찾을 수 없어요</div>
 		{:else}
 			<div class="mb-4 mt-2 sm:mt-3 bg-card border border-border rounded-2xl p-4 sm:p-6">
 				<div class="mb-4">
@@ -104,7 +104,7 @@ $effect(() => {
 					<div class="border-t border-border pt-4 mt-6">
 						<h2 class="text-sm sm:text-base font-semibold mb-3 text-foreground">첨부 파일</h2>
 						<div class="space-y-2">
-							{#each detail.data.files as file}
+							{#each detail.data.files as file (file.url)}
 								<div class="flex items-center gap-3 p-3 bg-muted/50 border border-border rounded-lg">
 									<div class="flex-shrink-0">
 										{#if file.type.startsWith('image/')}

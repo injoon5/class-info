@@ -3,7 +3,7 @@ import { useQuery } from 'convex-svelte';
 import { api } from "@class-info/backend/convex/_generated/api";
 import { getTypeColor } from '../lib/utils.js';
 
-let { monthKey, onEdit, onDelete }: { monthKey: string; onEdit: (id: string) => void; onDelete: (id: string) => void } = $props();
+const { monthKey, onEdit, onDelete }: { monthKey: string; onEdit: (id: string) => void; onDelete: (id: string) => void } = $props();
 
 const groups = useQuery(api.notices.pastByMonth, { monthKey });
 
@@ -15,13 +15,13 @@ const groups = useQuery(api.notices.pastByMonth, { monthKey });
     {:else if groups.error}
         <div class="text-sm text-destructive">오류가 발생했습니다.</div>
     {:else}
-        {#each groups.data as group}
+        {#each groups.data as group (group.date)}
             <div class="mb-3 last:mb-0">
                 <h3 class="text-sm font-medium mb-2 text-muted-foreground border-l-2 border-border pl-2">
                     {group.displayDate}
                 </h3>
                 <div class="grid gap-2">
-                    {#each group.notices as notice}
+                    {#each group.notices as notice (notice._id)}
                         <div class="bg-muted/40 border border-border rounded-xl p-3 overflow-hidden">
                             <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
                                 <div class="flex-1 min-w-0">

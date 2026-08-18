@@ -3,7 +3,7 @@ import NoticeGroup from './NoticeGroup.svelte';
 import { useQuery } from 'convex-svelte';
 import { api } from "@class-info/backend/convex/_generated/api";
 
-let { monthKey }: { monthKey: string } = $props();
+const { monthKey }: { monthKey: string } = $props();
 
 const groups = useQuery(api.notices.pastByMonth, { monthKey });
 
@@ -15,7 +15,7 @@ const groups = useQuery(api.notices.pastByMonth, { monthKey });
 	{:else if groups.error}
 		<div class="text-sm text-destructive">오류가 발생했습니다.</div>
 	{:else}
-		{#each groups.data as group}
+		{#each groups.data as group (group.date)}
 			<NoticeGroup {group} isPast={true} />
 		{/each}
 	{/if}

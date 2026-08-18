@@ -25,7 +25,7 @@ type MealDoc = {
   editedAt: number;
 };
 
-let { data }: { data: PageData } = $props();
+const { data }: { data: PageData } = $props();
 
 let selectedMealType = $state("중식");
 
@@ -119,7 +119,7 @@ function openMealDrawer(day: any) {
           { days: mealsQuery.data.nextWeek.days, class: "mt-3" }
         ] as week}
         <div class={`mb-4 grid grid-cols-5 sm:grid-cols-5 min-w-[37rem] divide-x divide-border border border-border rounded-2xl overflow-hidden`}>
-          {#each week.days as day}
+          {#each week.days as day (day.date)}
             {@const hasMeal = !!(day as any)[mealKey(selectedMealType)]}
             {@const isTodayCol = day.date === todayStr}
             <button
@@ -139,7 +139,7 @@ function openMealDrawer(day: any) {
                     {/each}
                   </ul>
                 {:else}
-                  <p class="mt-2.5 text-sm text-muted-foreground">급식 정보가 없습니다</p>
+                  <p class="mt-2.5 text-sm text-muted-foreground">급식 정보가 없어요</p>
                 {/if}
               </div>
               <div class="mt-2 min-h-[1.25rem] flex items-end">

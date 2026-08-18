@@ -10,7 +10,7 @@ import { formatAbsolute, formatRelative } from '$lib/date';
 import LoadingState from '../../components/LoadingState.svelte';
 import type { PageData, ActionData } from './$types';
 
-let { data, form }: { data: PageData; form: ActionData } = $props();
+const { data, form }: { data: PageData; form: ActionData } = $props();
 const client = useConvexClient();
 
 // Bearer token for privileged mutations; present only when authenticated.
@@ -39,6 +39,11 @@ import { useQuery } from 'convex-svelte';
 const overview = useQuery(api.notices.overview, {});
 let openMonthKey = $state<string | null>(null);
 
+// Expected problems with the editor sit with the editor's actions; failures
+// that come from the list sit under the header. Neither interrupts the page.
+let formError = $state<string | null>(null);
+let panelError = $state<string | null>(null);
+
 function resetForm() {
 	noticeForm.set({
 		title: '',
@@ -50,6 +55,7 @@ function resetForm() {
 	});
 	editingNotice.set(null);
 	showForm.set(false);
+	formError = null;
 }
 
 async function editNotice(noticeOrId: any) {
@@ -64,9 +70,10 @@ async function editNotice(noticeOrId: any) {
 		full = null;
 	}
 	if (!full) {
-		alert('공지를 불러오지 못했습니다. 다시 시도해주세요.');
+		panelError = '공지를 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.';
 		return;
 	}
+	panelError = null;
 	noticeForm.set({
 		title: full.title || '',
 		subject: full.subject || '',
@@ -97,9 +104,10 @@ async function handleSubmit() {
 	};
 	
 	if (!payload.title || !payload.subject || !payload.dueDate) {
-		alert('필수 항목을 모두 입력해주세요.');
+		formError = '제목, 과목, 마감일을 모두 입력해 주세요.';
 		return;
 	}
+	formError = null;
 	
 	try {
 		if ($editingNotice) {
@@ -109,17 +117,17 @@ async function handleSubmit() {
 		}
 		resetForm();
 	} catch (error) {
-		alert('저장 중 오류가 발생했습니다.');
+		formError = '저장하지 못했습니다. 잠시 후 다시 시도해 주세요.';
 	}
 }
 
 async function handleDelete(notice: any) {
-	if (confirm('정말 삭제하시겠습니까?')) {
-		try {
-			await client.mutation(api.notices.remove, { sessionToken, id: notice._id });
-		} catch (error) {
-			alert('삭제 중 오류가 발생했습니다.');
-		}
+	if (!confirm('이 공지를 삭제하시겠습니까? 되돌릴 수 없습니다.')) return;
+	try {
+		await client.mutation(api.notices.remove, { sessionToken, id: notice._id });
+		panelError = null;
+	} catch (error) {
+		panelError = '삭제하지 못했습니다. 잠시 후 다시 시도해 주세요.';
 	}
 }
 
@@ -224,6 +232,12 @@ const lastUpdatedTs = $derived.by(() => {
 			</div>
 		</div>
 
+		{#if panelError}
+			<p class="mb-4 rounded-xl border border-destructive/30 bg-destructive/10 px-3.5 py-2.5 text-sm font-medium text-destructive" role="alert">
+				{panelError}
+			</p>
+		{/if}
+
 		<!-- Form -->
 		{#if $showForm}
 			<div class="bg-card border border-border rounded-2xl p-4 sm:p-5 mb-6">
@@ -238,6 +252,7 @@ const lastUpdatedTs = $derived.by(() => {
 							id="notice-title"
 							type="text"
 							bind:value={$noticeForm.title}
+							onkeydown={(e) => { if (e.key === 'Enter' && e.isComposing) e.preventDefault(); }}
 							class="w-full h-11 px-3.5 rounded-xl border border-border text-base bg-muted text-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring/50 placeholder:text-muted-foreground transition-shadow break-words"
 							placeholder="예: 수학 과제 제출"
 						/>
@@ -250,6 +265,7 @@ const lastUpdatedTs = $derived.by(() => {
 								id="notice-subject"
 								type="text"
 								bind:value={$noticeForm.subject}
+								onkeydown={(e) => { if (e.key === 'Enter' && e.isComposing) e.preventDefault(); }}
 								class="w-full h-11 px-3.5 rounded-xl border border-border text-base bg-muted text-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring/50 placeholder:text-muted-foreground transition-shadow break-words"
 								placeholder="예: 수학"
 							/>
@@ -296,6 +312,10 @@ const lastUpdatedTs = $derived.by(() => {
 						/>
 					</div>
 
+					{#if formError}
+						<p class="text-sm font-medium text-destructive" role="alert">{formError}</p>
+					{/if}
+
 					<div class="flex gap-2">
 						<button
 							type="submit"
@@ -320,20 +340,20 @@ const lastUpdatedTs = $derived.by(() => {
 			<LoadingState />
         {:else if overview.error}
 			<div class="text-center py-8 text-destructive">
-				<p>공지를 불러오는 중 오류가 발생했습니다.</p>
+				<p>공지를 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.</p>
 				<button onclick={() => window.location.reload()} class="pressable mt-3 rounded-full px-4 py-2 bg-primary text-primary-foreground text-sm font-medium transition-opacity pointer:hover:opacity-90">다시 시도</button>
 			</div>
         {:else}
 			<!-- Current and Future Notices -->
             {#if allGroupedNotices && allGroupedNotices.length > 0}
-            {#each allGroupedNotices as group}
+            {#each allGroupedNotices as group (group.date)}
 				<div class="mb-6">
 					<h2 class="text-base font-semibold tracking-tight mb-3 text-foreground border-l-[3px] border-foreground pl-3">
 						{group.displayDate}
 					</h2>
 
                     <div class="grid gap-2">
-                        {#each group.notices as notice}
+                        {#each group.notices as notice (notice._id)}
                             <div class="bg-card border border-border rounded-xl p-3 overflow-hidden">
                                 <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
                                     <div class="flex-1 min-w-0">

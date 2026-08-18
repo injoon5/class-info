@@ -5,9 +5,10 @@ import type { Id } from "@class-info/backend/convex/_generated/dataModel";
 import Drawer from '../../components/Drawer.svelte';
 import HScroll from '../../components/HScroll.svelte';
 import { getNowInKst, toYyyymmdd } from '$lib/date';
+import { focusOnElement } from '$lib/actions/focus';
 import type { PageData } from './$types.js';
 
-let { data }: { data: PageData } = $props();
+const { data }: { data: PageData } = $props();
 const client = useConvexClient();
 
 function parseDateStr(yyyymmdd: string) {
@@ -134,16 +135,18 @@ const CUSTOM_COLORS = [
   { id: 'teal',   bgClass: 'bg-teal-500' },
 ];
 
-type CellEvent = { title: string; chipClass: string; dotClass: string };
+type CellEvent = { id: string; title: string; chipClass: string; dotClass: string };
 
 function eventsForDate(dateStr: string | null): CellEvent[] {
   if (!dateStr) return [];
   const school = (schoolEventsByDate[dateStr] || []).map((e: any) => ({
+    id: String(e._id),
     title: e.title,
     chipClass: getSchoolEventClass(e.eventType),
     dotClass: getSchoolEventDot(e.eventType),
   }));
   const custom = (customEventsByDate[dateStr] || []).map((e: any) => ({
+    id: String(e._id),
     title: e.title,
     chipClass: CUSTOM_COLOR_CLASSES[e.color] ?? CUSTOM_COLOR_CLASSES.blue,
     dotClass: CUSTOM_DOT_CLASSES[e.color] ?? CUSTOM_DOT_CLASSES.blue,
@@ -173,11 +176,7 @@ const sessionToken = $derived((data.sessionToken as string | null) ?? '');
 let newEventTitle = $state('');
 let newEventColor = $state('blue');
 let isSaving = $state(false);
-let addInputEl = $state<HTMLInputElement | undefined>();
-
-$effect(() => {
-  if (popupAddMode && addInputEl) addInputEl.focus();
-});
+let saveError = $state<string | null>(null);
 
 // ── Drawer state ─────────────────────────────────────────────────────────────
 
@@ -193,6 +192,7 @@ const selectedDateEvents = $derived({
 function openDayDrawer(yyyymmdd: string) {
   selectedDate = yyyymmdd;
   popupAddMode = false;
+  saveError = null;
   newEventTitle = '';
   newEventColor = 'blue';
 }
@@ -200,6 +200,7 @@ function openDayDrawer(yyyymmdd: string) {
 function openAddForm(yyyymmdd: string) {
   selectedDate = yyyymmdd;
   popupAddMode = true;
+  saveError = null;
   newEventTitle = '';
   newEventColor = 'blue';
 }
@@ -208,11 +209,13 @@ function onDrawerClose() {
   selectedDate = null;
   popupAddMode = false;
   newEventTitle = '';
+  saveError = null;
 }
 
 async function handleAddEvent() {
   if (!newEventTitle.trim() || !selectedDate || isSaving) return;
   isSaving = true;
+  saveError = null;
   try {
     await client.mutation(api.schedule.createCustomEvent, {
       sessionToken,
@@ -223,18 +226,19 @@ async function handleAddEvent() {
     newEventTitle = '';
     popupAddMode = false;
   } catch {
-    alert('저장 중 오류가 발생했습니다.');
+    saveError = '저장하지 못했어요. 잠시 후 다시 시도해 주세요.';
   } finally {
     isSaving = false;
   }
 }
 
 async function handleDeleteCustomEvent(id: string) {
-  if (!confirm('이 일정을 삭제하시겠습니까?')) return;
+  if (!confirm('이 일정을 삭제하시겠습니까? 되돌릴 수 없습니다.')) return;
+  saveError = null;
   try {
     await client.mutation(api.schedule.deleteCustomEvent, { sessionToken, id: id as Id<'schedules'> });
   } catch {
-    alert('삭제 중 오류가 발생했습니다.');
+    saveError = '삭제하지 못했어요. 잠시 후 다시 시도해 주세요.';
   }
 }
 
@@ -262,7 +266,7 @@ const dayNames = ['일','월','화','수','목','금','토'];
     <button
       onclick={() => navigate(-1)}
       disabled={!canNavigate(-1)}
-      class="pressable w-9 h-9 sm:w-10 sm:h-10 flex items-center justify-center rounded-full bg-card text-muted-foreground border border-border transition-colors pointer:hover:bg-muted pointer:hover:text-foreground disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:bg-card disabled:hover:text-muted-foreground"
+      class="pressable w-9 h-9 sm:w-10 sm:h-10 flex items-center justify-center rounded-full bg-card text-muted-foreground border border-border transition-colors duration-150 enabled:pointer:hover:bg-muted enabled:pointer:hover:text-foreground disabled:opacity-50 disabled:cursor-not-allowed"
       aria-label="이전 달"
       data-s-event="Calendar Navigate"
       data-s-event-props="direction=prev"
@@ -279,7 +283,7 @@ const dayNames = ['일','월','화','수','목','금','토'];
     <button
       onclick={() => navigate(1)}
       disabled={!canNavigate(1)}
-      class="pressable w-9 h-9 sm:w-10 sm:h-10 flex items-center justify-center rounded-full bg-card text-muted-foreground border border-border transition-colors pointer:hover:bg-muted pointer:hover:text-foreground disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:bg-card disabled:hover:text-muted-foreground"
+      class="pressable w-9 h-9 sm:w-10 sm:h-10 flex items-center justify-center rounded-full bg-card text-muted-foreground border border-border transition-colors duration-150 enabled:pointer:hover:bg-muted enabled:pointer:hover:text-foreground disabled:opacity-50 disabled:cursor-not-allowed"
       aria-label="다음 달"
       data-s-event="Calendar Navigate"
       data-s-event-props="direction=next"
@@ -318,7 +322,7 @@ const dayNames = ['일','월','화','수','목','금','토'];
               <!-- svelte-ignore a11y_no_noninteractive_tabindex -->
               <div
                 class="min-h-[5rem] sm:min-h-[7rem] p-1 sm:p-1.5 relative group
-                  {hasEvents ? 'cursor-pointer transition-colors duration-100' : ''}
+                  {hasEvents ? 'cursor-pointer transition-colors duration-150' : ''}
                   {di < 6 ? 'border-r border-border' : ''}
                   {cell.day !== null && isSun ? 'bg-red-50/50 dark:bg-red-950/20' : ''}
                   {hasEvents && isSun ? 'pointer:hover:bg-red-100/70 dark:pointer:hover:bg-red-950/40' : ''}
@@ -360,7 +364,7 @@ const dayNames = ['일','월','화','수','목','금','토'];
                     {/if}
                   </div>
 
-                  {#each cellEvents as event}
+                  {#each cellEvents as event (event.id)}
                     <div class="text-xs rounded px-1 py-0.5 mb-0.5 truncate leading-tight {event.chipClass}" title={event.title}>{event.title}</div>
                   {/each}
                 {/if}
@@ -385,10 +389,13 @@ const dayNames = ['일','월','화','수','목','금','토'];
 </div>
 
 {#snippet adminFooter()}
+  {#if saveError}
+    <p class="mb-3 text-sm font-medium text-destructive" role="alert">{saveError}</p>
+  {/if}
   {#if !popupAddMode}
     <button
-      onclick={() => { popupAddMode = true; }}
-      class="pressable w-full flex items-center justify-center gap-2 py-2.5 rounded-xl bg-muted text-sm font-medium text-foreground transition-colors pointer:hover:bg-border"
+      onclick={() => { popupAddMode = true; saveError = null; }}
+      class="pressable w-full flex items-center justify-center gap-2 py-2.5 rounded-xl bg-muted text-sm font-medium text-foreground transition-colors duration-150 pointer:hover:bg-border"
     >
       <svg viewBox="0 0 20 20" fill="currentColor" class="w-4 h-4 flex-shrink-0">
         <path fill-rule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clip-rule="evenodd"/>
@@ -399,11 +406,11 @@ const dayNames = ['일','월','화','수','목','금','토'];
     <input
       type="text"
       bind:value={newEventTitle}
-      bind:this={addInputEl}
+      use:focusOnElement
       placeholder="일정 제목을 입력하세요"
       class="w-full h-11 px-3.5 mb-3 border border-border bg-muted text-foreground text-base rounded-xl outline-none focus-visible:ring-2 focus-visible:ring-ring/50 transition-shadow placeholder:text-muted-foreground"
       onkeydown={(e) => {
-        if (e.key === 'Enter') handleAddEvent();
+        if (e.key === 'Enter' && !e.isComposing) handleAddEvent();
         if (e.key === 'Escape') { popupAddMode = false; newEventTitle = ''; }
       }}
     />
@@ -422,11 +429,18 @@ const dayNames = ['일','월','화','수','목','금','토'];
       <button
         onclick={handleAddEvent}
         disabled={isSaving || !newEventTitle.trim()}
-        class="pressable flex-1 py-2.5 bg-primary text-primary-foreground text-sm font-semibold rounded-xl disabled:opacity-40 transition-opacity"
-      >{isSaving ? '저장 중…' : '저장'}</button>
+        class="pressable flex-1 inline-flex items-center justify-center gap-2 py-2.5 bg-primary text-primary-foreground text-sm font-semibold rounded-xl transition-opacity duration-150 disabled:opacity-50 disabled:cursor-not-allowed"
+      >
+        {#if isSaving}
+          <span class="w-3.5 h-3.5 rounded-full border-2 border-primary-foreground/40 border-t-primary-foreground animate-spin" aria-hidden="true"></span>
+          저장 중…
+        {:else}
+          저장
+        {/if}
+      </button>
       <button
-        onclick={() => { popupAddMode = false; newEventTitle = ''; }}
-        class="pressable px-4 py-2.5 border border-border text-sm font-medium text-muted-foreground rounded-xl transition-colors pointer:hover:bg-muted pointer:hover:text-foreground"
+        onclick={() => { popupAddMode = false; newEventTitle = ''; saveError = null; }}
+        class="pressable px-4 py-2.5 border border-border text-sm font-medium text-muted-foreground rounded-xl transition-colors duration-150 pointer:hover:bg-muted pointer:hover:text-foreground"
       >취소</button>
     </div>
   {/if}
@@ -463,14 +477,14 @@ const dayNames = ['일','월','화','수','목','금','토'];
           <path stroke-linecap="round" stroke-linejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75m-18 0v-7.5A2.25 2.25 0 015.25 9h13.5A2.25 2.25 0 0121 11.25v7.5"/>
         </svg>
       </div>
-      <p class="text-sm font-medium text-muted-foreground">일정이 없습니다</p>
+      <p class="text-sm font-medium text-muted-foreground">일정이 없어요</p>
       {#if isAuthenticated}
-        <p class="text-xs text-muted-foreground/70 mt-1">아래 버튼으로 일정을 추가해보세요</p>
+        <p class="text-xs text-muted-foreground/70 mt-1">아래 버튼으로 일정을 추가해 보세요</p>
       {/if}
     </div>
   {:else}
     <ul class="space-y-2.5">
-      {#each selectedDateEvents.school as event}
+      {#each selectedDateEvents.school as event (event._id)}
         {@const style = getSchoolEventPopupStyle(event.eventType)}
         <li class="flex rounded overflow-hidden shadow-sm">
           <div class="w-1.5 flex-shrink-0 {style.color}"></div>
@@ -480,7 +494,7 @@ const dayNames = ['일','월','화','수','목','금','토'];
           </div>
         </li>
       {/each}
-      {#each selectedDateEvents.custom as event}
+      {#each selectedDateEvents.custom as event (event._id)}
         {@const style = CUSTOM_POPUP_STYLE[event.color] ?? CUSTOM_POPUP_STYLE.blue}
         <li class="flex rounded overflow-hidden shadow-sm">
           <div class="w-1.5 flex-shrink-0 {style.color}"></div>
@@ -492,7 +506,7 @@ const dayNames = ['일','월','화','수','목','금','토'];
             {#if isAuthenticated}
               <button
                 onclick={() => handleDeleteCustomEvent(event._id)}
-                class="pressable flex-shrink-0 w-7 h-7 flex items-center justify-center rounded-full text-muted-foreground pointer:hover:text-destructive pointer:hover:bg-white/60 dark:pointer:hover:bg-black/20 active:scale-90 transition-colors duration-100"
+                class="pressable-icon flex-shrink-0 w-7 h-7 flex items-center justify-center rounded-full text-muted-foreground pointer:hover:text-destructive pointer:hover:bg-white/60 dark:pointer:hover:bg-black/20 transition-colors duration-150"
                 aria-label="삭제" title="삭제"
               >
                 <svg viewBox="0 0 20 20" fill="currentColor" class="w-4 h-4">

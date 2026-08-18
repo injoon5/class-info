@@ -9,7 +9,7 @@ interface Props {
   footer?: Snippet;
 }
 
-let { open, onclose, header, children, footer }: Props = $props();
+const { open, onclose, header, children, footer }: Props = $props();
 
 const TRANSITION_MS = 340;
 
@@ -264,7 +264,7 @@ function onPanelKeydown(e: KeyboardEvent) {
         </div>
         <button
           onclick={close}
-          class="pressable flex-shrink-0 flex items-center justify-center w-8 h-8 rounded-full text-muted-foreground pointer:hover:text-foreground pointer:hover:bg-muted active:scale-90 transition-colors duration-100 mt-0.5"
+          class="pressable-icon flex-shrink-0 flex items-center justify-center w-8 h-8 rounded-full text-muted-foreground pointer:hover:text-foreground pointer:hover:bg-muted transition-colors duration-150 mt-0.5"
           aria-label="닫기"
         >
           <svg viewBox="0 0 20 20" fill="currentColor" class="w-5 h-5">

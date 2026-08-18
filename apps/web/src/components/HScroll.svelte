@@ -3,7 +3,7 @@ import { onMount, type Snippet } from 'svelte';
 
 // Horizontally scrollable region with fade gradients that appear only on the
 // side(s) that have more content. Shared by timetable / meals / calendar.
-let { children, blurred = false }: { children: Snippet; blurred?: boolean } = $props();
+const { children, blurred = false }: { children: Snippet; blurred?: boolean } = $props();
 
 let scrollContainer = $state<HTMLDivElement>();
 let scrollLeft = $state(0);

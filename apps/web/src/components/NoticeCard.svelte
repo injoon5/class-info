@@ -1,7 +1,7 @@
 <script lang="ts">
 import { getTypeColor } from '../lib/utils.js';
 
-let { notice, isPast = false }: { notice: any; isPast?: boolean } = $props();
+const { notice, isPast = false }: { notice: any; isPast?: boolean } = $props();
 
 const isLink = $derived(Boolean((notice?.summary && String(notice.summary).trim()) || notice?.hasFiles));
 

@@ -3,8 +3,9 @@ import { useConvexClient } from 'convex-svelte';
 import { useUploadFile } from "@convex-dev/r2/svelte";
 import { api } from "@class-info/backend/convex/_generated/api";
 import type { Id } from "@class-info/backend/convex/_generated/dataModel";
+import { fly } from 'svelte/transition';
 
-let {
+const {
   files = [],
   onFilesChange,
   sessionToken = ''
@@ -14,6 +15,10 @@ const client = useConvexClient();
 const uploadFile = useUploadFile(api.files);
 let isUploading = $state(false);
 let dragOver = $state(false);
+// Upload problems belong on the drop zone, not in a browser modal.
+let uploadError = $state<string | null>(null);
+let copiedFileId = $state<string | null>(null);
+let lastCopied = 0;
 
 interface UploadedFile {
   _id: string;
@@ -56,19 +61,21 @@ async function handleFileUpload(fileList: FileList) {
   if (!fileList.length) return;
   
   isUploading = true;
-  
+  uploadError = null;
+  const rejected: string[] = [];
+
   try {
     const uploadPromises = Array.from(fileList).map(async (file) => {
       // Validate file type
       const allowedTypes = ['image/', 'application/pdf'];
       if (!allowedTypes.some(type => file.type.startsWith(type))) {
-        alert(`지원하지 않는 파일 형식입니다: ${file.name}`);
+        rejected.push(`${file.name} — 이미지 또는 PDF만 올릴 수 있습니다`);
         return null;
       }
       
       // Validate file size (10MB max)
       if (file.size > 10 * 1024 * 1024) {
-        alert(`파일 크기가 너무 큽니다: ${file.name} (최대 10MB)`);
+        rejected.push(`${file.name} — 10MB를 넘습니다`);
         return null;
       }
       
@@ -91,9 +98,10 @@ async function handleFileUpload(fileList: FileList) {
     const newFileIds = (await Promise.all(uploadPromises)).filter(Boolean);
     const updatedFiles = [...files, ...newFileIds];
     onFilesChange(updatedFiles);
+    if (rejected.length > 0) uploadError = rejected.join('\n');
   } catch (error) {
     // console.error('Upload error:', error);
-    alert('파일 업로드 중 오류가 발생했습니다.');
+    uploadError = '업로드하지 못했습니다. 잠시 후 다시 시도해 주세요.';
   } finally {
     isUploading = false;
   }
@@ -108,7 +116,7 @@ async function removeFile(fileId: string) {
     uploadedFiles = uploadedFiles.filter(file => file._id !== fileId);
   } catch (error) {
     // console.error('Error removing file:', error);
-    alert('파일 삭제 중 오류가 발생했습니다.');
+    uploadError = '파일을 삭제하지 못했습니다. 잠시 후 다시 시도해 주세요.';
   }
 }
 
@@ -118,9 +126,14 @@ function copyMarkdownToClipboard(file: UploadedFile) {
     : `[${file.name}](${file.url})`;
   
   navigator.clipboard.writeText(markdown).then(() => {
-    alert('마크다운 코드가 클립보드에 복사되었습니다!');
+    const stamp = Date.now();
+    lastCopied = stamp;
+    copiedFileId = file._id;
+    setTimeout(() => {
+      if (lastCopied === stamp) copiedFileId = null;
+    }, 1000);
   }).catch(() => {
-    alert('복사에 실패했습니다.');
+    uploadError = '복사하지 못했습니다.';
   });
 }
 
@@ -152,9 +165,17 @@ function handleDrop(e: DragEvent) {
 </script>
 
 <div class="space-y-3">
+  {#if uploadError}
+    <p class="whitespace-pre-line rounded-xl border border-destructive/30 bg-destructive/10 px-3.5 py-2.5 text-sm font-medium text-destructive" role="alert">
+      {uploadError}
+    </p>
+  {/if}
+
   <!-- File Upload Area -->
   <div
-    class="border-2 border-dashed rounded-xl {dragOver ? 'border-ring bg-muted' : 'border-border'} p-5 text-center transition-colors"
+    role="group"
+    aria-label="파일 업로드"
+    class="border-2 border-dashed rounded-xl {dragOver ? 'border-ring bg-muted' : 'border-border'} p-5 text-center transition-colors duration-150"
     ondragover={handleDragOver}
     ondragleave={handleDragLeave}
     ondrop={handleDrop}
@@ -192,7 +213,7 @@ function handleDrop(e: DragEvent) {
     <div class="space-y-2">
       <h4 class="text-sm font-medium text-muted-foreground">첨부된 파일</h4>
       <div class="space-y-1.5">
-        {#each uploadedFiles as file}
+        {#each uploadedFiles as file (file._id)}
           <div
             class="flex items-center justify-between gap-2 p-2 rounded-xl bg-muted/50 border border-border group"
             title="클릭하면 마크다운 코드를 복사할 수 있습니다"
@@ -218,10 +239,16 @@ function handleDrop(e: DragEvent) {
               <button
                 type="button"
                 onclick={() => copyMarkdownToClipboard(file)}
-                class="pressable rounded-lg px-2.5 py-1.5 text-sm font-medium border border-border text-foreground transition-colors pointer:hover:bg-muted"
+                class="pressable rounded-lg px-2.5 py-1.5 text-sm font-medium border border-border text-foreground transition-colors duration-150 pointer:hover:bg-muted"
                 title="마크다운 복사"
               >
-                복사
+                <span class="relative inline-flex h-4 min-w-[2.5rem] items-center justify-center">
+                  {#key copiedFileId === file._id}
+                    <span class="absolute inset-0 flex items-center justify-center" in:fly={{ y: 3, duration: 150 }}>
+                      {copiedFileId === file._id ? '복사됨' : '복사'}
+                    </span>
+                  {/key}
+                </span>
               </button>
               <button
                 type="button"
