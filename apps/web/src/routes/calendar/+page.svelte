@@ -96,8 +96,15 @@ const customEventsByDate = $derived(
 // Color helpers — calendar cell chips
 function getSchoolEventClass(eventType: string): string {
   if (eventType === '공휴일') return 'bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300';
-  if (eventType === '휴업일') return 'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300';
+  if (eventType === '휴업일' || eventType === '재량휴업일') return 'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300';
   return 'bg-sky-100 text-sky-700 dark:bg-sky-900/40 dark:text-sky-300';
+}
+
+// Narrow cells can't carry a readable label, so they carry a dot in the same hue.
+function getSchoolEventDot(eventType: string): string {
+  if (eventType === '공휴일') return 'bg-red-500 dark:bg-red-400';
+  if (eventType === '휴업일' || eventType === '재량휴업일') return 'bg-amber-500 dark:bg-amber-400';
+  return 'bg-sky-500 dark:bg-sky-400';
 }
 
 const CUSTOM_COLOR_CLASSES: Record<string, string> = {
@@ -109,6 +116,15 @@ const CUSTOM_COLOR_CLASSES: Record<string, string> = {
   teal:   'bg-teal-100 text-teal-700 dark:bg-teal-900/40 dark:text-teal-300',
 };
 
+const CUSTOM_DOT_CLASSES: Record<string, string> = {
+  blue:   'bg-blue-500 dark:bg-blue-400',
+  green:  'bg-green-500 dark:bg-green-400',
+  purple: 'bg-purple-500 dark:bg-purple-400',
+  orange: 'bg-orange-500 dark:bg-orange-400',
+  pink:   'bg-pink-500 dark:bg-pink-400',
+  teal:   'bg-teal-500 dark:bg-teal-400',
+};
+
 const CUSTOM_COLORS = [
   { id: 'blue',   bgClass: 'bg-blue-500' },
   { id: 'green',  bgClass: 'bg-green-500' },
@@ -118,10 +134,27 @@ const CUSTOM_COLORS = [
   { id: 'teal',   bgClass: 'bg-teal-500' },
 ];
 
+type CellEvent = { title: string; chipClass: string; dotClass: string };
+
+function eventsForDate(dateStr: string | null): CellEvent[] {
+  if (!dateStr) return [];
+  const school = (schoolEventsByDate[dateStr] || []).map((e: any) => ({
+    title: e.title,
+    chipClass: getSchoolEventClass(e.eventType),
+    dotClass: getSchoolEventDot(e.eventType),
+  }));
+  const custom = (customEventsByDate[dateStr] || []).map((e: any) => ({
+    title: e.title,
+    chipClass: CUSTOM_COLOR_CLASSES[e.color] ?? CUSTOM_COLOR_CLASSES.blue,
+    dotClass: CUSTOM_DOT_CLASSES[e.color] ?? CUSTOM_DOT_CLASSES.blue,
+  }));
+  return [...school, ...custom];
+}
+
 // Color helpers — drawer event items
 function getSchoolEventPopupStyle(eventType: string) {
   if (eventType === '공휴일') return { color: 'bg-red-400', bg: 'bg-red-50 dark:bg-red-950/30', label: '공휴일', labelColor: 'text-red-600 dark:text-red-400' };
-  if (eventType === '휴업일') return { color: 'bg-amber-400', bg: 'bg-amber-50 dark:bg-amber-950/30', label: '휴업일', labelColor: 'text-amber-700 dark:text-amber-400' };
+  if (eventType === '휴업일' || eventType === '재량휴업일') return { color: 'bg-amber-400', bg: 'bg-amber-50 dark:bg-amber-950/30', label: eventType, labelColor: 'text-amber-700 dark:text-amber-400' };
   return { color: 'bg-sky-400', bg: 'bg-sky-50 dark:bg-sky-950/30', label: '학교 행사', labelColor: 'text-sky-700 dark:text-sky-400' };
 }
 
@@ -239,9 +272,9 @@ const dayNames = ['일','월','화','수','목','금','토'];
       </svg>
     </button>
 
-    <h2 class="text-base sm:text-lg font-semibold tracking-tight text-foreground tabular-nums">
+    <h1 class="text-base sm:text-lg font-semibold tracking-tight text-foreground tabular-nums">
       {displayYear}년 {monthNames[displayMonth]}
-    </h2>
+    </h1>
 
     <button
       onclick={() => navigate(1)}
@@ -280,7 +313,8 @@ const dayNames = ['일','월','화','수','목','금','토'];
               {@const isPast = cell.yyyymmdd !== null && cell.yyyymmdd < todayStr}
               {@const isSun = di === 0}
               {@const isSat = di === 6}
-              {@const hasEvents = cell.day !== null && ((schoolEventsByDate[cell.yyyymmdd!] || []).length > 0 || (customEventsByDate[cell.yyyymmdd!] || []).length > 0)}
+              {@const cellEvents = eventsForDate(cell.yyyymmdd)}
+              {@const hasEvents = cell.day !== null && cellEvents.length > 0}
               <!-- svelte-ignore a11y_no_noninteractive_tabindex -->
               <div
                 class="min-h-[5rem] sm:min-h-[7rem] p-1 sm:p-1.5 relative group
@@ -326,12 +360,8 @@ const dayNames = ['일','월','화','수','목','금','토'];
                     {/if}
                   </div>
 
-                  {#each (schoolEventsByDate[cell.yyyymmdd!] || []) as event}
-                    <div class="text-xs rounded px-1 py-0.5 mb-0.5 truncate leading-tight {getSchoolEventClass(event.eventType)}" title={event.title}>{event.title}</div>
-                  {/each}
-
-                  {#each (customEventsByDate[cell.yyyymmdd!] || []) as event}
-                    <div class="text-xs rounded px-1 py-0.5 mb-0.5 truncate leading-tight {CUSTOM_COLOR_CLASSES[event.color] ?? CUSTOM_COLOR_CLASSES.blue}" title={event.title}>{event.title}</div>
+                  {#each cellEvents as event}
+                    <div class="text-xs rounded px-1 py-0.5 mb-0.5 truncate leading-tight {event.chipClass}" title={event.title}>{event.title}</div>
                   {/each}
                 {/if}
               </div>
@@ -456,7 +486,7 @@ const dayNames = ['일','월','화','수','목','금','토'];
           <div class="w-1.5 flex-shrink-0 {style.color}"></div>
           <div class="flex-1 flex items-center justify-between gap-2 px-3 py-2.5 {style.bg}">
             <div class="min-w-0">
-              <p class="text-xs font-semibold {style.labelColor} mb-0.5">일정</p>
+              <p class="text-xs font-semibold {style.labelColor} mb-0.5">학급 일정</p>
               <p class="text-sm font-medium text-foreground leading-snug">{event.title}</p>
             </div>
             {#if isAuthenticated}

@@ -17,9 +17,9 @@ const groups = useQuery(api.notices.pastByMonth, { monthKey });
     {:else}
         {#each groups.data as group}
             <div class="mb-3 last:mb-0">
-                <h4 class="text-sm font-medium mb-2 text-muted-foreground border-l-2 border-border pl-2">
+                <h3 class="text-sm font-medium mb-2 text-muted-foreground border-l-2 border-border pl-2">
                     {group.displayDate}
-                </h4>
+                </h3>
                 <div class="grid gap-2">
                     {#each group.notices as notice}
                         <div class="bg-muted/40 border border-border rounded-xl p-3 overflow-hidden">
@@ -34,9 +34,9 @@ const groups = useQuery(api.notices.pastByMonth, { monthKey });
                                         </span>
                                     </div>
                                     <div class="flex items-center gap-1.5 mb-0.5">
-                                        <h5 class="font-medium text-muted-foreground text-sm truncate">
+                                        <h4 class="font-medium text-muted-foreground text-sm truncate">
                                             {notice.title}
-                                        </h5>
+                                        </h4>
                                     </div>
                                 </div>
                                 <div class="flex gap-1.5">

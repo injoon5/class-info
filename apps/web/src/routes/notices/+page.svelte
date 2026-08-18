@@ -37,6 +37,7 @@ const overview = useQuery(api.notices.overview, {}, () => ({
 
 
 <div class="max-w-4xl mx-auto px-4 pt-5 pb-4 sm:pt-6">
+	<h1 class="sr-only">공지</h1>
 	<!-- Notice Board -->
     {#if overview.isLoading}
         <LoadingState />
@@ -48,13 +49,11 @@ const overview = useQuery(api.notices.overview, {}, () => ({
             {#each overview.data.currentGroups as group}
                 <NoticeGroup {group} />
             {/each}
-        {:else}
-            <EmptyState />
         {/if}
 
         {#if overview.data?.pastMonths && overview.data.pastMonths.length > 0}
             <div class="mt-6 sm:mt-8 pt-4 sm:pt-6 border-t border-border">
-                <h2 class="text-base sm:text-lg font-semibold tracking-tight mb-2 sm:mb-3 text-muted-foreground">지난 알림</h2>
+                <h2 class="text-base sm:text-lg font-semibold tracking-tight mb-2 sm:mb-3 text-muted-foreground">지난 공지</h2>
                 {#each overview.data.pastMonths as month (month.monthKey)}
                     <details class="mb-1.5 sm:mb-2 bg-card border border-border rounded-xl overflow-hidden" open={openMonthKey === month.monthKey}>
                         <summary

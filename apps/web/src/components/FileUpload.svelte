@@ -170,7 +170,7 @@ function handleDrop(e: DragEvent) {
     />
 
     {#if isUploading}
-      <p class="text-sm text-muted-foreground">파일 업로드 중...</p>
+      <p class="text-sm text-muted-foreground">파일 업로드 중…</p>
     {:else}
       <label for="file-upload" class="cursor-pointer">
         <p class="text-sm text-muted-foreground mb-3">

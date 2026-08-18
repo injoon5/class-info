@@ -6,6 +6,8 @@ import { writable } from 'svelte/store';
 import { enhance } from '$app/forms';
 import FileUpload from '../../components/FileUpload.svelte';
 import { getTypeColor } from '$lib/utils';
+import { formatAbsolute, formatRelative } from '$lib/date';
+import LoadingState from '../../components/LoadingState.svelte';
 import type { PageData, ActionData } from './$types';
 
 let { data, form }: { data: PageData; form: ActionData } = $props();
@@ -62,7 +64,7 @@ async function editNotice(noticeOrId: any) {
 		full = null;
 	}
 	if (!full) {
-		alert('알림을 불러오지 못했습니다. 다시 시도해주세요.');
+		alert('공지를 불러오지 못했습니다. 다시 시도해주세요.');
 		return;
 	}
 	noticeForm.set({
@@ -173,6 +175,8 @@ const lastUpdatedTs = $derived.by(() => {
 						id="pin"
 						name="pin"
 						type="password"
+						inputmode="numeric"
+						autocomplete="current-password"
 						bind:value={$pin}
 						class="w-full h-12 px-3.5 rounded-xl border border-border text-base bg-muted text-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring/50 placeholder:text-muted-foreground transition-shadow"
 						placeholder="관리자 PIN을 입력하세요"
@@ -202,17 +206,18 @@ const lastUpdatedTs = $derived.by(() => {
 	<div class="min-h-screen">
 		<div class="max-w-4xl mx-auto px-4 pt-5 pb-4">
 		<!-- Header -->
-		<div class="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 mb-5">
-			<div class="flex gap-2">
+		<div class="flex items-center justify-between gap-3 mb-5">
+			<h1 class="text-xl font-bold tracking-tight text-foreground">공지 관리</h1>
+			<div class="flex items-center gap-2">
 				<button
 					onclick={() => showForm.set(!$showForm)}
 					class="pressable-lg rounded-full px-4 font-medium py-2 bg-primary text-primary-foreground text-sm transition-opacity pointer:hover:opacity-90 text-center"
 				>
-					{$showForm ? '취소' : '새 알림 추가'}
+					{$showForm ? '취소' : '새 공지 추가'}
 				</button>
 
 				<form method="POST" action="?/logout" use:enhance class="inline">
-					<button type="submit" class="pressable-lg rounded-full px-4 py-2 font-medium border border-border text-sm text-foreground transition-colors pointer:hover:bg-muted text-center w-full sm:w-auto">
+					<button type="submit" class="pressable-lg rounded-full px-4 py-2 font-medium border border-border text-sm text-foreground transition-colors pointer:hover:bg-muted text-center">
 						로그아웃
 					</button>
 				</form>
@@ -223,10 +228,10 @@ const lastUpdatedTs = $derived.by(() => {
 		{#if $showForm}
 			<div class="bg-card border border-border rounded-2xl p-4 sm:p-5 mb-6">
 				<h2 class="text-lg font-semibold tracking-tight mb-4 text-foreground">
-					{$editingNotice ? '알림 수정' : '새 알림 추가'}
+					{$editingNotice ? '공지 수정' : '새 공지 추가'}
 				</h2>
 
-				<div class="grid gap-4">
+				<form class="grid gap-4" onsubmit={(e) => { e.preventDefault(); handleSubmit(); }}>
 					<div>
 						<label for="notice-title" class="block text-sm font-medium mb-1.5 text-muted-foreground">제목 *</label>
 						<input
@@ -293,28 +298,29 @@ const lastUpdatedTs = $derived.by(() => {
 
 					<div class="flex gap-2">
 						<button
-							onclick={handleSubmit}
+							type="submit"
 							class="pressable-lg rounded-full px-5 font-medium py-2.5 bg-primary text-primary-foreground text-sm transition-opacity pointer:hover:opacity-90"
 						>
 							{$editingNotice ? '수정' : '추가'}
 						</button>
 						<button
+							type="button"
 							onclick={resetForm}
 							class="pressable-lg rounded-full px-5 py-2.5 font-medium border border-border text-sm text-foreground transition-colors pointer:hover:bg-muted"
 						>
 							취소
 						</button>
 					</div>
-				</div>
+				</form>
 			</div>
 		{/if}
 
 		<!-- Notice List -->
 		{#if overview.isLoading}
-			<div class="text-center py-8 text-muted-foreground">로딩 중...</div>
+			<LoadingState />
         {:else if overview.error}
 			<div class="text-center py-8 text-destructive">
-				<p>알림을 불러오는 중 오류가 발생했습니다.</p>
+				<p>공지를 불러오는 중 오류가 발생했습니다.</p>
 				<button onclick={() => window.location.reload()} class="pressable mt-3 rounded-full px-4 py-2 bg-primary text-primary-foreground text-sm font-medium transition-opacity pointer:hover:opacity-90">다시 시도</button>
 			</div>
         {:else}
@@ -322,9 +328,9 @@ const lastUpdatedTs = $derived.by(() => {
             {#if allGroupedNotices && allGroupedNotices.length > 0}
             {#each allGroupedNotices as group}
 				<div class="mb-6">
-					<h3 class="text-base font-semibold tracking-tight mb-3 text-foreground border-l-[3px] border-foreground pl-3">
+					<h2 class="text-base font-semibold tracking-tight mb-3 text-foreground border-l-[3px] border-foreground pl-3">
 						{group.displayDate}
-					</h3>
+					</h2>
 
                     <div class="grid gap-2">
                         {#each group.notices as notice}
@@ -340,9 +346,9 @@ const lastUpdatedTs = $derived.by(() => {
                                             </span>
                                         </div>
                                         <div class="flex items-center gap-1.5 sm:mb-1 mb-0.5">
-                                            <h4 class="font-semibold text-foreground text-base break-words">
+                                            <h3 class="font-semibold text-foreground text-base break-words">
                                                 {notice.title}
-                                            </h4>
+                                            </h3>
                                             {#if notice.hasFiles}
                                                 <svg class="w-3 h-3 text-muted-foreground flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
                                                     <path fill-rule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 0 1 1.414 1.414l-3 3a1 1 0 0 1-1.414 0l-3-3a1 1 0 0 1 0-1.414z" clip-rule="evenodd"/>
@@ -372,13 +378,13 @@ const lastUpdatedTs = $derived.by(() => {
 				</div>
             {/each}
             {:else}
-                <div class="text-center py-8 text-muted-foreground">등록된 알림이 없습니다.</div>
+                <div class="text-center py-16 text-sm text-muted-foreground">등록된 공지가 없습니다</div>
             {/if}
 
 			<!-- Past Notices by Month (lazy) -->
 			{#if overview.data?.pastMonths && overview.data.pastMonths.length > 0}
                 <div class="mt-6 pt-6 border-t border-border">
-                    <h3 class="text-base sm:text-lg font-semibold tracking-tight mb-3 text-muted-foreground">지난 알림</h3>
+                    <h2 class="text-base sm:text-lg font-semibold tracking-tight mb-3 text-muted-foreground">지난 공지</h2>
                     {#each overview.data.pastMonths as m (m.monthKey)}
                         <details class="mb-1.5 sm:mb-2 bg-card border border-border rounded-xl overflow-hidden" open={openMonthKey === m.monthKey}>
                             <summary
@@ -417,15 +423,9 @@ const lastUpdatedTs = $derived.by(() => {
 		<!-- Footer -->
 		<div class="text-center py-4 text-xs text-muted-foreground border-t border-border mt-8 tabular-nums">
 			{#if lastUpdatedTs !== null}
-				마지막 업데이트: {new Date(lastUpdatedTs).toLocaleString('ko-KR', {
-					year: 'numeric',
-					month: 'long',
-					day: 'numeric',
-					hour: '2-digit',
-					minute: '2-digit'
-				})}
+				마지막 업데이트: <span title={formatAbsolute(lastUpdatedTs)}>{formatRelative(lastUpdatedTs)}</span>
 			{:else}
-				마지막 업데이트: 데이터 없음
+				마지막 업데이트: 없음
 			{/if}
 		</div>
 	</div>

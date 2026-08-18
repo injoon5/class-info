@@ -94,6 +94,7 @@ function openMealDrawer(day: any) {
 </svelte:head>
 
 <div class="max-w-4xl mx-auto px-4 pt-4 pb-2 sm:pt-5">
+  <h1 class="sr-only">급식</h1>
   {#if mealsQuery.isLoading}
     <LoadingState />
   {:else if mealsQuery.error}

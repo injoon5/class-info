@@ -10,10 +10,10 @@
 <div class="min-h-[60vh]">
 	<div class="max-w-4xl mx-auto p-4">
 		<div class="flex flex-col items-center text-center gap-3 py-20">
-			<p class="text-6xl font-bold tracking-tight tabular-nums text-foreground">{page.status === 404 ? '404' : page.status}</p>
-			<h2 class="text-2xl font-semibold tracking-tight text-foreground">
+			<p class="text-6xl font-bold tracking-tight tabular-nums text-foreground" aria-hidden="true">{page.status}</p>
+			<h1 class="text-2xl font-semibold tracking-tight text-foreground">
 				{page.status === 404 ? '페이지를 찾을 수 없습니다' : '문제가 발생했습니다'}
-			</h2>
+			</h1>
 			{#if page.error?.message}
 				<p class="text-muted-foreground">{page.error.message}</p>
 			{/if}

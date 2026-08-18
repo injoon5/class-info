@@ -26,3 +26,33 @@ export function toYyyymmdd(year: number, month: number, day: number): string {
 export function weekdayKr(d: Date): string {
 	return WEEKDAYS_KR[d.getDay()];
 }
+
+// ── Timestamps ───────────────────────────────────────────────────────────────
+// Absolute is the fallback and the tooltip; relative is what the cell shows.
+// Callers pass an explicit `now` so server-rendered output stays deterministic.
+
+export function formatAbsolute(ts: number | string | Date): string {
+	return new Date(ts).toLocaleString('ko-KR', {
+		year: 'numeric',
+		month: 'long',
+		day: 'numeric',
+		hour: '2-digit',
+		minute: '2-digit'
+	});
+}
+
+export function formatRelative(ts: number | string | Date, now: number = Date.now()): string {
+	const then = new Date(ts).getTime();
+	if (Number.isNaN(then)) return '';
+	const minutes = Math.floor((now - then) / 60_000);
+	if (minutes < 0) return '방금 전';
+	if (minutes < 1) return '방금 전';
+	if (minutes < 60) return `${minutes}분 전`;
+	const hours = Math.floor(minutes / 60);
+	if (hours < 24) return `${hours}시간 전`;
+	const days = Math.floor(hours / 24);
+	if (days < 7) return `${days}일 전`;
+	if (days < 28) return `${Math.floor(days / 7)}주 전`;
+	// Older than a month: an absolute date carries more than "5주 전" does.
+	return new Date(ts).toLocaleDateString('ko-KR', { year: 'numeric', month: 'long', day: 'numeric' });
+}

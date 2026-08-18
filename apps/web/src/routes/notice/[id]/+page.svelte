@@ -2,8 +2,11 @@
 import { useQuery } from 'convex-svelte';
 import { api } from "@class-info/backend/convex/_generated/api";
 import { page } from '$app/state';
-import { getTypeColor, getFirstLine, formatDate } from '../../../lib/utils.js';
+import { getTypeColor, getFirstLine, formatDate, formatFileSize } from '../../../lib/utils.js';
 import { renderMarkdown } from '$lib/markdown';
+import { formatAbsolute } from '$lib/date';
+import LoadingState from '../../../components/LoadingState.svelte';
+import ErrorState from '../../../components/ErrorState.svelte';
 import type { PageData } from './$types.js';
 
 let { data }: { data: PageData } = $props();
@@ -57,7 +60,6 @@ $effect(() => {
 	<div class="max-w-4xl mx-auto px-4 pt-4 pb-2">
 		<!-- Header -->
 		<a
-			type="button"
 			href="/notices"
 			class="inline-flex items-center gap-1 sm:mb-3 mb-2 py-1 sm:py-2 text-sm text-muted-foreground pointer:hover:text-foreground transition-colors pressable"
 		>
@@ -66,17 +68,11 @@ $effect(() => {
 
 		<!-- Notice Detail -->
 		{#if detail.isLoading}
-			<div class="text-center py-8 text-muted-foreground">로딩 중...</div>
+			<LoadingState />
 		{:else if detail.error}
-			<div class="text-center py-8 text-destructive">
-				<p>데이터를 불러오는 중 오류가 발생했습니다.</p>
-				<p class="text-sm mt-2">{detail.error.toString()}</p>
-				<button onclick={() => window.location.reload()} class="pressable mt-4 rounded-full px-4 py-2 bg-primary text-primary-foreground text-sm font-medium transition-opacity pointer:hover:opacity-90">
-					다시 시도
-				</button>
-			</div>
+			<ErrorState error={detail.error} />
 		{:else if !detail.data?.notice}
-			<div class="text-center py-8 text-muted-foreground">알림을 찾을 수 없습니다.</div>
+			<div class="text-center py-16 text-sm text-muted-foreground">공지를 찾을 수 없습니다</div>
 		{:else}
 			<div class="mb-4 mt-2 sm:mt-3 bg-card border border-border rounded-2xl p-4 sm:p-6">
 				<div class="mb-4">
@@ -88,9 +84,9 @@ $effect(() => {
 							{detail.data.notice.subject}
 						</span>
 					</div>
-					<h2 class="text-xl sm:text-2xl font-bold tracking-tight text-foreground sm:mb-1">
+					<h1 class="text-xl sm:text-2xl font-bold tracking-tight text-foreground sm:mb-1">
 						{detail.data.notice.title}
-					</h2>
+					</h1>
 					<p class="text-sm sm:text-base text-muted-foreground">
 						마감일: {formatDate(detail.data.notice.dueDate)}
 					</p>
@@ -106,17 +102,17 @@ $effect(() => {
 
 				{#if detail.data.files && detail.data.files.length > 0}
 					<div class="border-t border-border pt-4 mt-6">
-						<h3 class="text-sm sm:text-base font-semibold mb-3 text-foreground">첨부 파일</h3>
+						<h2 class="text-sm sm:text-base font-semibold mb-3 text-foreground">첨부 파일</h2>
 						<div class="space-y-2">
 							{#each detail.data.files as file}
-								<div class="flex items-center gap-3 p-3 bg-muted/50 border border-border rounded-xl">
+								<div class="flex items-center gap-3 p-3 bg-muted/50 border border-border rounded-lg">
 									<div class="flex-shrink-0">
 										{#if file.type.startsWith('image/')}
 											<svg class="w-5 h-5 text-muted-foreground" fill="currentColor" viewBox="0 0 20 20">
 												<path fill-rule="evenodd" d="M4 3a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V5a2 2 0 00-2-2H4zm12 12H4l4-8 3 6 2-4 3 6z" clip-rule="evenodd"/>
 											</svg>
 										{:else}
-											<svg class="w-5 h-5 text-red-500" fill="currentColor" viewBox="0 0 20 20">
+											<svg class="w-5 h-5 text-muted-foreground" fill="currentColor" viewBox="0 0 20 20">
 												<path fill-rule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4z" clip-rule="evenodd"/>
 											</svg>
 										{/if}
@@ -131,7 +127,7 @@ $effect(() => {
 											{file.name}
 										</a>
 										<p class="text-xs text-muted-foreground tabular-nums">
-											{(file.size / 1024 / 1024).toFixed(2)} MB
+											{formatFileSize(file.size)}
 										</p>
 									</div>
 									<a
@@ -152,13 +148,7 @@ $effect(() => {
 
 				{#if detail.data.notice.createdAt}
 					<div class="border-t border-border pt-4 mt-6 text-xs sm:text-sm text-muted-foreground">
-						등록일: {new Date(detail.data.notice.createdAt).toLocaleString('ko-KR', { 
-							year: 'numeric', 
-							month: 'long', 
-							day: 'numeric', 
-							hour: '2-digit', 
-							minute: '2-digit' 
-						})}
+						등록일: {formatAbsolute(detail.data.notice.createdAt)}
 					</div>
 				{/if}
 			</div>

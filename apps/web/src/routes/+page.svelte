@@ -3,6 +3,7 @@ import { useQuery } from 'convex-svelte';
 import { api } from "@class-info/backend/convex/_generated/api";
 import NoticeCard from '../components/NoticeCard.svelte';
 import { getNowInKst, yyyymmdd, WEEKDAYS_KR } from '$lib/date';
+import { eventDotClass } from '$lib/utils';
 import type { PageData } from './$types.js';
 
 let { data }: { data: PageData } = $props();
@@ -98,8 +99,25 @@ const upcomingEvents = $derived(
 );
 
 // ── Notices ───────────────────────────────────────────────────────────────────
+const PREVIEW_NOTICE_LIMIT = 4;
+
 const currentGroups = $derived(noticesQuery.data?.currentGroups ?? []);
-const noticePreview = $derived(currentGroups.slice(0, 3));
+
+// Take whole groups until the notice budget runs out, trimming the last group
+// rather than dropping it — the earliest deadlines are the ones worth showing.
+const noticePreview = $derived.by(() => {
+	const preview: any[] = [];
+	let budget = PREVIEW_NOTICE_LIMIT;
+	for (const group of currentGroups as any[]) {
+		if (budget <= 0) break;
+		const notices = (group.notices ?? []).slice(0, budget);
+		if (notices.length === 0) continue;
+		preview.push({ ...group, notices });
+		budget -= notices.length;
+	}
+	return preview;
+});
+
 const hasNotices = $derived(noticePreview.length > 0);
 const shownNoticeCount = $derived(noticePreview.reduce((sum, g: any) => sum + (g.notices?.length ?? 0), 0));
 const totalNoticeCount = $derived(currentGroups.reduce((sum, g: any) => sum + (g.notices?.length ?? 0), 0));
@@ -128,16 +146,6 @@ function eventTypeCss(event: any): string {
 	}
 }
 
-function eventDotColor(event: any): string {
-	if (event.source === 'custom' && event.color) return event.color;
-	switch (event.eventType) {
-		case '공휴일': return '#ef4444';
-		case '휴업일':
-		case '재량휴업일': return '#f59e0b';
-		default: return '#0ea5e9';
-	}
-}
-
 function isToday(dateStr: string): boolean {
 	return dateStr === todayYyyymmdd;
 }
@@ -159,7 +167,7 @@ function isToday(dateStr: string): boolean {
 <div class="max-w-4xl mx-auto px-4 pt-6 pb-16 sm:pt-8">
 
 	<!-- ── Date hero ───────────────────────────────────────────────────────── -->
-	<header class="flex flex-wrap items-baseline justify-between gap-x-5 gap-y-1.5 mb-6 sm:mb-7">
+	<header class="flex flex-wrap items-baseline justify-between gap-x-6 gap-y-1.5 mb-6 sm:mb-8">
 		<h1 class="flex items-baseline gap-2">
 			<span class="text-2xl sm:text-3xl font-bold tracking-tight text-foreground">{todayMonth}월 {todayDate}일</span>
 			<span class="text-base sm:text-lg font-medium text-muted-foreground">{todayWeekday}요일</span>
@@ -190,7 +198,7 @@ function isToday(dateStr: string): boolean {
 			<div class="bg-card border border-border rounded-2xl p-4">
 				{#if displaySchedule.length === 0}
 					<div class="flex items-center justify-center py-8">
-						<p class="text-sm text-muted-foreground text-center">시간표가 없어요</p>
+						<p class="text-sm text-muted-foreground text-center">시간표가 없습니다</p>
 					</div>
 				{:else}
 					<ol class="space-y-2.5">
@@ -216,12 +224,12 @@ function isToday(dateStr: string): boolean {
 			</div>
 			<div class="bg-card border border-border rounded-2xl p-4">
 				<!-- gap-0 + symmetric padding keeps the divider on the card's exact center at every width -->
-				<div class="grid grid-cols-2">
+				<div class="grid {displayDinner ? 'grid-cols-2' : 'grid-cols-1'}">
 					<!-- Lunch -->
-					<div class="pr-4 sm:pr-6">
+					<div class={displayDinner ? 'pr-4 sm:pr-6' : ''}>
 						<p class="text-xs font-semibold text-muted-foreground mb-2">중식</p>
 						{#if !displayLunch}
-							<p class="text-sm text-muted-foreground">급식 정보가 없어요</p>
+							<p class="text-sm text-muted-foreground">급식 정보가 없습니다</p>
 						{:else}
 							<ul class="space-y-1.5">
 								{#each displayLunch.dishes as dish}
@@ -234,11 +242,9 @@ function isToday(dateStr: string): boolean {
 						{/if}
 					</div>
 					<!-- Dinner -->
-					<div class="border-l border-border pl-4 sm:pl-6">
-						<p class="text-xs font-semibold text-muted-foreground mb-2">석식</p>
-						{#if !displayDinner}
-							<p class="text-sm text-muted-foreground">급식 정보가 없어요</p>
-						{:else}
+					{#if displayDinner}
+						<div class="border-l border-border pl-4 sm:pl-6">
+							<p class="text-xs font-semibold text-muted-foreground mb-2">석식</p>
 							<ul class="space-y-1.5">
 								{#each displayDinner.dishes as dish}
 									<li class="text-[15px] text-foreground leading-snug truncate max-w-full overflow-hidden whitespace-nowrap">{dish}</li>
@@ -247,8 +253,8 @@ function isToday(dateStr: string): boolean {
 							{#if displayDinner.calories}
 								<p class="mt-2.5 text-xs text-muted-foreground tabular-nums">{displayDinner.calories}</p>
 							{/if}
-						{/if}
-					</div>
+						</div>
+					{/if}
 				</div>
 			</div>
 		</section>
@@ -271,7 +277,7 @@ function isToday(dateStr: string): boolean {
 				</div>
 			{:else if !hasNotices}
 				<div class="bg-card border border-border rounded-2xl px-4 py-8 text-center">
-					<p class="text-sm text-muted-foreground">공지가 없어요</p>
+					<p class="text-sm text-muted-foreground">등록된 공지가 없습니다</p>
 				</div>
 			{:else}
 				<div class="space-y-4">
@@ -308,13 +314,13 @@ function isToday(dateStr: string): boolean {
 			</div>
 			{#if upcomingEvents.length === 0}
 				<div class="bg-card border border-border rounded-2xl px-4 py-8 text-center">
-					<p class="text-sm text-muted-foreground">다가오는 일정이 없어요</p>
+					<p class="text-sm text-muted-foreground">다가오는 일정이 없습니다</p>
 				</div>
 			{:else}
 				<div class="bg-card border border-border rounded-2xl overflow-hidden divide-y divide-border">
 					{#each upcomingEvents as event, i (event._id ?? i)}
 						<div class="flex items-center gap-2.5 px-4 py-3">
-							<span class="w-2 h-2 rounded-full shrink-0" style="background-color: {eventDotColor(event)}" aria-hidden="true"></span>
+							<span class="w-2 h-2 rounded-full shrink-0 {eventDotClass(event)}" aria-hidden="true"></span>
 							<span class="text-[15px] text-foreground font-medium flex-1 min-w-0 truncate">{event.title}</span>
 							<span class="text-xs tabular-nums shrink-0 text-right {isToday(event.date) ? 'font-semibold text-foreground' : 'text-muted-foreground'}">
 								{isToday(event.date) ? '오늘' : formatEventDate(event.date)}

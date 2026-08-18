@@ -7,11 +7,17 @@ import EmptyState from '../../components/EmptyState.svelte';
 import HScroll from '../../components/HScroll.svelte';
 import SegmentedControl from '../../components/SegmentedControl.svelte';
 import { createBlurPulse } from '$lib/blurPulse.svelte';
+import { formatAbsolute, formatRelative } from '$lib/date';
+import { onMount } from 'svelte';
 import type { PageData } from './$types.js';
 
 let { data }: { data: PageData } = $props();
 
 let selectedWeek = $state(0); // 0: this week, 1: next week
+
+// Relative time is resolved after mount so SSR and hydration agree on the markup.
+let now = $state<number | null>(null);
+onMount(() => { now = Date.now(); });
 
 const blur = createBlurPulse();
 $effect(() => { selectedWeek; blur.pulse(); });
@@ -59,6 +65,7 @@ function getPeriodLabel(period: number): string {
 </svelte:head>
 
 <div class="max-w-4xl mx-auto px-4 pt-4 pb-1 sm:pt-5 sm:pb-0 sm:px-4">
+	<h1 class="sr-only">시간표</h1>
 	<!-- Header: Week Selector -->
 	<div class="mb-3">
 		<SegmentedControl
@@ -81,31 +88,27 @@ function getPeriodLabel(period: number): string {
 				<table class="w-full min-w-[18rem] table-fixed border border-border border-collapse overflow-hidden rounded-2xl mx-auto">
 				<thead>
 					<tr class="bg-muted">
-						<th class="px-1 py-3 text-center text-base sm:text-lg text-muted-foreground border border-border"> </th>
+						<th scope="col" class="px-1 py-3 border border-border"><span class="sr-only">교시</span></th>
 						{#each dayNames as name}
-							<th class="px-1 py-2 text-center text-base font-semibold sm:text-lg text-foreground border border-border">{name}</th>
+							<th scope="col" class="px-1 py-2 text-center text-base font-semibold sm:text-lg text-foreground border border-border">{name}</th>
 						{/each}
 					</tr>
 				</thead>
 				<tbody>
 					{#each Array(getMaxPeriods()) as _, i}
 						<tr>
-							<td class="px-0.5 py-3 sm:py-6 border border-border text-muted-foreground text-center bg-muted">
+							<th scope="row" class="px-0.5 py-3 sm:py-6 border border-border text-center font-normal bg-muted">
 								<div class="text-sm sm:text-lg font-semibold text-foreground whitespace-nowrap">{i + 1}교시</div>
 								<div class="text-[11px] sm:text-base text-muted-foreground tabular-nums leading-tight">{getPeriodLabel(i + 1)}</div>
-							</td>
+							</th>
 							{#each (timetableQuery.data?.timetable || []) as day}
-								<td class="border border-border py-3 sm:py-6 text-center {day[i]?.replaced ? 'bg-amber-100/70 dark:bg-amber-900/20' : 'bg-card'}">
+								<td class="border border-border py-3 sm:py-6 px-1 text-center {day[i]?.replaced ? 'bg-amber-100/70 dark:bg-amber-900/20' : 'bg-card'}">
 									{#if day[i]}
-										<!-- Subject cell -->
-										<div class="flex items-center justify-center gap-2">
-											<div>
-												<span class="text-[15px] sm:text-xl font-semibold {day[i].replaced ? 'text-amber-700 dark:text-amber-300' : 'text-foreground'}">{day[i].subject}</span>
-											</div>
-										</div>
+										<div class="text-[15px] sm:text-xl font-semibold {day[i].replaced ? 'text-amber-700 dark:text-amber-300' : 'text-foreground'}">{day[i].subject}</div>
 										<div class="text-sm sm:text-base mt-0.5 font-medium text-muted-foreground">{day[i].teacher}</div>
 									{:else}
-										<span class="text-muted-foreground/50 text-base sm:text-lg">-</span>
+										<span class="text-muted-foreground/50 text-base sm:text-lg" aria-hidden="true">-</span>
+										<span class="sr-only">수업 없음</span>
 									{/if}
 								</td>
 							{/each}
@@ -115,14 +118,9 @@ function getPeriodLabel(period: number): string {
 			</table>
 		</HScroll>
 		{#if timetableQuery.data}
+			{@const editedAt = timetableQuery.data.editedAt}
 			<p class="mt-3 text-xs text-muted-foreground pb-10">
-				업데이트: {new Date(timetableQuery.data.editedAt).toLocaleString('ko-KR', {
-					year: 'numeric',
-					month: 'long',
-					day: 'numeric',
-					hour: '2-digit',
-					minute: '2-digit'
-				})}
+				업데이트: <span title={formatAbsolute(editedAt)}>{now === null ? formatAbsolute(editedAt) : formatRelative(editedAt, now)}</span>
 			</p>
 		{/if}
 	{/if}

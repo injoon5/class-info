@@ -3,18 +3,32 @@ import { generateCopyText } from '../lib/utils.js';
 
 let { notices }: { notices: any[] } = $props(); // groups array from server
 
+let copied = $state(false);
+let resetTimer: ReturnType<typeof setTimeout> | undefined;
+
+// The layout ships a polite live region; this is what it is for. A modal
+// alert() for a confirmation the button itself can carry is a heavier control
+// than the action deserves.
+function announce(message: string) {
+	const region = document.getElementById('aria-live-region');
+	if (region) region.textContent = message;
+}
+
 async function copyToClipboard() {
 	const text = generateCopyText(notices || []);
 	if (!text) {
-		alert('복사할 알림이 없습니다.');
+		announce('복사할 공지가 없습니다');
 		return;
 	}
-	
+
 	try {
 		await navigator.clipboard.writeText(text);
-		alert('클립보드에 복사되었습니다!');
-	} catch (err) {
-		alert('복사에 실패했습니다.');
+		copied = true;
+		announce('클립보드에 복사되었습니다');
+		clearTimeout(resetTimer);
+		resetTimer = setTimeout(() => { copied = false; }, 2000);
+	} catch {
+		announce('복사에 실패했습니다');
 	}
 }
 </script>
@@ -25,7 +39,7 @@ async function copyToClipboard() {
 		onclick={copyToClipboard}
 		class="pressable rounded-full border border-border px-3 py-1.5 font-medium text-muted-foreground transition-colors pointer:hover:text-foreground pointer:hover:bg-muted"
 	>
-		알림 복사
+		{copied ? '복사됨' : '공지 복사'}
 	</button>
 	<a
 		href="/admin"
