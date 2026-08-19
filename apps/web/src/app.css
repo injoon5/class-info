@@ -59,8 +59,7 @@
 	   variable to say nothing.
 	   `tracking-tight` is a display correction — it belongs at 24px and up. On
 	   Korean at 16–20px it removes breathing room that the syllable blocks need. */
-	--text-list: 0.9375rem;
-	--ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+  --text-list: 0.9375rem;
 	--color-background: var(--background);
 	--color-foreground: var(--foreground);
 	--color-card: var(--card);
@@ -259,14 +258,21 @@ select:focus-visible {
 		display: none !important;
 	}
 
-	/* The subject of the page gets the sheet, centred, with its own breathing
-	   room. The padding lives on the element rather than only in @page, because
-	   a reader who sets "Margins: none" in the print dialog drops the page
-	   margin and would otherwise get a table welded to the corner of the sheet. */
+	/* The subject of the page sits as a block in the middle of the sheet.
+	   Padding lives on the element rather than only in @page, because a reader
+	   who sets "Margins: none" in the print dialog would otherwise weld the
+	   table to the corner. Vertical centering is opt-in via .print-sheet. */
 	main :where(.max-w-4xl) {
 		max-width: none !important;
 		margin-inline: auto !important;
-		padding: 10mm 8mm !important;
+		padding: 12mm 14mm !important;
+	}
+
+	.print-sheet {
+		min-height: calc(297mm - 24mm);
+		display: flex !important;
+		flex-direction: column;
+		justify-content: center;
 	}
 
 	/* A horizontal scroller must not crop what it holds on paper. */

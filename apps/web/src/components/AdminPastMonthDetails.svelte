@@ -3,6 +3,11 @@ import { useQuery } from 'convex-svelte';
 import { api } from "@class-info/backend/convex/_generated/api";
 import { getTypeColor } from '../lib/utils.js';
 import type { Snippet } from 'svelte';
+import { fade, slide } from 'svelte/transition';
+import { flip } from 'svelte/animate';
+import { fadeFast, flipMove, slideY } from '$lib/transitions';
+import ConfirmDeleteActions from './ConfirmDeleteActions.svelte';
+import LoadingState from './LoadingState.svelte';
 
 // `editorTarget` and `editor` come from the admin page so a past notice is
 // edited in its own row too, not somewhere else on the page.
@@ -29,17 +34,28 @@ const groups = useQuery(api.notices.pastByMonth, { monthKey });
 
 <div class="px-3 pb-3 pt-1">
     {#if groups.isLoading}
-        <div class="text-sm text-muted-foreground">불러오는 중…</div>
+        <div out:fade={fadeFast}>
+            <LoadingState compact />
+        </div>
     {:else if groups.error}
-        <div class="text-sm text-destructive">오류가 발생했습니다.</div>
+        <div class="text-sm text-destructive py-3 text-center">오류가 발생했습니다.</div>
     {:else}
+        <div in:slide={slideY}>
         {#each groups.data as group (group.date)}
-            <div class="mb-3 last:mb-0">
+            <div
+                class="mb-3 last:mb-0"
+                animate:flip={flipMove}
+                out:slide={slideY}
+            >
                 <h3 class="text-sm font-semibold mb-2 text-muted-foreground border-l-2 border-border pl-2">
                     {group.displayDate}
                 </h3>
                 <div class="grid gap-2">
                     {#each group.notices as notice (notice._id)}
+                        <div
+                            animate:flip={flipMove}
+                            out:slide={slideY}
+                        >
                         {#if editor && editorTarget === String(notice._id)}
                             {@render editor()}
                         {:else}
@@ -60,35 +76,25 @@ const groups = useQuery(api.notices.pastByMonth, { monthKey });
                                         </h4>
                                     </div>
                                 </div>
-                                <div class="flex gap-1.5">
-                                    {#if confirmingDeleteId === String(notice._id)}
-                                        <button
-                                            onclick={() => { onDelete(String(notice._id)); confirmingDeleteId = null; }}
-                                            class="pressable touch-target rounded-lg px-2.5 py-1 text-xs font-semibold border border-destructive bg-destructive/10 text-destructive transition-colors duration-150 pointer:hover:bg-destructive/20"
-                                        >삭제</button>
-                                        <button
-                                            onclick={() => (confirmingDeleteId = null)}
-                                            class="pressable touch-target rounded-lg px-2.5 py-1 text-xs font-semibold border border-border text-muted-foreground transition-colors duration-150 pointer:hover:bg-muted pointer:hover:text-foreground"
-                                        >취소</button>
-                                    {:else}
-                                        <button
-                                            onclick={() => onEdit(String(notice._id))}
-                                            class="pressable touch-target rounded-lg px-2.5 py-1 text-xs font-semibold border border-border text-foreground transition-colors duration-150 pointer:hover:bg-muted"
-                                        >수정</button>
-                                        <button
-                                            onclick={() => (confirmingDeleteId = String(notice._id))}
-                                            class="pressable touch-target rounded-lg px-2.5 py-1 text-xs font-semibold border border-border text-destructive transition-colors duration-150 pointer:hover:bg-destructive/10"
-                                        >삭제</button>
-                                    {/if}
-                                </div>
+                                <ConfirmDeleteActions
+                                    size="sm"
+                                    confirming={confirmingDeleteId === String(notice._id)}
+                                    onEdit={() => onEdit(String(notice._id))}
+                                    onAskDelete={() => (confirmingDeleteId = String(notice._id))}
+                                    onConfirmDelete={() => {
+                                        onDelete(String(notice._id));
+                                        confirmingDeleteId = null;
+                                    }}
+                                    onCancel={() => (confirmingDeleteId = null)}
+                                />
                             </div>
                         </div>
                         {/if}
+                        </div>
                     {/each}
                 </div>
             </div>
         {/each}
+        </div>
     {/if}
 </div>
-
-

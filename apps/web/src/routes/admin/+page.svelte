@@ -8,9 +8,14 @@ import { getTypeColor } from '$lib/utils';
 import { formatAbsolute, formatRelative } from '$lib/date';
 import LoadingState from '../../components/LoadingState.svelte';
 import PillButton from '../../components/PillButton.svelte';
+import ConfirmDeleteActions from '../../components/ConfirmDeleteActions.svelte';
+import AdminPastMonthDetails from '../../components/AdminPastMonthDetails.svelte';
+import DisclosureCaret from '../../components/DisclosureCaret.svelte';
 import { autosize } from '$lib/actions/autosize';
 import { fade, slide } from 'svelte/transition';
-import { expoOut } from 'svelte/easing';
+import { flip } from 'svelte/animate';
+import { fadeIn, fadeOut, flipMove, slideY } from '$lib/transitions';
+import { useQuery } from 'convex-svelte';
 import type { PageData, ActionData } from './$types';
 
 const { data, form }: { data: PageData; form: ActionData } = $props();
@@ -42,8 +47,6 @@ let pin = $state('');
 const noticeTypes = ['수행평가', '숙제', '준비물', '기타'] as const;
 
 // Server now provides grouped current notices; fetch past months on demand
-import AdminPastMonthDetails from '../../components/AdminPastMonthDetails.svelte';
-import { useQuery } from 'convex-svelte';
 const overview = useQuery(api.notices.overview, {}, () => ({
 	initialData: data.overview,
 	keepPreviousData: true
@@ -186,11 +189,11 @@ const lastUpdatedTs = $derived.by(() => {
 </svelte:head>
 
 {#snippet noticeEditor()}
-	<div transition:slide={{ duration: 300, easing: expoOut }}>
+	<div transition:slide={slideY}>
 		<div
 			class="bg-card border border-border rounded-3xl p-4 mb-6"
-			in:fade={{ duration: 200, delay: 80 }}
-			out:fade={{ duration: 120 }}
+			in:fade={fadeIn}
+			out:fade={fadeOut}
 		>
 			<h2 class="text-lg font-semibold mb-4 text-foreground">
 				{isEditing ? '공지 수정' : '새 공지 추가'}
@@ -372,13 +375,18 @@ const lastUpdatedTs = $derived.by(() => {
 			<!-- Current and Future Notices -->
             {#if allGroupedNotices && allGroupedNotices.length > 0}
             {#each allGroupedNotices as group (group.date)}
-				<div class="mb-6">
+				<div
+					class="mb-6"
+					animate:flip={flipMove}
+					out:slide={slideY}
+				>
 					<h2 class="text-base font-semibold mb-3 text-foreground border-l-[3px] border-foreground pl-3">
 						{group.displayDate}
 					</h2>
 
                     <div class="grid gap-2">
                         {#each group.notices as notice (notice._id)}
+                            <div animate:flip={flipMove} out:slide={slideY}>
                             {#if editorTarget === String(notice._id)}
                                 {@render noticeEditor()}
                             {:else}
@@ -409,30 +417,17 @@ const lastUpdatedTs = $derived.by(() => {
                                         </p>
 										{/if}
                                     </div>
-                                    <div class="flex gap-2 flex-shrink-0">
-                                        {#if confirmingDeleteId === String(notice._id)}
-                                            <button
-                                                onclick={() => handleDelete(notice)}
-                                                class="pressable touch-target rounded-lg px-3 py-1.5 text-sm font-semibold border border-destructive bg-destructive/10 text-destructive transition-colors duration-150 pointer:hover:bg-destructive/20"
-                                            >삭제</button>
-                                            <button
-                                                onclick={() => (confirmingDeleteId = null)}
-                                                class="pressable touch-target rounded-lg px-3 py-1.5 text-sm font-semibold border border-border text-muted-foreground transition-colors duration-150 pointer:hover:bg-muted pointer:hover:text-foreground"
-                                            >취소</button>
-                                        {:else}
-                                            <button
-                                                onclick={() => editNotice(notice)}
-                                                class="pressable touch-target rounded-lg px-3 py-1.5 text-sm font-semibold border border-border text-foreground transition-colors duration-150 pointer:hover:bg-muted"
-                                            >수정</button>
-                                            <button
-                                                onclick={() => (confirmingDeleteId = String(notice._id))}
-                                                class="pressable touch-target rounded-lg px-3 py-1.5 text-sm font-semibold border border-border text-destructive transition-colors duration-150 pointer:hover:bg-destructive/10"
-                                            >삭제</button>
-                                        {/if}
-                                    </div>
+                                    <ConfirmDeleteActions
+                                        confirming={confirmingDeleteId === String(notice._id)}
+                                        onEdit={() => editNotice(notice)}
+                                        onAskDelete={() => (confirmingDeleteId = String(notice._id))}
+                                        onConfirmDelete={() => handleDelete(notice)}
+                                        onCancel={() => (confirmingDeleteId = null)}
+                                    />
                                 </div>
                             </div>
                             {/if}
+                            </div>
                         {/each}
                     </div>
 				</div>
@@ -454,18 +449,12 @@ const lastUpdatedTs = $derived.by(() => {
                                     openMonthKey = openMonthKey === m.monthKey ? null : m.monthKey;
                                 }}
                             >
-                                <svg
-                                viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2"
-                                class="w-4 h-4 flex-shrink-0 text-muted-foreground transition-[rotate] duration-200 ease-out-expo {openMonthKey === m.monthKey ? 'rotate-90' : ''}"
-                                aria-hidden="true"
-                            >
-                                <path stroke-linecap="round" stroke-linejoin="round" d="M7.5 4.5l5 5.5-5 5.5"/>
-                            </svg>
+                                <DisclosureCaret open={openMonthKey === m.monthKey} />
                                 {m.monthName} ({m.total}개)
                             </summary>
 
                             {#if openMonthKey === m.monthKey}
-                                <div transition:slide={{ duration: 300, easing: expoOut }}>
+                                <div transition:slide={slideY}>
                                 {#key m.monthKey}
                                     <AdminPastMonthDetails
                                         monthKey={m.monthKey}

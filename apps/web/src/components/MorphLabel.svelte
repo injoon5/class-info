@@ -1,5 +1,6 @@
 <script lang="ts">
-import { blurFade } from '$lib/transitions';
+import { Tween } from 'svelte/motion';
+import { blurFade, tweenMove } from '$lib/transitions';
 
 // A label that changes on the same control — "새 공지 추가" → "취소".
 //
@@ -10,28 +11,33 @@ import { blurFade } from '$lib/transitions';
 // the visible labels cross over vertically on top of it. One label on screen at
 // a time, and the control's width travels instead of snapping.
 //
-// The labels cross over without moving. Sliding them was worse than the jump it
-// replaced: the wrapper has to clip to morph the width, so a flying label got
-// sliced by that clip edge and left a hard cut through the glyphs. Blurring them
-// out dissolves the old label instead of cutting it.
+// Width is a Tween (expoOut), not a CSS cubic — same easing as every other move.
+// The labels cross over without flying: the wrapper has to clip to morph the
+// width, so a flying label got sliced by that clip edge.
 
 const { text }: { text: string } = $props();
 
 let sizerEl = $state<HTMLElement | undefined>();
-let width = $state<number | null>(null);
+let measured = $state(false);
+const width = new Tween(0, tweenMove);
 
-// Runs after the DOM is patched, so the sizer already holds the new label.
 $effect(() => {
 	text;
-	if (sizerEl) width = sizerEl.getBoundingClientRect().width;
+	if (!sizerEl) return;
+	const next = sizerEl.getBoundingClientRect().width;
+	if (!measured) {
+		width.set(next, { duration: 0 });
+		measured = true;
+	} else {
+		width.target = next;
+	}
 });
 </script>
 
 <span
-	class="relative inline-flex items-center justify-center overflow-hidden align-middle transition-[width] duration-300 ease-out-expo"
-	style={width === null ? '' : `width:${width}px`}
+	class="relative inline-flex items-center justify-center overflow-hidden align-middle"
+	style={measured ? `width:${width.current}px` : ''}
 >
-	<!-- In flow: sets the height and is what gets measured. Never seen. -->
 	<span bind:this={sizerEl} class="invisible whitespace-nowrap" aria-hidden="true">{text}</span>
 
 	{#key text}
