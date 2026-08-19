@@ -13,9 +13,10 @@ import AdminPastMonthDetails from '../../components/AdminPastMonthDetails.svelte
 import DisclosureCaret from '../../components/DisclosureCaret.svelte';
 import { autosize } from '$lib/actions/autosize';
 import { onMount } from 'svelte';
+import { SvelteSet } from 'svelte/reactivity';
 import { fade, slide } from 'svelte/transition';
 import { flip } from 'svelte/animate';
-import { fadeIn, fadeOut, flipMove, slideNone, slideY } from '$lib/transitions';
+import { fadeIn, fadeOut, flipMove, slideNone, slideY, slideYOut } from '$lib/transitions';
 import { useQuery } from 'convex-svelte';
 import type { PageData, ActionData } from './$types';
 
@@ -32,6 +33,7 @@ const isEditing = $derived(editorTarget !== null && editorTarget !== 'new');
 
 // Deleting is confirmed in the row that owns the notice, not in a modal.
 let confirmingDeleteId = $state<string | null>(null);
+let dismissedIds = new SvelteSet<string>();
 
 let noticeForm = $state({
 	title: '',
@@ -145,19 +147,33 @@ async function handleSubmit() {
 }
 
 async function handleDelete(notice: any) {
+	const id = String(notice._id);
+	// Drop it from the list now so the row outro starts on confirm, not after
+	// the mutation round-trip (which just snapped the row away).
+	dismissedIds.add(id);
+	confirmingDeleteId = null;
 	try {
 		await client.mutation(api.notices.remove, { sessionToken, id: notice._id });
 		panelError = null;
-		if (editorTarget === String(notice._id)) resetForm();
+		if (editorTarget === id) resetForm();
 	} catch (error) {
+		dismissedIds.delete(id);
 		panelError = '삭제하지 못했습니다. 잠시 후 다시 시도해 주세요.';
-	} finally {
-		confirmingDeleteId = null;
 	}
+}
+
+function hideDismissed(groups: any[] | undefined) {
+	return (groups ?? [])
+		.map((g) => ({
+			...g,
+			notices: (g.notices ?? []).filter((n: any) => !dismissedIds.has(String(n._id)))
+		}))
+		.filter((g) => g.notices.length > 0);
 }
 
 // Grouped notices from overview
 const allGroupedNotices = $derived(overview.data?.currentGroups || []);
+const visibleGroups = $derived(hideDismissed(allGroupedNotices));
 
 // First paint is silent so a page of date groups doesn't all slide in.
 let live = $state(false);
@@ -382,11 +398,12 @@ const lastUpdatedTs = $derived.by(() => {
         {:else}
 			<!-- Current and Future Notices. Else on the each so the last date
 			     group can outro instead of a length check tearing it down. -->
-            {#each allGroupedNotices as group (group.date)}
+            {#each visibleGroups as group (group.date)}
 				<div
 					class="mb-6"
 					animate:flip={flipMove}
-					transition:slide={listSlide}
+					in:slide={listSlide}
+					out:slide={slideYOut}
 				>
 					<h2 class="text-base font-semibold mb-3 text-foreground border-l-[3px] border-foreground pl-3">
 						{group.displayDate}
@@ -394,7 +411,7 @@ const lastUpdatedTs = $derived.by(() => {
 
                     <div class="grid gap-2">
                         {#each group.notices as notice (notice._id)}
-                            <div animate:flip={flipMove} transition:slide={listSlide}>
+                            <div animate:flip={flipMove} in:slide={listSlide} out:slide={slideYOut}>
                             {#if editorTarget === String(notice._id)}
                                 {@render noticeEditor()}
                             {:else}
@@ -445,13 +462,14 @@ const lastUpdatedTs = $derived.by(() => {
 
 			<!-- Past Notices by Month (lazy) -->
 			{#if overview.data?.pastMonths && overview.data.pastMonths.length > 0}
-                <div class="mt-6 pt-6 border-t border-border" transition:slide={listSlide}>
+                <div class="mt-6 pt-6 border-t border-border" in:slide={listSlide} out:slide={slideYOut}>
                     <h2 class="text-base sm:text-lg font-semibold mb-3 text-muted-foreground">지난 공지</h2>
                     {#each overview.data.pastMonths as m (m.monthKey)}
                         <div
                             class="mb-1.5 sm:mb-2"
                             animate:flip={flipMove}
-                            transition:slide={listSlide}
+                            in:slide={listSlide}
+                            out:slide={slideYOut}
                         >
                         <details
                             class="bg-card border border-border rounded-3xl overflow-hidden"
@@ -473,6 +491,7 @@ const lastUpdatedTs = $derived.by(() => {
                                 {#key m.monthKey}
                                     <AdminPastMonthDetails
                                         monthKey={m.monthKey}
+                                        {dismissedIds}
                                         {editorTarget}
                                         editor={noticeEditor}
                                         onEdit={(id: string) => {

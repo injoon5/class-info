@@ -24,6 +24,7 @@ export const fadeFast = { duration: 100 };
 export const fadeIn = { duration: 200, delay: 80 };
 export const fadeOut = { duration: 120 };
 export const slideY = { duration: 300, easing: expoOut };
+export const slideYOut = { duration: 200, easing: expoOut };
 export const slideX = { axis: 'x' as const, duration: 300, easing: expoOut };
 export const slideXOut = { axis: 'x' as const, duration: 200, easing: expoOut };
 export const slideNone = { duration: 0 };

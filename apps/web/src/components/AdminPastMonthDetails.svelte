@@ -3,9 +3,10 @@ import { useQuery } from 'convex-svelte';
 import { api } from "@class-info/backend/convex/_generated/api";
 import { getTypeColor } from '../lib/utils.js';
 import type { Snippet } from 'svelte';
+import { SvelteSet } from 'svelte/reactivity';
 import { fade, slide } from 'svelte/transition';
 import { flip } from 'svelte/animate';
-import { fadeFast, flipMove, slideY } from '$lib/transitions';
+import { fadeFast, flipMove, slideY, slideYOut } from '$lib/transitions';
 import ConfirmDeleteActions from './ConfirmDeleteActions.svelte';
 import LoadingState from './LoadingState.svelte';
 
@@ -16,19 +17,29 @@ const {
     onEdit,
     onDelete,
     editorTarget = null,
-    editor
+    editor,
+    dismissedIds = new SvelteSet<string>()
 }: {
     monthKey: string;
     onEdit: (id: string) => void;
     onDelete: (id: string) => void;
     editorTarget?: string | null;
     editor?: Snippet;
+    dismissedIds?: Set<string>;
 } = $props();
 
 // Cheap destructive action: confirmed in the row, not in a modal.
 let confirmingDeleteId = $state<string | null>(null);
 
 const groups = useQuery(api.notices.pastByMonth, { monthKey });
+const visibleGroups = $derived(
+    (groups.data ?? [])
+        .map((g) => ({
+            ...g,
+            notices: (g.notices ?? []).filter((n) => !dismissedIds.has(String(n._id)))
+        }))
+        .filter((g) => g.notices.length > 0)
+);
 
 </script>
 
@@ -41,11 +52,12 @@ const groups = useQuery(api.notices.pastByMonth, { monthKey });
         <div class="text-sm text-destructive py-3 text-center">오류가 발생했습니다.</div>
     {:else}
         <div in:slide={slideY}>
-        {#each groups.data as group (group.date)}
+        {#each visibleGroups as group (group.date)}
             <div
                 class="mb-3 last:mb-0"
                 animate:flip={flipMove}
-                transition:slide={slideY}
+                in:slide={slideY}
+                out:slide={slideYOut}
             >
                 <h3 class="text-sm font-semibold mb-2 text-muted-foreground border-l-2 border-border pl-2">
                     {group.displayDate}
@@ -54,7 +66,8 @@ const groups = useQuery(api.notices.pastByMonth, { monthKey });
                     {#each group.notices as notice (notice._id)}
                         <div
                             animate:flip={flipMove}
-                            transition:slide={slideY}
+                            in:slide={slideY}
+                            out:slide={slideYOut}
                         >
                         {#if editor && editorTarget === String(notice._id)}
                             {@render editor()}
