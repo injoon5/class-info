@@ -45,8 +45,8 @@
 }
 
 @theme inline {
-	--font-sans: 'Pretendard Variable', Pretendard, -apple-system, BlinkMacSystemFont,
-		system-ui, 'Apple SD Gothic Neo', 'Noto Sans KR', 'Malgun Gothic', 'Segoe UI', Roboto,
+	--font-sans: 'Interlude Variable', -apple-system, BlinkMacSystemFont, system-ui,
+		'Apple SD Gothic Neo', 'Noto Sans KR', 'Malgun Gothic', 'Segoe UI', Roboto,
 		'Apple Color Emoji', 'Segoe UI Emoji', sans-serif;
 
 	/* ── Type ramp ────────────────────────────────────────────────────────────
@@ -80,6 +80,8 @@ html {
 	scrollbar-width: thin;
 	scrollbar-color: var(--border) transparent;
 	-webkit-text-size-adjust: 100%;
+	font-optical-sizing: auto;
+	font-synthesis: none;
 }
 
 @layer base {

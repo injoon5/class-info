@@ -1,4 +1,15 @@
 {
 	"$schema": "https://openapi.vercel.sh/vercel.json",
-	"buildCommand": "npm run build:vercel"
+	"buildCommand": "npm run build:vercel",
+	"headers": [
+		{
+			"source": "/interlude/(.*)",
+			"headers": [
+				{
+					"key": "Cache-Control",
+					"value": "public, max-age=2592000, stale-while-revalidate=31536000"
+				}
+			]
+		}
+	]
 }
