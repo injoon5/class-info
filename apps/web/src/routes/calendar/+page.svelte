@@ -14,8 +14,6 @@ import {
 import type { PublicEvent } from '@class-info/backend/convex/validators';
 import { focusOnElement } from '$lib/actions/focus';
 import PillButton from '$lib/components/ui/PillButton.svelte';
-import { fade, fly, slide } from 'svelte/transition';
-import { fadeFast, fadeIn, fadeOut, flyIn, slideY } from '$lib/transitions';
 import type { PageData } from './$types.js';
 
 const { data }: { data: PageData } = $props();
@@ -170,6 +168,7 @@ async function handleAddEvent() {
       title: newEventTitle.trim(),
       color: newEventColor,
     });
+    if (document.activeElement instanceof HTMLElement) document.activeElement.blur();
     newEventTitle = '';
     popupAddMode = false;
   } catch {
@@ -352,25 +351,19 @@ const dayNames = ['일','월','화','수','목','금','토'];
   {/if}
 
   {#if !popupAddMode}
-    <div in:fly={flyIn} out:fade={fadeFast}>
-      <PillButton variant="secondary" class="w-full" onclick={() => { popupAddMode = true; saveError = null; }}>
-        <svg viewBox="0 0 20 20" fill="currentColor" class="w-4 h-4 flex-shrink-0" aria-hidden="true">
-          <path fill-rule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clip-rule="evenodd"/>
-        </svg>
-        일정 추가
-      </PillButton>
-    </div>
+    <PillButton variant="secondary" class="w-full" onclick={() => { popupAddMode = true; saveError = null; }}>
+      <svg viewBox="0 0 20 20" fill="currentColor" class="w-4 h-4 flex-shrink-0" aria-hidden="true">
+        <path fill-rule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clip-rule="evenodd"/>
+      </svg>
+      일정 추가
+    </PillButton>
   {:else}
-    <!-- The composer grows out of the button's place and shrinks back on cancel. -->
-    <div transition:slide={slideY}>
-    <div class="space-y-5 pt-1" in:fade={fadeIn} out:fade={fadeOut}>
-      <!-- Title and colour are one thing — what the event is — so they sit
-           tight together, with the action band set apart from them. -->
+    <div class="space-y-5 pt-1">
       <div class="space-y-3.5">
         <input
           type="text"
           bind:value={newEventTitle}
-          use:focusOnElement={320}
+          use:focusOnElement={0}
           aria-label="일정 제목"
           placeholder="예: 반티 주문 마감"
           class="w-full h-11 px-3.5 rounded-lg bg-muted text-base text-foreground placeholder:text-muted-foreground"
@@ -417,10 +410,14 @@ const dayNames = ['일','월','화','수','목','금','토'];
         <PillButton
           text="취소"
           variant="secondary"
-          onclick={() => { popupAddMode = false; newEventTitle = ''; saveError = null; }}
+          onclick={() => {
+            if (document.activeElement instanceof HTMLElement) document.activeElement.blur();
+            popupAddMode = false;
+            newEventTitle = '';
+            saveError = null;
+          }}
         />
       </div>
-    </div>
     </div>
   {/if}
 {/snippet}

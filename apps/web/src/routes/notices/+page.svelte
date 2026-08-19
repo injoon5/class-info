@@ -45,7 +45,7 @@ const overview = useQuery(
 	<h1 class="sr-only">공지</h1>
 	<!-- Notice Board -->
     {#if overview.isLoading}
-        <LoadingState />
+        <LoadingState variant="notices" />
     {:else if overview.error}
         <ErrorState error={overview.error} />
     {:else}

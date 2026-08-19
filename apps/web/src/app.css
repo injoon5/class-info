@@ -139,6 +139,29 @@ select:focus-visible {
 	outline-offset: 0;
 }
 
+/* iOS Safari's native date control has an implicit min-width that blows
+   past the card. Kill appearance and pin the webkit internals to the field. */
+.date-input {
+	display: block;
+	width: 100%;
+	min-width: 0;
+	max-width: 100%;
+	box-sizing: border-box;
+	appearance: none;
+	-webkit-appearance: none;
+}
+.date-input::-webkit-datetime-edit,
+.date-input::-webkit-datetime-edit-fields-wrapper {
+	min-width: 0;
+	max-width: 100%;
+	padding: 0;
+}
+.date-input::-webkit-date-and-time-value {
+	text-align: left;
+	min-width: 0;
+	width: 100%;
+}
+
 @layer utilities {
 	/* Buttons and rows. */
 	.pressable,
@@ -258,8 +281,13 @@ select:focus-visible {
 		/* Safe-area padding is a device concern; on paper it just shifts things. */
 		padding: 0 !important;
 		margin: 0 !important;
-		height: auto !important;
-		min-height: 0 !important;
+		height: 100% !important;
+		min-height: 100% !important;
+	}
+
+	body {
+		display: flex !important;
+		flex-direction: column !important;
 	}
 
 	/* Keep the fills the tokens ask for — browsers drop backgrounds by default,
@@ -277,6 +305,16 @@ select:focus-visible {
 		display: none !important;
 	}
 
+	/* Fill the page box so .print-sheet can actually sit in the middle.
+	   A 297mm min-height plus @page margin plus this padding was taller
+	   than one sheet, so the "center" landed on the next page. */
+	main {
+		flex: 1 1 auto !important;
+		display: flex !important;
+		flex-direction: column !important;
+		min-height: 0 !important;
+	}
+
 	/* The subject of the page sits as a block in the middle of the sheet.
 	   Padding lives on the element rather than only in @page, because a reader
 	   who sets "Margins: none" in the print dialog would otherwise weld the
@@ -287,11 +325,14 @@ select:focus-visible {
 		padding: 12mm 14mm !important;
 	}
 
-	.print-sheet {
-		min-height: calc(297mm - 24mm);
+	main :where(.max-w-4xl.print-sheet) {
+		flex: 1 1 auto !important;
 		display: flex !important;
-		flex-direction: column;
-		justify-content: center;
+		flex-direction: column !important;
+		justify-content: center !important;
+		min-height: 0 !important;
+		padding-block: 0 !important;
+		width: 100% !important;
 	}
 
 	/* A horizontal scroller must not crop what it holds on paper. */

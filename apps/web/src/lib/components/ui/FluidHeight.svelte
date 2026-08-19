@@ -2,6 +2,7 @@
 import { Tween } from 'svelte/motion';
 import { tweenMove } from '$lib/transitions';
 import type { Snippet } from 'svelte';
+import { clampWindowScroll } from '$lib/scroll';
 
 // Pixel-clip after first layout so a content swap (spinner → list) can tween
 // height. Parent <details> open/close stays instant.
@@ -20,6 +21,7 @@ const height = new Tween(0, tweenMove);
 
 let prevKey: string | null = null;
 let pendingTween = false;
+let lastClip = 0;
 
 $effect.pre(() => {
 	if (prevKey !== null && key !== prevKey) pendingTween = true;
@@ -45,6 +47,7 @@ $effect(() => {
 		prevKey = k;
 		void height.set(next).then(() => {
 			pendingTween = false;
+			clampWindowScroll();
 		});
 		return;
 	}
@@ -62,6 +65,21 @@ $effect(() => {
 	});
 	ro.observe(el);
 	return () => ro.disconnect();
+});
+
+$effect(() => {
+	const h = height.current;
+	if (!measured) {
+		lastClip = h;
+		return;
+	}
+	const dh = lastClip - h;
+	lastClip = h;
+	if (dh > 0) {
+		const el = document.scrollingElement ?? document.documentElement;
+		el.scrollTop = Math.max(0, el.scrollTop - dh);
+	}
+	clampWindowScroll();
 });
 </script>
 

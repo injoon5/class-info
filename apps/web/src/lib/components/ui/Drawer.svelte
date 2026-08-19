@@ -1,7 +1,7 @@
 <script lang="ts">
 import type { Snippet } from 'svelte';
 import { Tween } from 'svelte/motion';
-import { tweenFade, tweenPanel } from '$lib/transitions';
+import { tweenFade, tweenPanel, tweenPanelClose } from '$lib/transitions';
 
 interface Props {
   open: boolean;
@@ -13,7 +13,7 @@ interface Props {
 
 const { open, onclose, header, children, footer }: Props = $props();
 
-const TRANSITION_MS = 400;
+const CLOSE_MS = 180;
 
 // ── Animation state ─────────────────────────────────────────────────────────
 
@@ -52,11 +52,19 @@ $effect(() => {
   if (panelEl) panelHeight = panelEl.offsetHeight;
 });
 
+// iOS Safari will not raise the keyboard for inputs inside a transformed
+// ancestor. Drop the transform once the sheet is parked.
+const sheetSettled = $derived(
+  !isDragging && isVisible && Math.abs(panelY.current) < 0.5
+);
+
 const panelStyle = $derived(
   isDragging
     ? ''
     : isMobile
-      ? `transform: translateY(${panelY.current}px)`
+      ? sheetSettled
+        ? 'transform: none'
+        : `transform: translateY(${panelY.current}px)`
       : `transform: translateY(0px) scale(${panelScale.current}); opacity: ${panelOpacity.current}`
 );
 
@@ -82,15 +90,15 @@ function scheduleDragPaint() {
 
 function settleOpen() {
   if (isMobile) {
-    panelY.target = 0;
+    panelY.set(0, tweenPanel);
     panelScale.set(1, { duration: 0 });
     panelOpacity.set(1, { duration: 0 });
   } else {
     panelY.set(0, { duration: 0 });
-    panelScale.target = 1;
-    panelOpacity.target = 1;
+    panelScale.set(1, tweenPanel);
+    panelOpacity.set(1, tweenFade);
   }
-  scrimOpacity.target = 1;
+  scrimOpacity.set(1, tweenPanel);
 }
 
 async function close() {
@@ -100,13 +108,14 @@ async function close() {
   isVisible = false;
   if (panelEl) panelEl.style.transform = '';
   if (backdropEl) backdropEl.style.opacity = '';
-  if (isMobile) panelY.target = panelHeight;
+  (document.activeElement instanceof HTMLElement ? document.activeElement : null)?.blur();
+  if (isMobile) panelY.set(panelHeight, tweenPanelClose);
   else {
-    panelScale.target = 0.95;
-    panelOpacity.target = 0;
+    panelScale.set(0.95, tweenPanelClose);
+    panelOpacity.set(0, tweenFade);
   }
-  scrimOpacity.target = 0;
-  await new Promise<void>(r => setTimeout(r, TRANSITION_MS + 30));
+  scrimOpacity.set(0, tweenPanelClose);
+  await new Promise<void>(r => setTimeout(r, CLOSE_MS + 30));
   mounted = false;
   isClosing = false;
   onclose();
@@ -143,15 +152,17 @@ $effect(() => {
   }
 });
 
-// Focus panel on open
+// Desktop only — focusing the sheet on iOS eats the next input tap
+// (field is focused, keyboard never comes up).
 $effect(() => {
-  if (isVisible && panelEl) panelEl.focus();
+  if (isVisible && panelEl && !isMobile) panelEl.focus();
 });
 
 $effect(() => {
   const vv = window.visualViewport;
   if (!vv || !mounted) return;
 
+  let wasCovered = false;
   const update = () => {
     if (!wrapperEl) return;
     // What the keyboard covers at the bottom of the layout viewport.
@@ -166,15 +177,27 @@ $effect(() => {
       wrapperEl.style.height = '';
       wrapperEl.style.paddingBottom = '';
       if (panelEl) panelEl.style.maxHeight = '';
+      // iOS leaves a composited `position: fixed` layer stuck after the
+      // keyboard hides until something invalidates it.
+      if (wasCovered && panelEl && !isDragging) {
+        const el = panelEl;
+        el.style.transform = 'translate3d(0,0,0)';
+        requestAnimationFrame(() => {
+          if (el && !isDragging) el.style.transform = '';
+        });
+      }
     }
+    wasCovered = covered > 0;
   };
 
   update();
   vv.addEventListener('resize', update);
   vv.addEventListener('scroll', update);
+  window.addEventListener('resize', update);
   return () => {
     vv.removeEventListener('resize', update);
     vv.removeEventListener('scroll', update);
+    window.removeEventListener('resize', update);
     if (wrapperEl) {
       wrapperEl.style.height = '';
       wrapperEl.style.paddingBottom = '';
@@ -285,20 +308,50 @@ $effect(() => {
   };
 });
 
+// Don't start a drag on the tap itself. iOS will not raise the keyboard
+// for a field inside a transformed ancestor, and even a 2px "drag" from a
+// tap re-applies translateY for the snap-back tween.
+const DRAG_SLOP = 10;
+let pendingTouch = false;
+let pendingStartY = 0;
+
+function isDragIgnored(target: EventTarget | null) {
+  return target instanceof Element && !!target.closest(
+    'input, textarea, select, [contenteditable="true"]'
+  );
+}
+
 function onTouchStart(e: TouchEvent) {
   if (e.touches.length > 1) return;
-  startDrag(e.touches[0].clientY);
+  if (isClosing || !isVisible) return;
+  if (isDragIgnored(e.target)) return;
+  const t = e.touches[0];
+  if (!t) return;
+  pendingTouch = true;
+  pendingStartY = t.clientY;
 }
 
 function onTouchMove(e: TouchEvent) {
   if (e.touches.length > 1) return;
-  moveDrag(e.touches[0].clientY);
-  // Downward drag and rubber-banded overdrag both belong to the sheet; a plain
-  // upward gesture is left to the scroller.
+  const t = e.touches[0];
+  if (!t) return;
+  if (isDragging) {
+    moveDrag(t.clientY);
+    // Downward drag and rubber-banded overdrag both belong to the sheet; a
+    // plain upward gesture is left to the scroller.
+    if (dragY !== 0) e.preventDefault();
+    return;
+  }
+  if (!pendingTouch) return;
+  if (Math.abs(t.clientY - pendingStartY) < DRAG_SLOP) return;
+  pendingTouch = false;
+  if (!startDrag(pendingStartY)) return;
+  moveDrag(t.clientY);
   if (dragY !== 0) e.preventDefault();
 }
 
 function onTouchEnd() {
+  pendingTouch = false;
   endDrag();
 }
 
@@ -354,6 +407,7 @@ function onPanelKeydown(e: KeyboardEvent) {
   if (focusables.length === 0) return;
   const first = focusables[0];
   const last = focusables[focusables.length - 1];
+  if (!first || !last) return;
   const active = document.activeElement;
   if (e.shiftKey && (active === first || active === panelEl)) {
     e.preventDefault();
@@ -390,8 +444,8 @@ function onPanelKeydown(e: KeyboardEvent) {
              rounded-t-3xl sm:rounded-3xl
              shadow-2xl flex flex-col
              max-h-[88svh] sm:max-h-[80svh]
-             border border-border
-             outline-none will-change-transform"
+             border-x border-t border-border sm:border
+             outline-none {sheetSettled ? '' : 'will-change-transform'}"
       style={panelStyle}
       onclick={(e) => e.stopPropagation()}
       onkeydown={onPanelKeydown}

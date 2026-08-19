@@ -7,6 +7,11 @@
 // that clip edge. Waiting for the animation lets the ring land on a control
 // that is fully on screen.
 export function focusOnElement(node: HTMLElement, delay: number = 0) {
+	// iOS drops the user-gesture token after a timeout, then a programmatic
+	// focus "succeeds" with no keyboard — and the next tap does nothing
+	// because the field is already focused.
+	if (window.matchMedia('(pointer: coarse)').matches) return {};
+
 	if (delay <= 0) {
 		node.focus();
 		return {};

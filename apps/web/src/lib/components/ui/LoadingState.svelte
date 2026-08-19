@@ -2,7 +2,7 @@
 	import HScroll from './HScroll.svelte';
 	import { addDaysYyyymmdd, getNowInKst, yyyymmdd } from '$lib/date';
 
-	type Variant = 'spinner' | 'timetable' | 'meals';
+	type Variant = 'spinner' | 'timetable' | 'meals' | 'calendar' | 'notices';
 
 	let {
 		compact = false,
@@ -15,6 +15,8 @@
 	} = $props();
 
 	const dayNames = ['월', '화', '수', '목', '금'];
+	const calendarDays = ['일', '월', '화', '수', '목', '금', '토'];
+	const noticeCardWidths = ['w-[72%]', 'w-[58%]', 'w-[80%]'];
 	const periods = [1, 2, 3, 4, 5, 6, 7];
 	const dishLineWidths = ['w-[88%]', 'w-[70%]', 'w-[82%]', 'w-[64%]', 'w-[76%]', 'w-[58%]'];
 
@@ -45,7 +47,65 @@
 	});
 </script>
 
-{#if variant === 'timetable'}
+{#if variant === 'calendar'}
+	<div class="print:hidden" role="status" aria-live="polite" aria-busy="true">
+		<span class="sr-only">일정을 불러오는 중</span>
+		<div class="flex items-center justify-between mb-4" aria-hidden="true">
+			<div class="skeleton w-9 h-9 sm:w-10 sm:h-10 rounded-full"></div>
+			<div class="skeleton h-5 w-28 rounded-sm"></div>
+			<div class="skeleton w-9 h-9 sm:w-10 sm:h-10 rounded-full"></div>
+		</div>
+		<div aria-hidden="true" class="border border-border rounded-xl overflow-hidden">
+			<div class="grid grid-cols-7 bg-muted border-b border-border">
+				{#each calendarDays as name (name)}
+					<div class="py-2.5 text-center text-sm font-semibold text-muted-foreground">{name}</div>
+				{/each}
+			</div>
+			{#each [0, 1, 2, 3, 4] as wi (wi)}
+				<div class="grid grid-cols-7 {wi < 4 ? 'border-b border-border' : ''}">
+					{#each calendarDays as name, di (`${wi}-${name}`)}
+						<div class="min-h-[5rem] sm:min-h-[7rem] p-1.5 border-r border-border last:border-r-0 bg-card">
+							<div
+								class="skeleton h-3.5 w-5 rounded-sm"
+								style="animation-delay: {(wi * 7 + di) * 20}ms"
+							></div>
+							<div
+								class="skeleton h-3 w-[70%] rounded-sm mt-2"
+								style="animation-delay: {(wi * 7 + di) * 20 + 60}ms"
+							></div>
+						</div>
+					{/each}
+				</div>
+			{/each}
+		</div>
+	</div>
+{:else if variant === 'notices'}
+	<div class="print:hidden" role="status" aria-live="polite" aria-busy="true">
+		<span class="sr-only">공지를 불러오는 중</span>
+		<div aria-hidden="true">
+			{#each [0, 1] as gi (gi)}
+				<div class="mb-6">
+					<div class="skeleton h-4 w-24 rounded-sm mb-3"></div>
+					<div class="grid gap-2">
+						{#each noticeCardWidths as width, i (`${gi}-${width}`)}
+							<div class="bg-card border border-border rounded-xl p-3">
+								<div class="flex gap-2 mb-2">
+									<div class="skeleton h-5 w-14 rounded-md"></div>
+									<div class="skeleton h-4 w-10 rounded-sm"></div>
+								</div>
+								<div class="skeleton h-5 {width} rounded-sm"></div>
+								<div
+									class="skeleton h-3.5 w-[90%] rounded-sm mt-2"
+									style="animation-delay: {(gi * 3 + i) * 40}ms"
+								></div>
+							</div>
+						{/each}
+					</div>
+				</div>
+			{/each}
+		</div>
+	</div>
+{:else if variant === 'timetable'}
 	<div class="print:hidden" role="status" aria-live="polite" aria-busy="true">
 		<span class="sr-only">시간표를 불러오는 중</span>
 		<div aria-hidden="true">

@@ -12,12 +12,13 @@ import ConfirmDeleteActions from '$lib/components/ui/ConfirmDeleteActions.svelte
 import AdminPastMonthDetails from './AdminPastMonthDetails.svelte';
 import DisclosureCaret from '$lib/components/ui/DisclosureCaret.svelte';
 import { autosize } from '$lib/actions/autosize';
-import { onMount } from 'svelte';
+import { onMount, tick } from 'svelte';
 import { SvelteSet } from 'svelte/reactivity';
 import { fade, slide } from 'svelte/transition';
 import { flip } from 'svelte/animate';
 import { fadeIn, fadeOut, flipMove, slideNone, slideY, slideYOut } from '$lib/transitions';
 import { useQuery } from 'convex-svelte';
+import { followCollapsing } from '$lib/scroll';
 import type { PageData, ActionData } from './$types';
 
 const { data, form }: { data: PageData; form: ActionData } = $props();
@@ -76,7 +77,14 @@ const EMPTY_NOTICE = {
 
 // Toggling the header button must open an empty editor, not inherit whatever
 // notice happened to be open.
-function startNewNotice() {
+function resetForm() {
+	followCollapsing(document.getElementById('notice-editor'));
+	noticeForm = { ...EMPTY_NOTICE };
+	editorTarget = null;
+	formError = null;
+}
+
+async function startNewNotice() {
 	if (editorTarget === 'new') {
 		resetForm();
 		return;
@@ -85,12 +93,8 @@ function startNewNotice() {
 	formError = null;
 	confirmingDeleteId = null;
 	editorTarget = 'new';
-}
-
-function resetForm() {
-	noticeForm = { ...EMPTY_NOTICE };
-	editorTarget = null;
-	formError = null;
+	await tick();
+	document.getElementById('notice-editor')?.scrollIntoView({ block: 'nearest' });
 }
 
 async function editNotice(id: Id<'notices'>) {
@@ -215,7 +219,7 @@ const lastUpdatedTs = $derived.by(() => {
 </svelte:head>
 
 {#snippet noticeEditor()}
-	<div transition:slide={slideY}>
+	<div id="notice-editor" in:slide={slideY} out:slide={slideYOut}>
 		<div
 			class="bg-card border border-border rounded-3xl p-4 mb-6"
 			in:fade={fadeIn}
@@ -274,13 +278,13 @@ const lastUpdatedTs = $derived.by(() => {
 					</div>
 				</div>
 
-				<div>
+				<div class="min-w-0 overflow-hidden">
 					<label for="notice-date" class="block text-sm font-semibold mb-1.5 text-muted-foreground">마감일 *</label>
 					<input
 						id="notice-date"
 						type="date"
 						bind:value={noticeForm.dueDate}
-						class="w-full h-11 px-3.5 rounded-lg bg-muted text-base text-foreground placeholder:text-muted-foreground"
+						class="date-input w-full min-w-0 max-w-full h-11 px-3.5 rounded-lg bg-muted text-base text-foreground"
 					/>
 				</div>
 
@@ -391,7 +395,7 @@ const lastUpdatedTs = $derived.by(() => {
 
 		<!-- Notice List -->
 		{#if overview.isLoading}
-			<LoadingState />
+			<LoadingState variant="notices" />
         {:else if overview.error}
 			<div class="text-center py-8 text-destructive">
 				<p>공지를 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.</p>
