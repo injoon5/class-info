@@ -53,11 +53,11 @@ const overview = useQuery(api.notices.overview, {}, () => ({
 
         {#if overview.data?.pastMonths && overview.data.pastMonths.length > 0}
             <div class="mt-6 sm:mt-8 pt-4 sm:pt-6 border-t border-border">
-                <h2 class="text-base sm:text-lg font-semibold tracking-tight mb-2 sm:mb-3 text-muted-foreground">지난 공지</h2>
+                <h2 class="text-base sm:text-lg font-semibold mb-2 sm:mb-3 text-muted-foreground">지난 공지</h2>
                 {#each overview.data.pastMonths as month (month.monthKey)}
                     <details class="mb-1.5 sm:mb-2 bg-card border border-border rounded-xl overflow-hidden" open={openMonthKey === month.monthKey}>
                         <summary
-                            class="touch-target px-3 sm:px-4 py-2.5 sm:py-3 cursor-pointer transition-colors pointer:hover:bg-muted text-muted-foreground font-medium text-sm sm:text-base tabular-nums"
+                            class="touch-target px-3 sm:px-4 py-2.5 sm:py-3 cursor-pointer transition-colors pointer:hover:bg-muted text-muted-foreground font-semibold text-sm sm:text-base tabular-nums"
                             onclick={(e) => {
                                 e.preventDefault();
                                 openMonthKey = openMonthKey === month.monthKey ? null : month.monthKey;

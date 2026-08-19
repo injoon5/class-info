@@ -4,6 +4,7 @@ import { useUploadFile } from "@convex-dev/r2/svelte";
 import { api } from "@class-info/backend/convex/_generated/api";
 import type { Id } from "@class-info/backend/convex/_generated/dataModel";
 import { fly } from 'svelte/transition';
+import PillButton from './PillButton.svelte';
 
 const {
   files = [],
@@ -166,7 +167,7 @@ function handleDrop(e: DragEvent) {
 
 <div class="space-y-3">
   {#if uploadError}
-    <p class="whitespace-pre-line rounded-xl border border-destructive/30 bg-destructive/10 px-3.5 py-2.5 text-sm font-medium text-destructive" role="alert">
+    <p class="whitespace-pre-line rounded-xl border border-destructive/30 bg-destructive/10 px-3.5 py-2.5 text-sm font-semibold text-destructive" role="alert">
       {uploadError}
     </p>
   {/if}
@@ -197,13 +198,11 @@ function handleDrop(e: DragEvent) {
         <p class="text-sm text-muted-foreground mb-3">
           이미지나 PDF 파일을 드래그하거나 클릭해서 업로드하세요
         </p>
-        <button
-          type="button"
-          class="pressable-lg sm:pressable rounded-full px-4 py-2 border border-border text-sm font-medium text-foreground transition-colors pointer:hover:bg-muted"
+        <PillButton
+          text="파일 추가"
+          variant="secondary"
           onclick={() => document.getElementById('file-upload')?.click()}
-        >
-          파일 추가
-        </button>
+        />
       </label>
     {/if}
   </div>
@@ -211,7 +210,7 @@ function handleDrop(e: DragEvent) {
   <!-- File List -->
   {#if uploadedFiles.length > 0}
     <div class="space-y-2">
-      <h4 class="text-sm font-medium text-muted-foreground">첨부된 파일</h4>
+      <h4 class="text-sm font-semibold text-muted-foreground">첨부된 파일</h4>
       <div class="space-y-1.5">
         {#each uploadedFiles as file (file._id)}
           <div
@@ -239,7 +238,7 @@ function handleDrop(e: DragEvent) {
               <button
                 type="button"
                 onclick={() => copyMarkdownToClipboard(file)}
-                class="pressable rounded-lg px-2.5 py-1.5 text-sm font-medium border border-border text-foreground transition-colors duration-150 pointer:hover:bg-muted"
+                class="pressable rounded-lg px-2.5 py-1.5 text-sm font-semibold border border-border text-foreground transition-colors duration-150 pointer:hover:bg-muted"
                 title="마크다운 복사"
               >
                 <span class="relative inline-flex h-4 min-w-[2.5rem] items-center justify-center">
@@ -253,7 +252,7 @@ function handleDrop(e: DragEvent) {
               <button
                 type="button"
                 onclick={() => removeFile(file._id)}
-                class="pressable rounded-lg px-2.5 py-1.5 text-sm font-medium border border-border text-destructive transition-colors pointer:hover:bg-destructive/10"
+                class="pressable rounded-lg px-2.5 py-1.5 text-sm font-semibold border border-border text-destructive transition-colors pointer:hover:bg-destructive/10"
                 title="파일 삭제"
               >
                 삭제

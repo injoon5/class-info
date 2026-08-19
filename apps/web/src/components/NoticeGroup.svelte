@@ -6,11 +6,11 @@ const { group, isPast = false }: { group: any; isPast?: boolean } = $props();
 
 <div class="{isPast ? 'mb-3 sm:mb-4 last:mb-0' : 'mb-4 sm:mb-6'}">
 	{#if isPast}
-		<h3 class="text-xs sm:text-sm font-medium mb-1.5 sm:mb-2 text-muted-foreground border-l-2 border-border pl-2">
+		<h3 class="text-xs sm:text-sm font-semibold mb-1.5 sm:mb-2 text-muted-foreground border-l-2 border-border pl-2">
 			{group.displayDate}
 		</h3>
 	{:else}
-		<h2 class="text-base sm:text-lg font-semibold tracking-tight mb-2 sm:mb-4 text-foreground border-l-[3px] border-foreground pl-3">
+		<h2 class="text-base sm:text-lg font-semibold mb-2 sm:mb-4 text-foreground border-l-[3px] border-foreground pl-3">
 			{group.displayDate}
 		</h2>
 	{/if}

@@ -38,10 +38,14 @@ function getMaxPeriods(): number {
 	return tt.reduce((max: number, day) => Math.max(max, day.length), 0);
 }
 
+// "1교시(08:40~09:30)" → "08:40". The end time is the next period's start,
+// so it earns nothing in the app's narrowest column.
 function getPeriodLabel(period: number): string {
 	const times = timetableQuery.data?.day_time || [];
 	const label = times[period - 1];
-	return label ? label.replace(/^.*\(([^)]+)\)$/, '$1') : "?";
+	if (!label) return '';
+	const inParens = label.match(/\(([^)]+)\)/)?.[1] ?? label;
+	return inParens.split(/[~-]/)[0].trim();
 }
 </script>
 
@@ -104,8 +108,11 @@ function getPeriodLabel(period: number): string {
 							{#each (timetableQuery.data?.timetable || []) as day}
 								<td class="border border-border py-3 sm:py-6 text-center {day[i]?.replaced ? 'bg-amber-100/70 dark:bg-amber-900/20' : 'bg-card'}">
 									{#if day[i]}
-										<div class="text-[15px] sm:text-xl font-semibold {day[i].replaced ? 'text-amber-700 dark:text-amber-300' : 'text-foreground'}">{day[i].subject}</div>
-										<div class="text-sm sm:text-base mt-0.5 font-medium text-muted-foreground">{day[i].teacher}</div>
+										<div
+											class="px-1 truncate text-list sm:text-xl font-semibold {day[i].replaced ? 'text-amber-700 dark:text-amber-300' : 'text-foreground'}"
+											title={day[i].subject}
+										>{day[i].subject}</div>
+										<div class="px-1 truncate text-sm sm:text-base mt-0.5 text-muted-foreground">{day[i].teacher}</div>
 									{:else}
 										<span class="text-muted-foreground/50 text-base sm:text-lg" aria-hidden="true">-</span>
 										<span class="sr-only">수업 없음</span>

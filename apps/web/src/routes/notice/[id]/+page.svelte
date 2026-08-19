@@ -81,11 +81,11 @@ $effect(() => {
 						<span class="px-2 py-1 text-sm font-semibold rounded-md {getTypeColor(detail.data.notice.type)}">
 							{detail.data.notice.type}
 						</span>
-						<span class="text-base sm:text-lg font-medium text-muted-foreground">
+						<span class="text-base sm:text-lg text-muted-foreground">
 							{detail.data.notice.subject}
 						</span>
 					</div>
-					<h1 class="text-xl sm:text-2xl font-bold tracking-tight text-foreground sm:mb-1">
+					<h1 class="text-xl sm:text-2xl font-bold sm:tracking-tight text-foreground sm:mb-1">
 						{detail.data.notice.title}
 					</h1>
 					<p class="text-sm sm:text-base text-muted-foreground">
@@ -123,7 +123,7 @@ $effect(() => {
 											href={file.url}
 											target="_blank"
 											rel="noopener noreferrer"
-											class="text-sm font-medium text-foreground pointer:hover:text-muted-foreground underline break-all"
+											class="text-sm font-semibold text-foreground pointer:hover:text-muted-foreground underline break-all"
 										>
 											{file.name}
 										</a>
@@ -313,9 +313,12 @@ $effect(() => {
 	height: 0;
 	padding-bottom: 56.25%; /* 16:9 aspect ratio */
 	margin: 0.75rem 0;
-	border-radius: 0.25rem;
+	border-radius: 0.5rem;
 	overflow: hidden;
-	box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+	box-shadow: 0 0 0 1px oklch(0 0 0 / 0.1);
+}
+:global(.dark) .markdown-content :global(.video-embed) {
+	box-shadow: 0 0 0 1px oklch(1 0 0 / 0.1);
 }
 
 .markdown-content :global(.video-embed iframe) {

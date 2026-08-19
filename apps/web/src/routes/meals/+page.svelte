@@ -131,11 +131,11 @@ function openMealDrawer(day: any) {
                 {hasMeal ? 'cursor-pointer pointer:hover:bg-muted' : 'cursor-default'}"
             >
               <div>
-                <h2 class="text-sm sm:text-base font-semibold {isTodayCol ? 'text-foreground' : 'text-muted-foreground'}">{formatDateKorean(day.date)}</h2>
+                <h2 class="text-sm sm:text-base font-semibold tabular-nums {isTodayCol ? 'text-foreground' : 'text-muted-foreground'}">{formatDateKorean(day.date)}</h2>
                 {#if hasMeal}
                   <ul class="mt-2.5 space-y-1 text-foreground">
                     {#each (day as any)[mealKey(selectedMealType)].dishes as dish}
-                      <li class="text-sm sm:text-[15px] leading-snug truncate max-w-full overflow-hidden whitespace-nowrap" title={dish}>{dish}</li>
+                      <li class="text-sm sm:text-list leading-snug truncate max-w-full overflow-hidden whitespace-nowrap" title={dish}>{dish}</li>
                     {/each}
                   </ul>
                 {:else}
@@ -165,14 +165,14 @@ function openMealDrawer(day: any) {
 >
   {#snippet header()}
     {#if selectedMeal}
-      <p class="text-xs font-medium text-muted-foreground mb-1 tracking-wide tabular-nums">
+      <p class="text-xs font-semibold text-muted-foreground mb-1 tracking-wide tabular-nums">
         {selectedMeal.dateInfo.year}년
       </p>
       <div class="flex items-baseline gap-2 flex-wrap">
-        <h2 class="text-2xl font-bold tracking-tight leading-none text-foreground">
+        <h2 class="text-2xl font-bold tracking-tight leading-tight text-foreground">
           {selectedMeal.dateInfo.month}월 {selectedMeal.dateInfo.day}일
         </h2>
-        <span class="text-base text-muted-foreground leading-none">{selectedMeal.dateInfo.weekday}요일</span>
+        <span class="text-base text-muted-foreground leading-tight">{selectedMeal.dateInfo.weekday}요일</span>
         <span class="text-xs font-semibold px-2 py-0.5 rounded-full bg-muted text-muted-foreground leading-none">
           {selectedMeal.meal.mealType}
         </span>
@@ -211,7 +211,7 @@ function openMealDrawer(day: any) {
             {#each nutrientRows as [name, value]}
               <div class="flex items-baseline justify-between gap-1 border-b border-border pb-1.5">
                 <span class="text-xs text-muted-foreground truncate">{name}</span>
-                <span class="text-xs font-medium text-foreground tabular-nums flex-shrink-0">{value}</span>
+                <span class="text-xs text-foreground tabular-nums flex-shrink-0">{value}</span>
               </div>
             {/each}
           </div>

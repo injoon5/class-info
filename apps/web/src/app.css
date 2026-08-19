@@ -42,9 +42,21 @@
 }
 
 @theme inline {
-	--font-sans: Pretendard, 'Pretendard Variable', -apple-system, BlinkMacSystemFont,
+	--font-sans: 'Pretendard Variable', Pretendard, -apple-system, BlinkMacSystemFont,
 		system-ui, 'Apple SD Gothic Neo', 'Noto Sans KR', 'Malgun Gothic', 'Segoe UI', Roboto,
 		'Apple Color Emoji', 'Segoe UI Emoji', sans-serif;
+
+	/* ── Type ramp ────────────────────────────────────────────────────────────
+	   12 / 14 / 15 / 16 / 20 / 24 / 30. `text-list` (15px) is the size for row
+	   titles and list bodies — the step between a 14px caption and a 16px field.
+	   16px is reserved for inputs and must not go lower: iOS zooms the viewport
+	   when a focused field is under 16px.
+	   Weights are 400 body / 600 emphasis and labels / 700 display. Nothing in
+	   between: at these sizes a 500 reads as a slightly muddy 400 and spends a
+	   variable to say nothing.
+	   `tracking-tight` is a display correction — it belongs at 24px and up. On
+	   Korean at 16–20px it removes breathing room that the syllable blocks need. */
+	--text-list: 0.9375rem;
 	--ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
 	--color-background: var(--background);
 	--color-foreground: var(--foreground);
@@ -72,10 +84,8 @@ html {
 		@apply bg-background text-foreground;
 		font-family: var(--font-sans);
 		font-weight: 400;
-		font-variant-numeric: tabular-nums;
 		-webkit-font-smoothing: antialiased;
 		-moz-osx-font-smoothing: grayscale;
-		text-rendering: optimizeLegibility;
 		-webkit-tap-highlight-color: transparent;
 		touch-action: manipulation;
 		margin: 0;
@@ -105,14 +115,15 @@ html {
 	}
 }
 
-/* Keyboard-only focus ring using the ring token */
+/* Keyboard-only focus ring using the ring token. This is the app's only focus
+   treatment — controls must not add their own, or they stack. The outline
+   follows each element's own border-radius, so none is set here. */
 :focus {
 	outline: none;
 }
 :focus-visible {
 	outline: 2px solid var(--ring);
 	outline-offset: 2px;
-	border-radius: 2px;
 }
 
 @layer utilities {

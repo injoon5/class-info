@@ -55,7 +55,7 @@ const SIZES: Record<'sm' | 'md', string> = {
 };
 
 const base = $derived(
-	`pressable touch-target inline-flex items-center justify-center gap-2 rounded-full font-medium transition-colors duration-150 ` +
+	`pressable touch-target inline-flex items-center justify-center gap-2 rounded-full font-semibold transition-colors duration-150 ` +
 		`disabled:cursor-not-allowed disabled:opacity-50 ring-ring ring-offset-2 ring-offset-background ` +
 		`${SIZES[size]} ${VARIANTS[variant]} ${emphasized ? 'ring-2' : ''} ${className}`
 );

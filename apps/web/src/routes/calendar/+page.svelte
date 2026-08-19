@@ -283,7 +283,7 @@ const dayNames = ['일','월','화','수','목','금','토'];
       </svg>
     </button>
 
-    <h1 class="text-base sm:text-lg font-semibold tracking-tight text-foreground tabular-nums">
+    <h1 class="text-base sm:text-lg font-semibold text-foreground tabular-nums">
       {displayYear}년 {monthNames[displayMonth]}
     </h1>
 
@@ -397,59 +397,80 @@ const dayNames = ['일','월','화','수','목','금','토'];
 
 {#snippet adminFooter()}
   {#if saveError}
-    <p class="mb-3 text-sm font-medium text-destructive" role="alert">{saveError}</p>
+    <p class="mb-3 text-sm font-semibold text-destructive" role="alert">{saveError}</p>
   {/if}
+
   {#if !popupAddMode}
-    <button
-      in:fly={{ y: 10, duration: 300 }}
-      out:fade={{ duration: 100 }}
-      onclick={() => { popupAddMode = true; saveError = null; }}
-      class="pressable w-full flex items-center justify-center gap-2 py-2.5 rounded-xl bg-muted text-sm font-medium text-foreground transition-colors duration-150 pointer:hover:bg-border"
-    >
-      <svg viewBox="0 0 20 20" fill="currentColor" class="w-4 h-4 flex-shrink-0">
-        <path fill-rule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clip-rule="evenodd"/>
-      </svg>
-      일정 추가
-    </button>
+    <div in:fly={{ y: 10, duration: 300 }} out:fade={{ duration: 100 }}>
+      <PillButton variant="secondary" class="w-full" onclick={() => { popupAddMode = true; saveError = null; }}>
+        <svg viewBox="0 0 20 20" fill="currentColor" class="w-4 h-4 flex-shrink-0" aria-hidden="true">
+          <path fill-rule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clip-rule="evenodd"/>
+        </svg>
+        일정 추가
+      </PillButton>
+    </div>
   {:else}
-    <div in:scale={{ start: 0.3, duration: 300, easing: expoOut }} out:scale={{ start: 0.3, duration: 300, easing: expoOut }}>
-    <input
-      type="text"
-      bind:value={newEventTitle}
-      use:focusOnElement
-      placeholder="일정 제목을 입력하세요"
-      class="w-full h-11 px-3.5 mb-3 border border-border bg-muted text-foreground text-base rounded-xl outline-none focus-visible:ring-2 focus-visible:ring-ring/50 transition-shadow placeholder:text-muted-foreground"
-      onkeydown={(e) => {
-        if (e.key === 'Enter' && !e.isComposing) handleAddEvent();
-        if (e.key === 'Escape') { popupAddMode = false; newEventTitle = ''; }
-      }}
-    />
-    <div class="flex gap-2 touch:gap-4 mb-3">
-      {#each CUSTOM_COLORS as color}
-        <button
-          onclick={() => (newEventColor = color.id)}
-          class="pressable touch-target w-7 h-7 rounded-full {color.bgClass} transition-[transform,box-shadow]
-            {newEventColor === color.id ? 'ring-2 ring-offset-2 ring-offset-card ring-ring scale-110' : 'opacity-70 pointer:hover:opacity-100 pointer:hover:scale-105'}"
-          aria-label={color.id}
-          aria-pressed={newEventColor === color.id}
-        ></button>
-      {/each}
-    </div>
-    <div class="flex gap-2">
-      <PillButton
-        text={isSaving ? '저장 중…' : '저장'}
-        pending={isSaving}
-        onclick={handleAddEvent}
-        disabled={isSaving || !newEventTitle.trim()}
-        class="flex-1 py-2.5"
-      />
-      <PillButton
-        text="취소"
-        variant="secondary"
-        onclick={() => { popupAddMode = false; newEventTitle = ''; saveError = null; }}
-        class="py-2.5"
-      />
-    </div>
+    <!-- The composer grows out of the button's place and shrinks back on cancel. -->
+    <div
+      class="space-y-4"
+      in:scale={{ start: 0.3, duration: 300, easing: expoOut }}
+      out:scale={{ start: 0.3, duration: 300, easing: expoOut }}
+    >
+      <!-- Title and colour are one thing — what the event is — so they sit
+           tight together, with the action band set apart from them. -->
+      <div class="space-y-2.5">
+        <input
+          type="text"
+          bind:value={newEventTitle}
+          use:focusOnElement
+          aria-label="일정 제목"
+          placeholder="예: 반티 주문 마감"
+          class="w-full h-11 px-3.5 rounded-xl bg-muted text-base text-foreground placeholder:text-muted-foreground"
+          onkeydown={(e) => {
+            if (e.key === 'Enter' && !e.isComposing) handleAddEvent();
+            if (e.key === 'Escape') { popupAddMode = false; newEventTitle = ''; }
+          }}
+        />
+
+        <div class="flex items-center gap-3">
+          <span class="shrink-0 text-xs text-muted-foreground">색상</span>
+          <!-- A check marks the choice. A ring would have read as focus, which
+               is the one signal this row must not borrow. -->
+          <div class="flex gap-2 touch:gap-5" role="radiogroup" aria-label="일정 색상">
+            {#each CUSTOM_COLORS as color}
+              <button
+                type="button"
+                onclick={() => (newEventColor = color.id)}
+                class="pressable touch-target w-6 h-6 rounded-full flex items-center justify-center {color.bgClass}"
+                role="radio"
+                aria-checked={newEventColor === color.id}
+                aria-label={color.id}
+              >
+                {#if newEventColor === color.id}
+                  <svg viewBox="0 0 20 20" fill="none" stroke="white" stroke-width="3" class="w-3.5 h-3.5" aria-hidden="true">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M5 10.5l3.5 3.5L15 7"/>
+                  </svg>
+                {/if}
+              </button>
+            {/each}
+          </div>
+        </div>
+      </div>
+
+      <div class="flex gap-2">
+        <PillButton
+          text={isSaving ? '저장 중…' : '저장'}
+          pending={isSaving}
+          onclick={handleAddEvent}
+          disabled={isSaving || !newEventTitle.trim()}
+          class="flex-1"
+        />
+        <PillButton
+          text="취소"
+          variant="secondary"
+          onclick={() => { popupAddMode = false; newEventTitle = ''; saveError = null; }}
+        />
+      </div>
     </div>
   {/if}
 {/snippet}
@@ -462,14 +483,14 @@ const dayNames = ['일','월','화','수','목','금','토'];
 >
   {#snippet header()}
     {#if selectedDateInfo}
-      <p class="text-xs font-medium text-muted-foreground mb-1 tracking-wide tabular-nums">
+      <p class="text-xs font-semibold text-muted-foreground mb-1 tracking-wide tabular-nums">
         {selectedDateInfo.year}년
       </p>
       <div class="flex items-baseline gap-2 flex-wrap">
-        <h2 id="day-popup-title" class="text-2xl font-bold tracking-tight leading-none text-foreground">
+        <h2 id="day-popup-title" class="text-2xl font-bold tracking-tight leading-tight text-foreground">
           {monthNames[selectedDateInfo.month - 1]} {selectedDateInfo.day}일
         </h2>
-        <span class="text-base text-muted-foreground leading-none">{selectedDateInfo.weekday}요일</span>
+        <span class="text-base text-muted-foreground leading-tight">{selectedDateInfo.weekday}요일</span>
         {#if selectedDateInfo.isToday}
           <span class="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-primary text-primary-foreground leading-none">오늘</span>
         {/if}
@@ -485,7 +506,7 @@ const dayNames = ['일','월','화','수','목','금','토'];
           <path stroke-linecap="round" stroke-linejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75m-18 0v-7.5A2.25 2.25 0 015.25 9h13.5A2.25 2.25 0 0121 11.25v7.5"/>
         </svg>
       </div>
-      <p class="text-sm font-medium text-muted-foreground">일정이 없어요</p>
+      <p class="text-sm font-semibold text-muted-foreground">일정이 없어요</p>
       {#if isAuthenticated}
         <p class="text-xs text-muted-foreground/70 mt-1">아래 버튼으로 일정을 추가해 보세요</p>
       {/if}
@@ -494,27 +515,27 @@ const dayNames = ['일','월','화','수','목','금','토'];
     <ul class="space-y-2.5">
       {#each selectedDateEvents.school as event (event._id)}
         {@const style = getSchoolEventPopupStyle(event.eventType)}
-        <li class="flex rounded overflow-hidden shadow-sm">
+        <li class="flex rounded-xl overflow-hidden">
           <div class="w-1.5 flex-shrink-0 {style.color}"></div>
           <div class="flex-1 px-3 py-2.5 {style.bg}">
             <p class="text-xs font-semibold {style.labelColor} mb-0.5">{style.label}</p>
-            <p class="text-sm font-medium text-foreground leading-snug">{event.title}</p>
+            <p class="text-sm font-semibold text-foreground leading-snug">{event.title}</p>
           </div>
         </li>
       {/each}
       {#each selectedDateEvents.custom as event (event._id)}
         {@const style = CUSTOM_POPUP_STYLE[event.color] ?? CUSTOM_POPUP_STYLE.blue}
-        <li class="flex rounded overflow-hidden shadow-sm">
+        <li class="flex rounded-xl overflow-hidden">
           <div class="w-1.5 flex-shrink-0 {style.color}"></div>
           <div class="flex-1 flex items-center justify-between gap-2 px-3 py-2.5 {style.bg}">
             <div class="min-w-0">
               <p class="text-xs font-semibold {style.labelColor} mb-0.5">학급 일정</p>
-              <p class="text-sm font-medium text-foreground leading-snug">{event.title}</p>
+              <p class="text-sm font-semibold text-foreground leading-snug">{event.title}</p>
             </div>
             {#if isAuthenticated}
               <button
                 onclick={() => handleDeleteCustomEvent(event._id)}
-                class="pressable-icon touch-target flex-shrink-0 w-7 h-7 flex items-center justify-center rounded-full text-muted-foreground pointer:hover:text-destructive pointer:hover:bg-white/60 dark:pointer:hover:bg-black/20 transition-colors duration-150"
+                class="pressable-icon touch-target flex-shrink-0 w-7 h-7 flex items-center justify-center rounded-full text-muted-foreground pointer:hover:text-destructive pointer:hover:bg-destructive/10 transition-colors duration-150"
                 aria-label="삭제" title="삭제"
               >
                 <svg viewBox="0 0 20 20" fill="currentColor" class="w-4 h-4">
