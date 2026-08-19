@@ -119,10 +119,15 @@ export function addDaysIso(iso: string, days: number): string {
   return toIsoDateUtc(dt.getUTCFullYear(), dt.getUTCMonth() + 1, dt.getUTCDate());
 }
 
-// Notices roll over to "past" at DAY_ROLLOVER_HOUR_KST. Returns YYYY-MM-DD
-// to match the stored dueDate format.
+// After DAY_ROLLOVER_HOUR_KST this is tomorrow. Notices use it as the
+// current/past split (due today → past). Home uses the same hour via
+// isAtOrAfterDayRollover, then skips to the next school day.
 export function kstCutoffDateString(now: Date = getNowKst()): string {
   return toIsoDate(addCalendarDays(now, isAtOrAfterDayRollover(now) ? 1 : 0));
+}
+
+export function noticeClock(now: Date = getNowKst()): { cutoff: string; today: string } {
+  return { cutoff: kstCutoffDateString(now), today: toIsoDate(now) };
 }
 
 const SCHOOL_DAY_LOOKAHEAD = 14;

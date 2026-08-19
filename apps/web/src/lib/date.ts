@@ -14,7 +14,8 @@ import {
 	toYyyymmdd as yyyymmdd,
 	weekdayKr,
 	weekdayKrUtc,
-	kstCutoffDateString as noticeCutoffIso,
+	kstCutoffDateString,
+	noticeClock,
 	resolveSchoolDisplayDay,
 } from '@class-info/backend/convex/dates';
 
@@ -30,7 +31,8 @@ export {
 	yyyymmdd,
 	weekdayKr,
 	weekdayKrUtc,
-	noticeCutoffIso,
+	kstCutoffDateString,
+	noticeClock,
 	resolveSchoolDisplayDay,
 };
 
@@ -40,10 +42,6 @@ export function pad2(n: number): string {
 
 export function todayIso(now: Date = getNowInKst()): string {
 	return toIsoDate(now);
-}
-
-export function noticeClock(now: Date = getNowInKst()): { cutoff: string; today: string } {
-	return { cutoff: noticeCutoffIso(now), today: todayIso(now) };
 }
 
 export function thisMondayYyyymmdd(now: Date = getNowInKst()): string {
