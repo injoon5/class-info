@@ -3,9 +3,10 @@ import { useQuery } from 'convex-svelte';
 import { api } from "@class-info/backend/convex/_generated/api";
 import NoticeCard from '../components/NoticeCard.svelte';
 import { getNowInKst, yyyymmdd, WEEKDAYS_KR } from '$lib/date';
+import { eventDotClass } from '$lib/utils';
 import type { PageData } from './$types.js';
 
-let { data }: { data: PageData } = $props();
+const { data }: { data: PageData } = $props();
 
 const noticesQuery = useQuery(api.notices.overview, {}, () => ({
 	initialData: data.noticesOverview,
@@ -98,12 +99,39 @@ const upcomingEvents = $derived(
 );
 
 // ── Notices ───────────────────────────────────────────────────────────────────
+const PREVIEW_NOTICE_LIMIT = 4;
+
 const currentGroups = $derived(noticesQuery.data?.currentGroups ?? []);
-const noticePreview = $derived(currentGroups.slice(0, 3));
-const hasNotices = $derived(noticePreview.length > 0);
-const shownNoticeCount = $derived(noticePreview.reduce((sum, g: any) => sum + (g.notices?.length ?? 0), 0));
-const totalNoticeCount = $derived(currentGroups.reduce((sum, g: any) => sum + (g.notices?.length ?? 0), 0));
-const remainingNoticeCount = $derived(totalNoticeCount - shownNoticeCount);
+const hasNotices = $derived(currentGroups.length > 0);
+
+// Take whole groups until the budget runs out, trimming the last group rather
+// than dropping it — the earliest deadlines are the ones worth showing.
+const noticePreview = $derived.by(() => {
+	const preview: any[] = [];
+	let budget = PREVIEW_NOTICE_LIMIT;
+	for (const group of currentGroups as any[]) {
+		if (budget <= 0) break;
+		const notices = (group.notices ?? []).slice(0, budget);
+		if (notices.length === 0) continue;
+		preview.push({ ...group, notices });
+		budget -= notices.length;
+	}
+	return preview;
+});
+
+// The first notice past the cut. It is what the fade is drawn over, so the
+// "there is more" hint is the actual next notice rather than a decoy — and when
+// this is null there is genuinely nothing more, and no hint is drawn at all.
+const peekNotice = $derived.by(() => {
+	const shown = noticePreview.reduce((n, g: any) => n + (g.notices?.length ?? 0), 0);
+	let i = 0;
+	for (const group of currentGroups as any[]) {
+		for (const notice of group.notices ?? []) {
+			if (i++ === shown) return notice;
+		}
+	}
+	return null;
+});
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 function formatEventDate(dateStr: string): string {
@@ -128,16 +156,6 @@ function eventTypeCss(event: any): string {
 	}
 }
 
-function eventDotColor(event: any): string {
-	if (event.source === 'custom' && event.color) return event.color;
-	switch (event.eventType) {
-		case '공휴일': return '#ef4444';
-		case '휴업일':
-		case '재량휴업일': return '#f59e0b';
-		default: return '#0ea5e9';
-	}
-}
-
 function isToday(dateStr: string): boolean {
 	return dateStr === todayYyyymmdd;
 }
@@ -159,10 +177,10 @@ function isToday(dateStr: string): boolean {
 <div class="max-w-4xl mx-auto px-4 pt-6 pb-16 sm:pt-8">
 
 	<!-- ── Date hero ───────────────────────────────────────────────────────── -->
-	<header class="flex flex-wrap items-baseline justify-between gap-x-5 gap-y-1.5 mb-6 sm:mb-7">
+	<header class="flex flex-wrap items-baseline justify-between gap-x-6 gap-y-1.5 mb-6 sm:mb-8">
 		<h1 class="flex items-baseline gap-2">
 			<span class="text-2xl sm:text-3xl font-bold tracking-tight text-foreground">{todayMonth}월 {todayDate}일</span>
-			<span class="text-base sm:text-lg font-medium text-muted-foreground">{todayWeekday}요일</span>
+			<span class="text-base sm:text-lg text-muted-foreground">{todayWeekday}요일</span>
 		</h1>
 		{#if todayEvents.length > 0}
 			<div class="flex flex-wrap items-baseline gap-x-4 gap-y-1 text-base sm:text-lg">
@@ -170,7 +188,7 @@ function isToday(dateStr: string): boolean {
 					<span class="inline-flex items-baseline gap-1.5">
 						<span class="font-semibold text-foreground">{event.title}</span>
 						{#if eventTypeLabel(event)}
-							<span class="text-xs sm:text-sm font-semibold {eventTypeCss(event)}">{eventTypeLabel(event)}</span>
+							<span class="text-sm font-semibold {eventTypeCss(event)}">{eventTypeLabel(event)}</span>
 						{/if}
 					</span>
 				{/each}
@@ -184,8 +202,8 @@ function isToday(dateStr: string): boolean {
 		<!-- Timetable -->
 		<section class="sm:col-span-1">
 			<div class="flex items-baseline justify-between mb-2.5">
-				<h2 class="text-sm font-semibold text-muted-foreground">{cardDayLabel}시간표</h2>
-				<a href="/timetable" aria-label="시간표 모두 보기" class="text-xs font-medium text-muted-foreground transition-colors duration-100 pointer:hover:text-foreground">모두 보기 <span aria-hidden="true">→</span></a>
+				<h2 class="font-semibold text-muted-foreground">{cardDayLabel}시간표</h2>
+				<a href="/timetable" aria-label="시간표 모두 보기" class="text-sm font-semibold text-muted-foreground transition-colors duration-150 pointer:hover:text-foreground">모두 보기 <span aria-hidden="true">→</span></a>
 			</div>
 			<div class="bg-card border border-border rounded-2xl p-4">
 				{#if displaySchedule.length === 0}
@@ -197,9 +215,9 @@ function isToday(dateStr: string): boolean {
 						{#each displaySchedule as slot}
 							<li class="flex items-center gap-3">
 								<span class="text-sm tabular-nums text-muted-foreground shrink-0 w-4 text-center">{slot.period}</span>
-								<span class="text-[15px] font-semibold leading-snug truncate min-w-0 flex-1 {slot.replaced ? 'text-amber-700 dark:text-amber-400' : 'text-foreground'}">{slot.subject}</span>
+								<span class="text-list font-semibold leading-snug truncate min-w-0 flex-1 {slot.replaced ? 'text-amber-700 dark:text-amber-400' : 'text-foreground'}">{slot.subject}</span>
 								{#if slot.teacher}
-									<span class="text-xs text-muted-foreground shrink-0">{slot.teacher}</span>
+									<span class="text-sm text-muted-foreground shrink-0">{slot.teacher}</span>
 								{/if}
 							</li>
 						{/each}
@@ -211,44 +229,42 @@ function isToday(dateStr: string): boolean {
 		<!-- Meal -->
 		<section class="sm:col-span-2">
 			<div class="flex items-baseline justify-between mb-2.5">
-				<h2 class="text-sm font-semibold text-muted-foreground">{cardDayLabel}급식</h2>
-				<a href="/meals" aria-label="급식 모두 보기" class="text-xs font-medium text-muted-foreground transition-colors duration-100 pointer:hover:text-foreground">모두 보기 <span aria-hidden="true">→</span></a>
+				<h2 class="font-semibold text-muted-foreground">{cardDayLabel}급식</h2>
+				<a href="/meals" aria-label="급식 모두 보기" class="text-sm font-semibold text-muted-foreground transition-colors duration-150 pointer:hover:text-foreground">모두 보기 <span aria-hidden="true">→</span></a>
 			</div>
 			<div class="bg-card border border-border rounded-2xl p-4">
 				<!-- gap-0 + symmetric padding keeps the divider on the card's exact center at every width -->
-				<div class="grid grid-cols-2">
+				<div class="grid {displayDinner ? 'grid-cols-2' : 'grid-cols-1'}">
 					<!-- Lunch -->
-					<div class="pr-4 sm:pr-6">
-						<p class="text-xs font-semibold text-muted-foreground mb-2">중식</p>
+					<div class="flex flex-col {displayDinner ? 'pr-4 sm:pr-6' : ''}">
+						<p class="text-sm font-semibold text-muted-foreground mb-2">중식</p>
 						{#if !displayLunch}
 							<p class="text-sm text-muted-foreground">급식 정보가 없어요</p>
 						{:else}
 							<ul class="space-y-1.5">
 								{#each displayLunch.dishes as dish}
-									<li class="text-[15px] text-foreground leading-snug truncate max-w-full overflow-hidden whitespace-nowrap">{dish}</li>
+									<li class="text-list text-foreground leading-snug truncate max-w-full overflow-hidden whitespace-nowrap">{dish}</li>
 								{/each}
 							</ul>
 							{#if displayLunch.calories}
-								<p class="mt-2.5 text-xs text-muted-foreground tabular-nums">{displayLunch.calories}</p>
+								<p class="mt-auto pt-2.5 text-sm text-muted-foreground tabular-nums">{displayLunch.calories}</p>
 							{/if}
 						{/if}
 					</div>
 					<!-- Dinner -->
-					<div class="border-l border-border pl-4 sm:pl-6">
-						<p class="text-xs font-semibold text-muted-foreground mb-2">석식</p>
-						{#if !displayDinner}
-							<p class="text-sm text-muted-foreground">급식 정보가 없어요</p>
-						{:else}
+					{#if displayDinner}
+						<div class="flex flex-col border-l border-border pl-4 sm:pl-6">
+							<p class="text-sm font-semibold text-muted-foreground mb-2">석식</p>
 							<ul class="space-y-1.5">
 								{#each displayDinner.dishes as dish}
-									<li class="text-[15px] text-foreground leading-snug truncate max-w-full overflow-hidden whitespace-nowrap">{dish}</li>
+									<li class="text-list text-foreground leading-snug truncate max-w-full overflow-hidden whitespace-nowrap">{dish}</li>
 								{/each}
 							</ul>
 							{#if displayDinner.calories}
-								<p class="mt-2.5 text-xs text-muted-foreground tabular-nums">{displayDinner.calories}</p>
+								<p class="mt-auto pt-2.5 text-sm text-muted-foreground tabular-nums">{displayDinner.calories}</p>
 							{/if}
-						{/if}
-					</div>
+						</div>
+					{/if}
 				</div>
 			</div>
 		</section>
@@ -261,8 +277,8 @@ function isToday(dateStr: string): boolean {
 		<!-- Notices -->
 		<section>
 			<div class="flex items-baseline justify-between mb-2.5">
-				<h2 class="text-sm font-semibold text-muted-foreground">공지</h2>
-				<a href="/notices" aria-label="공지 모두 보기" class="text-xs font-medium text-muted-foreground transition-colors duration-100 pointer:hover:text-foreground">모두 보기 <span aria-hidden="true">→</span></a>
+				<h2 class="font-semibold text-muted-foreground">공지</h2>
+				<a href="/notices" aria-label="공지 모두 보기" class="text-sm font-semibold text-muted-foreground transition-colors duration-150 pointer:hover:text-foreground">모두 보기 <span aria-hidden="true">→</span></a>
 			</div>
 
 			{#if noticesQuery.isLoading && !noticesQuery.data}
@@ -271,40 +287,54 @@ function isToday(dateStr: string): boolean {
 				</div>
 			{:else if !hasNotices}
 				<div class="bg-card border border-border rounded-2xl px-4 py-8 text-center">
-					<p class="text-sm text-muted-foreground">공지가 없어요</p>
+					<p class="text-sm text-muted-foreground">등록된 공지가 없어요</p>
 				</div>
 			{:else}
 				<div class="space-y-4">
-					{#each noticePreview as group}
+					{#each noticePreview as group (group.date)}
 						<div>
-							<p class="text-xs font-semibold text-muted-foreground mb-2">
+							<p class="text-sm font-semibold text-muted-foreground mb-2">
 								{group.displayDate}
 							</p>
 							<div class="grid gap-1.5">
-								{#each group.notices as notice}
+								{#each group.notices as notice (notice._id)}
 									<NoticeCard {notice} />
 								{/each}
 							</div>
 						</div>
 					{/each}
 
-					{#if remainingNoticeCount > 0}
-						<a
-							href="/notices"
-							class="block text-center text-sm text-muted-foreground transition-colors duration-100 pointer:hover:text-foreground py-1"
-						>
-							+ {remainingNoticeCount}개 더 보기
-						</a>
+					{#if peekNotice}
+						<!-- The list is shown continuing rather than described as
+						     continuing: the next notice dissolves into the page instead
+						     of being cut off, and the link sits in the space that opens
+						     up before the next section. The card is decorative — not a
+						     link, out of the a11y tree, out of the tab order. -->
+						<div class="relative -mt-2.5" aria-hidden="true" inert>
+							<NoticeCard notice={peekNotice} interactive={false} />
+							<div
+								class="pointer-events-none absolute inset-0 bg-gradient-to-b from-background/0 via-background/75 via-55% to-background to-92%"
+							></div>
+						</div>
 					{/if}
 				</div>
+
+				{#if peekNotice}
+					<a
+						href="/notices"
+						class="block text-center text-sm font-semibold text-muted-foreground pt-3 pb-8 transition-colors duration-150 pointer:hover:text-foreground"
+					>
+						모두 보기 <span aria-hidden="true">→</span>
+					</a>
+				{/if}
 			{/if}
 		</section>
 
 		<!-- Events -->
 		<section>
 			<div class="flex items-baseline justify-between mb-2.5">
-				<h2 class="text-sm font-semibold text-muted-foreground">일정</h2>
-				<a href="/calendar" aria-label="일정 모두 보기" class="text-xs font-medium text-muted-foreground transition-colors duration-100 pointer:hover:text-foreground">모두 보기 <span aria-hidden="true">→</span></a>
+				<h2 class="font-semibold text-muted-foreground">일정</h2>
+				<a href="/calendar" aria-label="일정 모두 보기" class="text-sm font-semibold text-muted-foreground transition-colors duration-150 pointer:hover:text-foreground">모두 보기 <span aria-hidden="true">→</span></a>
 			</div>
 			{#if upcomingEvents.length === 0}
 				<div class="bg-card border border-border rounded-2xl px-4 py-8 text-center">
@@ -314,9 +344,9 @@ function isToday(dateStr: string): boolean {
 				<div class="bg-card border border-border rounded-2xl overflow-hidden divide-y divide-border">
 					{#each upcomingEvents as event, i (event._id ?? i)}
 						<div class="flex items-center gap-2.5 px-4 py-3">
-							<span class="w-2 h-2 rounded-full shrink-0" style="background-color: {eventDotColor(event)}" aria-hidden="true"></span>
-							<span class="text-[15px] text-foreground font-medium flex-1 min-w-0 truncate">{event.title}</span>
-							<span class="text-xs tabular-nums shrink-0 text-right {isToday(event.date) ? 'font-semibold text-foreground' : 'text-muted-foreground'}">
+							<span class="w-2 h-2 rounded-full shrink-0 {eventDotClass(event)}" aria-hidden="true"></span>
+							<span class="text-list text-foreground font-semibold flex-1 min-w-0 truncate">{event.title}</span>
+							<span class="text-sm tabular-nums shrink-0 text-right {isToday(event.date) ? 'font-semibold text-foreground' : 'text-muted-foreground'}">
 								{isToday(event.date) ? '오늘' : formatEventDate(event.date)}
 							</span>
 						</div>

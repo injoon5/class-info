@@ -54,3 +54,39 @@ export function formatKoreanDueDate(dateString: string): string {
 	const weekday = WEEKDAYS_KR[date.getDay()];
 	return `${date.getMonth() + 1}월 ${date.getDate()}일(${weekday})까지`;
 }
+
+// A 12 KB attachment reporting itself as "0.01 MB" tells the reader nothing.
+// Pick the unit that keeps at least one significant digit.
+export function formatFileSize(bytes: number): string {
+	if (!Number.isFinite(bytes) || bytes < 0) return '';
+	if (bytes < 1024) return `${bytes} B`;
+	if (bytes < 1024 * 1024) return `${Math.round(bytes / 1024)} KB`;
+	return `${(bytes / 1024 / 1024).toFixed(1)} MB`;
+}
+
+// ── Event colors ─────────────────────────────────────────────────────────────
+// The home page and the calendar draw the same events. They used to derive
+// their colors separately — the calendar via Tailwind classes, the home page by
+// dropping the stored color name straight into `background-color`, where
+// "purple" resolved to the CSS keyword (#800080) instead of the palette hue.
+// One map, so one event is one color everywhere.
+
+export const CUSTOM_EVENT_DOT: Record<string, string> = {
+	blue: 'bg-blue-500 dark:bg-blue-400',
+	green: 'bg-green-500 dark:bg-green-400',
+	purple: 'bg-purple-500 dark:bg-purple-400',
+	orange: 'bg-orange-500 dark:bg-orange-400',
+	pink: 'bg-pink-500 dark:bg-pink-400',
+	teal: 'bg-teal-500 dark:bg-teal-400'
+};
+
+export function schoolEventDot(eventType?: string): string {
+	if (eventType === '공휴일') return 'bg-red-500 dark:bg-red-400';
+	if (eventType === '휴업일' || eventType === '재량휴업일') return 'bg-amber-500 dark:bg-amber-400';
+	return 'bg-sky-500 dark:bg-sky-400';
+}
+
+export function eventDotClass(event: { source?: string; color?: string; eventType?: string }): string {
+	if (event.source === 'custom') return CUSTOM_EVENT_DOT[event.color ?? ''] ?? CUSTOM_EVENT_DOT.blue;
+	return schoolEventDot(event.eventType);
+}

@@ -1,20 +1,26 @@
 <script lang="ts">
 import { getTypeColor } from '../lib/utils.js';
 
-let { notice, isPast = false }: { notice: any; isPast?: boolean } = $props();
+const {
+	notice,
+	isPast = false,
+	interactive = true
+}: { notice: any; isPast?: boolean; interactive?: boolean } = $props();
 
-const isLink = $derived(Boolean((notice?.summary && String(notice.summary).trim()) || notice?.hasFiles));
+const isLink = $derived(
+	interactive && Boolean((notice?.summary && String(notice.summary).trim()) || notice?.hasFiles)
+);
 
 const containerClass = $derived(
-    `${isPast ? 'bg-card/60 border-border opacity-80' : 'bg-card border-border'} border rounded-xl p-2.5 sm:p-3${isLink ? ' pressable-xl' : ''} ${isLink ? (isPast ? 'transition-opacity pointer:hover:opacity-100' : 'transition-colors pointer:hover:border-muted-foreground/40') : ''}`
+    `${isPast ? 'bg-card/60 border-border opacity-80 rounded-xl' : 'bg-card border-border rounded-xl'} border p-2.5 sm:p-3${isLink ? ' pressable-xl' : ''} ${isLink ? (isPast ? 'transition-opacity pointer:hover:opacity-100' : 'transition-colors pointer:hover:border-muted-foreground/40') : ''}`
 );
 const headerGapClass = $derived(`flex items-center gap-1.5 sm:gap-2 ${isPast ? 'mb-0.5 sm:mb-1' : 'mb-0.5 sm:mb-1'}`);
 const typePillClass = $derived(`px-1.5 py-0.5 ${isPast ? 'text-xs' : 'text-xs sm:text-sm'} font-semibold rounded-md ${getTypeColor(notice.type)} ${isPast ? 'opacity-75' : ''}`);
-const subjectClass = $derived(`${isPast ? 'text-xs font-medium text-muted-foreground' : 'text-sm font-semibold text-muted-foreground'}`);
+const subjectClass = $derived(`${isPast ? 'text-xs text-muted-foreground' : 'text-sm font-semibold text-muted-foreground'}`);
 const titleWrapClass = $derived(`flex items-center gap-1.5`);
-const titleClass = $derived(`${isPast ? 'font-medium text-muted-foreground text-xs sm:text-sm' : 'font-semibold text-foreground text-[15px] sm:text-base'}`);
+const titleClass = $derived(`${isPast ? ' text-muted-foreground text-xs sm:text-sm' : 'font-semibold text-foreground text-list sm:text-base'}`);
 // Add overflow-hidden and break-words to prevent overflow
-const summaryClass = $derived(`${isPast ? 'text-muted-foreground text-xs' : 'text-muted-foreground sm:mt-1 text-xs sm:text-sm font-medium'} mt-0.5 line-clamp-2 overflow-hidden text-ellipsis`);
+const summaryClass = $derived(`${isPast ? 'text-muted-foreground text-xs' : 'text-muted-foreground sm:mt-1 text-xs sm:text-sm'} mt-0.5 line-clamp-2 overflow-hidden text-ellipsis`);
 </script>
 
 <svelte:element this={isLink ? 'a' : 'div'} class={containerClass} href={isLink ? `/notice/${notice.slug || notice._id}` : undefined}>

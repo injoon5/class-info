@@ -5,9 +5,23 @@ import { PUBLIC_CONVEX_URL } from '$env/static/public';
 import { api } from '@class-info/backend/convex/_generated/api';
 import { getAdminSession, SESSION_COOKIE, SESSION_MAX_AGE } from '$lib/server/auth';
 
+async function loadOverview() {
+	try {
+		const client = new ConvexHttpClient(PUBLIC_CONVEX_URL!);
+		return await client.query(api.notices.overview, {});
+	} catch {
+		return undefined;
+	}
+}
+
 export const load: PageServerLoad = async ({ cookies }) => {
 	const { isAuthenticated, sessionToken } = await getAdminSession(cookies);
-	return { isAuthenticated, sessionToken };
+
+	// Only the authenticated panel renders the list, so don't pay for it on the
+	// PIN screen. A failure here is not fatal — the client query still runs.
+	const overview = isAuthenticated ? await loadOverview() : undefined;
+
+	return { isAuthenticated, sessionToken, overview };
 };
 
 export const actions: Actions = {

@@ -25,6 +25,7 @@
 	--primary-foreground: oklch(0.99 0 0);
 	--destructive: oklch(0.58 0.21 27);
 	--ring: oklch(0.55 0 0);
+	--elevated: oklch(1 0 0);
 }
 
 .dark {
@@ -39,12 +40,26 @@
 	--primary-foreground: oklch(0.2 0 0);
 	--destructive: oklch(0.65 0.19 25);
 	--ring: oklch(0.6 0 0);
+	/* Lighter than --muted (0.27) so it reads as lifted, not recessed. */
+	--elevated: oklch(0.325 0 0);
 }
 
 @theme inline {
-	--font-sans: Pretendard, 'Pretendard Variable', -apple-system, BlinkMacSystemFont,
+	--font-sans: 'Pretendard Variable', Pretendard, -apple-system, BlinkMacSystemFont,
 		system-ui, 'Apple SD Gothic Neo', 'Noto Sans KR', 'Malgun Gothic', 'Segoe UI', Roboto,
 		'Apple Color Emoji', 'Segoe UI Emoji', sans-serif;
+
+	/* ── Type ramp ────────────────────────────────────────────────────────────
+	   12 / 14 / 15 / 16 / 20 / 24 / 30. `text-list` (15px) is the size for row
+	   titles and list bodies — the step between a 14px caption and a 16px field.
+	   16px is reserved for inputs and must not go lower: iOS zooms the viewport
+	   when a focused field is under 16px.
+	   Weights are 400 body / 600 emphasis and labels / 700 display. Nothing in
+	   between: at these sizes a 500 reads as a slightly muddy 400 and spends a
+	   variable to say nothing.
+	   `tracking-tight` is a display correction — it belongs at 24px and up. On
+	   Korean at 16–20px it removes breathing room that the syllable blocks need. */
+	--text-list: 0.9375rem;
 	--ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
 	--color-background: var(--background);
 	--color-foreground: var(--foreground);
@@ -57,6 +72,7 @@
 	--color-primary-foreground: var(--primary-foreground);
 	--color-destructive: var(--destructive);
 	--color-ring: var(--ring);
+	--color-elevated: var(--elevated);
 }
 
 html {
@@ -72,10 +88,8 @@ html {
 		@apply bg-background text-foreground;
 		font-family: var(--font-sans);
 		font-weight: 400;
-		font-variant-numeric: tabular-nums;
 		-webkit-font-smoothing: antialiased;
 		-moz-osx-font-smoothing: grayscale;
-		text-rendering: optimizeLegibility;
 		-webkit-tap-highlight-color: transparent;
 		touch-action: manipulation;
 		margin: 0;
@@ -105,34 +119,68 @@ html {
 	}
 }
 
-/* Keyboard-only focus ring using the ring token */
+/* Keyboard-only focus ring using the ring token. This is the app's only focus
+   treatment — controls must not add their own, or they stack. The outline
+   follows each element's own border-radius, so none is set here. */
 :focus {
 	outline: none;
 }
 :focus-visible {
 	outline: 2px solid var(--ring);
 	outline-offset: 2px;
-	border-radius: 2px;
+}
+/* A filled field already draws its own edge. Offsetting the ring leaves a gap
+   of page colour between the two, which reads as a second border rather than
+   as focus — so on fields the ring sits flush against the fill. */
+input:focus-visible,
+textarea:focus-visible,
+select:focus-visible {
+	outline-offset: 0;
 }
 
 @layer utilities {
-	.pressable {
-		@apply transition-transform duration-75 ease-out;
-	}
-	.pressable:active {
-		@apply scale-[0.96];
-	}
+	/* Buttons and rows. */
+	.pressable,
 	.pressable-lg {
-		@apply transition-transform duration-75 ease-out;
+		@apply transition-transform duration-150 ease-out;
 	}
+	.pressable:active,
 	.pressable-lg:active {
-		@apply scale-[0.97];
+		@apply scale-95;
 	}
+	/* Large tappable surfaces — a full card travelling 5% reads as a lurch. */
 	.pressable-xl {
-		@apply transition-transform duration-75 ease-out;
+		@apply transition-transform duration-150 ease-out;
 	}
 	.pressable-xl:active {
-		@apply scale-[0.98];
+		@apply scale-[0.97];
+	}
+	/* Guarantees a 44px touch target on coarse pointers without changing how big
+	   the control looks — the layout stays exactly where it is and the tappable
+	   area grows underneath it. */
+	.touch-target {
+		position: relative;
+	}
+	@media (pointer: coarse) {
+		.touch-target::after {
+			content: '';
+			position: absolute;
+			top: 50%;
+			left: 50%;
+			transform: translate(-50%, -50%);
+			width: 100%;
+			height: 100%;
+			min-width: 44px;
+			min-height: 44px;
+		}
+	}
+
+	/* 32px icon buttons, which need a deeper press to register at that size. */
+	.pressable-icon {
+		@apply transition-transform duration-150 ease-out;
+	}
+	.pressable-icon:active {
+		@apply scale-90;
 	}
 }
 
@@ -140,8 +188,121 @@ html {
 	*, *::before, *::after {
 		animation-duration: 0.001ms !important;
 		animation-iteration-count: 1 !important;
-		transition-duration: 0.001ms !important;
 		scroll-behavior: auto !important;
+		/* Movement goes; color/opacity feedback stays, so controls still
+		   answer a press. */
+		transition-property: color, background-color, border-color,
+			text-decoration-color, fill, stroke, opacity, box-shadow !important;
+	}
+	.pressable:active,
+	.pressable-lg:active,
+	.pressable-xl:active,
+	.pressable-icon:active {
+		transform: none;
+	}
+}
+
+/* ── Print ──────────────────────────────────────────────────────────────────
+   Paper has no theme, so the reader's dark mode is overridden with the light
+   palette verbatim — the same hairline borders and near-white surfaces the app
+   already draws, not a separate print styling. Only the page's subject prints;
+   the chrome is hidden below. */
+@media print {
+	.dark {
+		--background: oklch(0.981 0 0);
+		--foreground: oklch(0.21 0 0);
+		--card: oklch(1 0 0);
+		--card-foreground: oklch(0.21 0 0);
+		--muted: oklch(0.955 0 0);
+		--muted-foreground: oklch(0.49 0 0);
+		/* A hairline that reads on a backlit screen comes out faint on paper, so
+		   print takes the same grey a step darker. */
+		--border: oklch(0.84 0 0);
+		--primary: oklch(0.24 0 0);
+		--primary-foreground: oklch(0.99 0 0);
+		--destructive: oklch(0.58 0.21 27);
+		--ring: oklch(0.55 0 0);
+		--elevated: oklch(1 0 0);
+	}
+
+	:root {
+		--border: oklch(0.84 0 0);
+	}
+
+	@page {
+		size: A4 portrait;
+		margin: 12mm;
+	}
+
+	html,
+	body {
+		background: #ffffff !important;
+		/* Safe-area padding is a device concern; on paper it just shifts things. */
+		padding: 0 !important;
+		margin: 0 !important;
+		height: auto !important;
+		min-height: 0 !important;
+	}
+
+	/* Keep the fills the tokens ask for — browsers drop backgrounds by default,
+	   which would erase the header row and the substituted-lesson highlight. */
+	* {
+		-webkit-print-color-adjust: exact !important;
+		print-color-adjust: exact !important;
+	}
+
+	/* App chrome never prints. The skip link is not a direct child of <body> —
+	   SvelteKit wraps the tree — so it is matched by its target. */
+	a[href='#main'],
+	header,
+	#aria-live-region {
+		display: none !important;
+	}
+
+	/* The subject of the page gets the sheet, centred, with its own breathing
+	   room. The padding lives on the element rather than only in @page, because
+	   a reader who sets "Margins: none" in the print dialog drops the page
+	   margin and would otherwise get a table welded to the corner of the sheet. */
+	main :where(.max-w-4xl) {
+		max-width: none !important;
+		margin-inline: auto !important;
+		padding: 10mm 8mm !important;
+	}
+
+	/* A horizontal scroller must not crop what it holds on paper. */
+	.overflow-x-auto {
+		overflow: visible !important;
+	}
+
+	/* Close the frame: the outer edge should read like the lines inside it.
+	   With border-collapse the table's own border merges with the outermost
+	   cells', so stating it once gives the grid a continuous edge. */
+	table {
+		border: 1px solid var(--border) !important;
+	}
+	table th,
+	table td {
+		border-color: var(--border) !important;
+	}
+
+	/* A substituted lesson is styled with hardcoded amber utilities including a
+	   dark: variant, which the token override above cannot reach — so printing
+	   from a dark browser put pale yellow on beige. Restate the light values. */
+	td[data-replaced] {
+		background-color: #fef7d8 !important;
+	}
+	td[data-replaced] > div:first-child {
+		color: #b45309 !important;
+	}
+
+	/* Never split a row across sheets. */
+	tr,
+	td,
+	th {
+		break-inside: avoid;
+	}
+	thead {
+		display: table-header-group;
 	}
 }
 

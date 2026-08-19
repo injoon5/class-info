@@ -1,4 +1,6 @@
 <script lang="ts">
+import { slide } from 'svelte/transition';
+import { expoOut } from 'svelte/easing';
 import { useQuery } from 'convex-svelte';
 import { api } from "@class-info/backend/convex/_generated/api";
 import NoticeGroup from '../../components/NoticeGroup.svelte';
@@ -9,7 +11,7 @@ import EmptyState from '../../components/EmptyState.svelte';
 import NoticeFooter from '../../components/NoticeFooter.svelte';
 import type { PageData } from './$types.js';
 
-let { data }: { data: PageData } = $props();
+const { data }: { data: PageData } = $props();
 let openMonthKey = $state<string | null>(null);
 
 const overview = useQuery(api.notices.overview, {}, () => ({
@@ -37,6 +39,7 @@ const overview = useQuery(api.notices.overview, {}, () => ({
 
 
 <div class="max-w-4xl mx-auto px-4 pt-5 pb-4 sm:pt-6">
+	<h1 class="sr-only">공지</h1>
 	<!-- Notice Board -->
     {#if overview.isLoading}
         <LoadingState />
@@ -45,31 +48,38 @@ const overview = useQuery(api.notices.overview, {}, () => ({
     {:else}
         <!-- Current and Future Notices -->
         {#if overview.data?.currentGroups && overview.data.currentGroups.length > 0}
-            {#each overview.data.currentGroups as group}
+            {#each overview.data.currentGroups as group (group.date)}
                 <NoticeGroup {group} />
             {/each}
-        {:else}
-            <EmptyState />
         {/if}
 
         {#if overview.data?.pastMonths && overview.data.pastMonths.length > 0}
             <div class="mt-6 sm:mt-8 pt-4 sm:pt-6 border-t border-border">
-                <h2 class="text-base sm:text-lg font-semibold tracking-tight mb-2 sm:mb-3 text-muted-foreground">지난 알림</h2>
+                <h2 class="text-base sm:text-lg font-semibold mb-2 sm:mb-3 text-muted-foreground">지난 공지</h2>
                 {#each overview.data.pastMonths as month (month.monthKey)}
-                    <details class="mb-1.5 sm:mb-2 bg-card border border-border rounded-xl overflow-hidden" open={openMonthKey === month.monthKey}>
+                    <details class="mb-1.5 sm:mb-2 bg-card border border-border rounded-3xl overflow-hidden" open={openMonthKey === month.monthKey}>
                         <summary
-                            class="px-3 sm:px-4 py-2.5 sm:py-3 cursor-pointer transition-colors pointer:hover:bg-muted text-muted-foreground font-medium text-sm sm:text-base tabular-nums"
+                            class="touch-target flex items-center gap-2 px-3 sm:px-4 py-2.5 sm:py-3 cursor-pointer list-none transition-colors duration-150 pointer:hover:bg-muted text-muted-foreground font-semibold text-sm sm:text-base [&::-webkit-details-marker]:hidden"
                             onclick={(e) => {
                                 e.preventDefault();
                                 openMonthKey = openMonthKey === month.monthKey ? null : month.monthKey;
                             }}
                         >
+                            <svg
+                                viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2"
+                                class="w-4 h-4 flex-shrink-0 text-muted-foreground transition-[rotate] duration-200 ease-out-expo {openMonthKey === month.monthKey ? 'rotate-90' : ''}"
+                                aria-hidden="true"
+                            >
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M7.5 4.5l5 5.5-5 5.5"/>
+                            </svg>
                             {month.monthName} ({month.total}개)
                         </summary>
                         {#if openMonthKey === month.monthKey}
-                            {#key month.monthKey}
-                                <PastMonthDetails monthKey={month.monthKey} />
-                            {/key}
+                            <div transition:slide={{ duration: 300, easing: expoOut }}>
+                                {#key month.monthKey}
+                                    <PastMonthDetails monthKey={month.monthKey} />
+                                {/key}
+                            </div>
                         {/if}
                     </details>
                 {/each}

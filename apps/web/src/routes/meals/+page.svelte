@@ -25,7 +25,7 @@ type MealDoc = {
   editedAt: number;
 };
 
-let { data }: { data: PageData } = $props();
+const { data }: { data: PageData } = $props();
 
 let selectedMealType = $state("중식");
 
@@ -94,6 +94,7 @@ function openMealDrawer(day: any) {
 </svelte:head>
 
 <div class="max-w-4xl mx-auto px-4 pt-4 pb-2 sm:pt-5">
+  <h1 class="sr-only">급식</h1>
   {#if mealsQuery.isLoading}
     <LoadingState />
   {:else if mealsQuery.error}
@@ -117,8 +118,8 @@ function openMealDrawer(day: any) {
           { days: mealsQuery.data.thisWeek.days, class: "" },
           { days: mealsQuery.data.nextWeek.days, class: "mt-3" }
         ] as week}
-        <div class={`mb-4 grid grid-cols-5 sm:grid-cols-5 min-w-[37rem] divide-x divide-border border border-border rounded-2xl overflow-hidden`}>
-          {#each week.days as day}
+        <div class={`mb-4 grid grid-cols-5 sm:grid-cols-5 min-w-[37rem] divide-x divide-border border border-border rounded-xl overflow-hidden`}>
+          {#each week.days as day (day.date)}
             {@const hasMeal = !!(day as any)[mealKey(selectedMealType)]}
             {@const isTodayCol = day.date === todayStr}
             <button
@@ -130,15 +131,15 @@ function openMealDrawer(day: any) {
                 {hasMeal ? 'cursor-pointer pointer:hover:bg-muted' : 'cursor-default'}"
             >
               <div>
-                <h2 class="text-sm sm:text-base font-semibold {isTodayCol ? 'text-foreground' : 'text-muted-foreground'}">{formatDateKorean(day.date)}</h2>
+                <h2 class="text-sm sm:text-base font-semibold tabular-nums {isTodayCol ? 'text-foreground' : 'text-muted-foreground'}">{formatDateKorean(day.date)}</h2>
                 {#if hasMeal}
                   <ul class="mt-2.5 space-y-1 text-foreground">
                     {#each (day as any)[mealKey(selectedMealType)].dishes as dish}
-                      <li class="text-sm sm:text-[15px] leading-snug truncate max-w-full overflow-hidden whitespace-nowrap" title={dish}>{dish}</li>
+                      <li class="text-sm sm:text-list leading-snug truncate max-w-full overflow-hidden whitespace-nowrap" title={dish}>{dish}</li>
                     {/each}
                   </ul>
                 {:else}
-                  <p class="mt-2.5 text-sm text-muted-foreground">급식 정보가 없습니다</p>
+                  <p class="mt-2.5 text-sm text-muted-foreground">급식 정보가 없어요</p>
                 {/if}
               </div>
               <div class="mt-2 min-h-[1.25rem] flex items-end">
@@ -164,15 +165,15 @@ function openMealDrawer(day: any) {
 >
   {#snippet header()}
     {#if selectedMeal}
-      <p class="text-xs font-medium text-muted-foreground mb-1 tracking-wide tabular-nums">
+      <p class="text-sm font-semibold text-muted-foreground mb-1 tabular-nums">
         {selectedMeal.dateInfo.year}년
       </p>
       <div class="flex items-baseline gap-2 flex-wrap">
-        <h2 class="text-2xl font-bold tracking-tight leading-none text-foreground">
+        <h2 class="text-2xl font-bold tracking-tight leading-tight text-foreground">
           {selectedMeal.dateInfo.month}월 {selectedMeal.dateInfo.day}일
         </h2>
-        <span class="text-base text-muted-foreground leading-none">{selectedMeal.dateInfo.weekday}요일</span>
-        <span class="text-xs font-semibold px-2 py-0.5 rounded-full bg-muted text-muted-foreground leading-none">
+        <span class="text-base text-muted-foreground leading-tight">{selectedMeal.dateInfo.weekday}요일</span>
+        <span class="text-base font-semibold px-2.5 py-1 rounded-full bg-primary text-primary-foreground leading-tight">
           {selectedMeal.meal.mealType}
         </span>
       </div>
@@ -183,9 +184,9 @@ function openMealDrawer(day: any) {
   {#if selectedMeal}
     <ul class="space-y-2">
       {#each selectedMeal.meal.dishes as dish}
-        <li class="flex items-start gap-2.5 py-2 border-b border-border last:border-0">
-          <span class="mt-1.5 w-1.5 h-1.5 rounded-full bg-muted-foreground/50 flex-shrink-0"></span>
-          <span class="text-sm text-foreground leading-snug">{dish}</span>
+        <li class="flex items-start gap-2.5 py-1">
+          <span class="mt-2 w-1.5 h-1.5 rounded-full bg-muted-foreground/50 flex-shrink-0"></span>
+          <span class="text-base text-foreground leading-snug">{dish}</span>
         </li>
       {/each}
     </ul>
@@ -200,17 +201,17 @@ function openMealDrawer(day: any) {
       <div class="mt-4 pt-4 border-t border-border">
         {#if selectedMeal.meal.calories}
           <div class="flex items-center gap-2 mb-3">
-            <span class="text-xs font-semibold text-muted-foreground">열량</span>
+            <span class="text-sm font-semibold text-muted-foreground">열량</span>
             <span class="text-sm text-foreground tabular-nums">{selectedMeal.meal.calories}</span>
           </div>
         {/if}
         {#if nutrientRows.length > 0}
-          <p class="text-xs font-semibold text-muted-foreground mb-2">영양</p>
+          <p class="text-sm font-semibold text-muted-foreground mb-2">영양</p>
           <div class="grid grid-cols-3 gap-x-4 gap-y-1.5">
             {#each nutrientRows as [name, value]}
               <div class="flex items-baseline justify-between gap-1 border-b border-border pb-1.5">
                 <span class="text-xs text-muted-foreground truncate">{name}</span>
-                <span class="text-xs font-medium text-foreground tabular-nums flex-shrink-0">{value}</span>
+                <span class="text-xs text-foreground tabular-nums flex-shrink-0">{value}</span>
               </div>
             {/each}
           </div>

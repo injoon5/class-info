@@ -31,15 +31,15 @@
 			<a href="/" class="shrink-0 pressable" aria-label="홈">
 				<span class="text-base sm:text-lg font-bold tracking-tight text-foreground">TimeforSchool</span>
 			</a>
-			<nav class="flex items-center gap-1 sm:gap-2 text-[15px]">
+			<nav class="flex items-center gap-1 sm:gap-2 text-list">
 				{#each navItems as item}
 					{@const active = item.match(page.url.pathname)}
 					<a
 						href={item.href}
-						class="rounded-md px-1.5 py-2 sm:px-2 transition-colors duration-100
+						class="rounded-md px-1.5 py-2 sm:px-2 font-semibold transition-colors duration-150
 							{active
-								? 'font-bold text-foreground'
-								: 'font-medium text-muted-foreground pointer:hover:text-foreground'}"
+								? 'text-foreground'
+								: 'text-muted-foreground pointer:hover:text-foreground'}"
 						aria-current={active ? 'page' : undefined}
 					>
 						{item.label}
