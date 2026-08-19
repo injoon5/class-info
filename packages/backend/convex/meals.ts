@@ -1,7 +1,7 @@
 import { internalAction, internalMutation, query } from "./_generated/server";
 import { v } from "convex/values";
 import { internal } from "./_generated/api";
-import { addDaysYyyymmdd, assertYyyymmdd, getWeekRangeKst, toYyyymmdd } from "./dates";
+import { addDaysYyyymmdd, getWeekRangeKst, parseYyyymmdd, toYyyymmdd } from "./dates";
 import { projectMeal } from "./project";
 import { mealWeek } from "./validators";
 
@@ -136,8 +136,10 @@ export const getTwoWeeks = query({
     availableMealTypes: v.array(v.string()),
   }),
   handler: async (ctx, { weekStart: weekStartArg }) => {
-    if (weekStartArg !== undefined) assertYyyymmdd(weekStartArg, "weekStart");
-    const weekStart = weekStartArg ?? toYyyymmdd(getWeekRangeKst(0).start);
+    const weekStart =
+      weekStartArg && parseYyyymmdd(weekStartArg)
+        ? weekStartArg
+        : toYyyymmdd(getWeekRangeKst(0).start);
     const thisEnd = addDaysYyyymmdd(weekStart, 4);
     const nextStart = addDaysYyyymmdd(weekStart, 7);
     const nextEnd = addDaysYyyymmdd(weekStart, 11);
@@ -147,13 +149,17 @@ export const getTwoWeeks = query({
       .withIndex("by_date_type", (q) => q.gte("date", weekStart).lte("date", nextEnd))
       .collect();
 
-    const byDateType = new Map(rows.map((m) => [`${m.date}:${m.mealType}`, projectMeal(m)]));
+    const byDateType = new Map<string, NonNullable<ReturnType<typeof projectMeal>>>();
+    for (const m of rows) {
+      const pub = projectMeal(m);
+      if (pub) byDateType.set(`${pub.date}:${pub.mealType}`, pub);
+    }
 
     const buildWeek = (start: string, end: string) => {
       const days: {
         date: string;
-        lunch: ReturnType<typeof projectMeal> | null;
-        dinner: ReturnType<typeof projectMeal> | null;
+        lunch: NonNullable<ReturnType<typeof projectMeal>> | null;
+        dinner: NonNullable<ReturnType<typeof projectMeal>> | null;
       }[] = [];
       let cursor = start;
       while (cursor <= end) {

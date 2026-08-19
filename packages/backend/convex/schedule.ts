@@ -2,9 +2,9 @@ import { internalAction, internalMutation, mutation, query } from "./_generated/
 import { v } from "convex/values";
 import { internal } from "./_generated/api";
 import { requireAdmin } from "./auth";
-import { assertYyyymmdd, getNowKst } from "./dates";
+import { assertYyyymmdd, getNowKst, parseYyyymmdd } from "./dates";
 import { projectSchedule } from "./project";
-import { customEventColor, scheduleDoc } from "./validators";
+import { customEventColor, publicEvent } from "./validators";
 
 type ExternalScheduleEvent = {
   AA_YMD: string; // YYYYMMDD
@@ -165,7 +165,7 @@ export const fetchScheduleWindow = internalAction({
 function eventsByYear(source: "school" | "custom") {
   return query({
     args: { year: v.string() },
-    returns: v.array(scheduleDoc),
+    returns: v.array(publicEvent),
     handler: async (ctx, { year }) => {
       if (!YEAR_RE.test(year)) return [];
       const rows = await ctx.db
@@ -184,11 +184,9 @@ export const getCustomEventsByYear = eventsByYear("custom");
 
 export const getEventsInRange = query({
   args: { start: v.string(), end: v.string() },
-  returns: v.array(scheduleDoc),
+  returns: v.array(publicEvent),
   handler: async (ctx, { start, end }) => {
-    assertYyyymmdd(start, "start");
-    assertYyyymmdd(end, "end");
-    if (start > end) return [];
+    if (!parseYyyymmdd(start) || !parseYyyymmdd(end) || start > end) return [];
     const rows = await ctx.db
       .query("schedules")
       .withIndex("by_date", (q) => q.gte("date", start).lte("date", end))

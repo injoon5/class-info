@@ -66,25 +66,19 @@ export const timetableDoc = v.object({
   editedAt: v.number(),
 });
 
-export const mealDoc = v.object({
-  _id: v.id("meals"),
-  _creationTime: v.number(),
+export const publicMeal = v.object({
   date: v.string(),
   mealType: v.string(),
   dishes: v.array(v.string()),
   originInfo: v.string(),
   calories: v.union(v.string(), v.null()),
   nutrients: v.union(v.string(), v.null()),
-  schoolCode: v.string(),
-  schoolName: v.string(),
-  loadedAt: v.string(),
-  editedAt: v.number(),
 });
 
 export const mealDay = v.object({
   date: v.string(),
-  lunch: v.union(mealDoc, v.null()),
-  dinner: v.union(mealDoc, v.null()),
+  lunch: v.union(publicMeal, v.null()),
+  dinner: v.union(publicMeal, v.null()),
 });
 
 export const mealWeek = v.object({
@@ -102,17 +96,13 @@ export const customEventColor = v.union(
   v.literal("teal")
 );
 
-export const scheduleDoc = v.object({
+export const publicEvent = v.object({
   _id: v.id("schedules"),
-  _creationTime: v.number(),
   date: v.string(),
   title: v.string(),
   source: v.union(v.literal("school"), v.literal("custom")),
   eventType: v.optional(v.string()),
-  schoolCode: v.optional(v.string()),
   color: v.optional(v.string()),
-  createdAt: v.number(),
-  updatedAt: v.number(),
 });
 
 export const fileDoc = v.object({
@@ -143,3 +133,5 @@ export const noticeDoc = v.object({
 export type MinimalNotice = Infer<typeof minimalNotice>;
 export type DayGroup = Infer<typeof dayGroup>;
 export type MonthSummary = Infer<typeof monthSummary>;
+export type PublicMeal = Infer<typeof publicMeal>;
+export type PublicEvent = Infer<typeof publicEvent>;
