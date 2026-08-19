@@ -9,6 +9,7 @@ import { flip } from 'svelte/animate';
 import { fadeFast, flipMove, slideY, slideYOut } from '$lib/transitions';
 import ConfirmDeleteActions from './ConfirmDeleteActions.svelte';
 import LoadingState from './LoadingState.svelte';
+import FluidHeight from './FluidHeight.svelte';
 
 // `editorTarget` and `editor` come from the admin page so a past notice is
 // edited in its own row too, not somewhere else on the page.
@@ -44,14 +45,13 @@ const visibleGroups = $derived(
 </script>
 
 <div class="px-3 pb-3 pt-1">
+    <FluidHeight key={groups.isLoading ? 'loading' : groups.error ? 'error' : 'ready'}>
     {#if groups.isLoading}
-        <div out:fade={fadeFast}>
-            <LoadingState compact />
-        </div>
+        <LoadingState compact />
     {:else if groups.error}
         <div class="text-sm text-destructive py-3 text-center">오류가 발생했습니다.</div>
     {:else}
-        <div in:slide={slideY}>
+        <div in:fade={fadeFast}>
         {#each visibleGroups as group (group.date)}
             <div
                 class="mb-3 last:mb-0"
@@ -110,4 +110,5 @@ const visibleGroups = $derived(
         {/each}
         </div>
     {/if}
+    </FluidHeight>
 </div>
