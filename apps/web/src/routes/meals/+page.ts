@@ -1,15 +1,26 @@
 import type { PageLoad } from './$types.js';
 import { api } from '@class-info/backend/convex/_generated/api';
 import { convexHttp } from '$lib/convex';
-import { thisMondayYyyymmdd } from '$lib/date';
+import { addDaysYyyymmdd, getNowInKst, schoolDisplayClock, thisMondayYyyymmdd } from '$lib/date';
 
 export const load = (async () => {
-	const weekStart = thisMondayYyyymmdd();
-	const twoWeeks = await convexHttp()
-		.query(api.meals.getTwoWeeks, { weekStart })
-		.catch((err) => {
+	const now = getNowInKst();
+	const weekStart = thisMondayYyyymmdd(now);
+	const displayClock = schoolDisplayClock(now);
+	const client = convexHttp();
+
+	const [twoWeeks, displayDay] = await Promise.all([
+		client.query(api.meals.getTwoWeeks, { weekStart }).catch((err) => {
 			console.error('meals.getTwoWeeks', err);
 			return undefined;
-		});
-	return { weekStart, twoWeeks };
+		}),
+		client.query(api.schedule.schoolDisplayDay, displayClock).catch((err) => {
+			console.error('meals schedule.schoolDisplayDay', err);
+			return displayClock.afterRollover
+				? addDaysYyyymmdd(displayClock.today, 1)
+				: displayClock.today;
+		})
+	]);
+
+	return { weekStart, twoWeeks, displayDay };
 }) satisfies PageLoad;

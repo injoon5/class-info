@@ -5,6 +5,7 @@
 import {
 	WEEKDAYS_KR,
 	DAY_ROLLOVER_HOUR_KST,
+	SCHOOL_DAY_LOOKAHEAD,
 	getNowKst as getNowInKst,
 	parseIsoDate,
 	parseYyyymmdd,
@@ -14,14 +15,17 @@ import {
 	toYyyymmdd as yyyymmdd,
 	weekdayKr,
 	weekdayKrUtc,
+	ymdWeekday,
+	weekOffsetBetween,
 	kstCutoffDateString,
 	noticeClock,
-	resolveSchoolDisplayDay,
+	schoolDisplayClock,
 } from '@class-info/backend/convex/dates';
 
 export {
 	WEEKDAYS_KR,
 	DAY_ROLLOVER_HOUR_KST,
+	SCHOOL_DAY_LOOKAHEAD,
 	getNowInKst,
 	parseIsoDate,
 	parseYyyymmdd,
@@ -31,9 +35,11 @@ export {
 	yyyymmdd,
 	weekdayKr,
 	weekdayKrUtc,
+	ymdWeekday,
+	weekOffsetBetween,
 	kstCutoffDateString,
 	noticeClock,
-	resolveSchoolDisplayDay,
+	schoolDisplayClock,
 };
 
 export function pad2(n: number): string {

@@ -130,29 +130,111 @@ export function noticeClock(now: Date = getNowKst()): { cutoff: string; today: s
   return { cutoff: kstCutoffDateString(now), today: toIsoDate(now) };
 }
 
-const SCHOOL_DAY_LOOKAHEAD = 14;
-
-export function nextSchoolDay(
-  from: Date,
-  isSchoolDay: (d: Date) => boolean,
-  lookahead = SCHOOL_DAY_LOOKAHEAD,
-): Date {
-  for (let i = 1; i <= lookahead; i++) {
-    const d = addCalendarDays(from, i);
-    if (isSchoolDay(d)) return d;
-  }
-  return addCalendarDays(from, lookahead);
+export function schoolDisplayClock(now: Date = getNowKst()): {
+  today: string;
+  afterRollover: boolean;
+} {
+  return { today: toYyyymmdd(now), afterRollover: isAtOrAfterDayRollover(now) };
 }
 
-// The school day home should show: today until the rollover hour, otherwise
-// the next weekday that isn't a holiday. Friday after the hour → Monday.
-export function resolveSchoolDisplayDay(
-  now: Date,
-  isSchoolDay: (d: Date) => boolean,
-): Date {
-  const today = calendarDate(now);
-  if (!isAtOrAfterDayRollover(now) && isSchoolDay(today)) return today;
-  return nextSchoolDay(today, isSchoolDay);
+export function ymdWeekday(s: string): number {
+  const { y, m, d } = assertYyyymmdd(s);
+  return new Date(Date.UTC(y, m - 1, d)).getUTCDay();
+}
+
+export function mondayYyyymmddOf(ymd: string): string {
+  const dow = ymdWeekday(ymd);
+  return addDaysYyyymmdd(ymd, dow === 0 ? -6 : 1 - dow);
+}
+
+export function weekOffsetBetween(fromYmd: string, toYmd: string): number {
+  const a = mondayYyyymmddOf(fromYmd);
+  const b = mondayYyyymmddOf(toYmd);
+  const pa = assertYyyymmdd(a);
+  const pb = assertYyyymmdd(b);
+  const days =
+    (Date.UTC(pb.y, pb.m - 1, pb.d) - Date.UTC(pa.y, pa.m - 1, pa.d)) / 86_400_000;
+  return Math.round(days / 7);
+}
+
+const CLOSED_EVENT_TYPES = new Set(["공휴일", "휴업일", "재량휴업일"]);
+
+export type ScheduleHint = {
+  date: string;
+  title: string;
+  eventType?: string | null;
+};
+
+export function isClosedEventType(eventType: string | null | undefined): boolean {
+  return CLOSED_EVENT_TYPES.has(eventType ?? "");
+}
+
+// 방학식 is still a school day. 여름방학 / 겨울방학 / 방학 start a break.
+export function isVacationTitle(title: string): boolean {
+  return title.includes("방학") && !title.includes("방학식");
+}
+
+export function isReopenTitle(title: string): boolean {
+  return title.includes("개학");
+}
+
+function isWeekendYmd(s: string): boolean {
+  const dow = ymdWeekday(s);
+  return dow === 0 || dow === 6;
+}
+
+// Build the set of YYYYMMDD dates that are not school days in [rangeStart, rangeEnd].
+// 휴업일/공휴일 close that date. A 방학 title closes every day until the next 개학
+// (exclusive), because NEIS often tags only the first day of break.
+export function closedYmdsFromSchedule(
+  events: ScheduleHint[],
+  rangeStart: string,
+  rangeEnd: string,
+): Set<string> {
+  const closed = new Set<string>();
+  const vacationStarts: string[] = [];
+  const reopens: string[] = [];
+  for (const event of events) {
+    if (event.date < rangeStart || event.date > rangeEnd) continue;
+    if (isClosedEventType(event.eventType)) closed.add(event.date);
+    if (isVacationTitle(event.title)) vacationStarts.push(event.date);
+    if (isReopenTitle(event.title)) reopens.push(event.date);
+  }
+  vacationStarts.sort();
+  reopens.sort();
+  for (const start of vacationStarts) {
+    const reopen = reopens.find((date) => date > start);
+    const endExclusive = reopen ?? addDaysYyyymmdd(rangeEnd, 1);
+    let d = start;
+    while (d < endExclusive && d <= rangeEnd) {
+      closed.add(d);
+      d = addDaysYyyymmdd(d, 1);
+    }
+  }
+  return closed;
+}
+
+export function isSchoolYmd(ymd: string, closed: Set<string>): boolean {
+  if (isWeekendYmd(ymd)) return false;
+  return !closed.has(ymd);
+}
+
+// Long enough to jump a summer break. Not a cron — the indexed range is small.
+export const SCHOOL_DAY_LOOKAHEAD = 90;
+
+export function resolveSchoolDisplayYmd(
+  today: string,
+  afterRollover: boolean,
+  closed: Set<string>,
+  lookahead = SCHOOL_DAY_LOOKAHEAD,
+): string {
+  assertYyyymmdd(today);
+  if (!afterRollover && isSchoolYmd(today, closed)) return today;
+  for (let i = 1; i <= lookahead; i++) {
+    const ymd = addDaysYyyymmdd(today, i);
+    if (isSchoolYmd(ymd, closed)) return ymd;
+  }
+  return addDaysYyyymmdd(today, lookahead);
 }
 
 // Monday–Friday of the KST week `offsetWeeks` away from today (times normalized

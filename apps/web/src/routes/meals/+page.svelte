@@ -8,13 +8,11 @@ import Drawer from '$lib/components/ui/Drawer.svelte';
 import HScroll from '$lib/components/ui/HScroll.svelte';
 import SegmentedControl from '$lib/components/ui/SegmentedControl.svelte';
 import { createBlurPulse } from '$lib/blurPulse.svelte';
-import { getNowInKst, yyyymmdd } from '$lib/date';
 import type { MealDay, PublicMeal } from '@class-info/backend/convex/validators';
 import type { PageData } from './$types.js';
 
-const todayStr = yyyymmdd(getNowInKst());
-
 const { data }: { data: PageData } = $props();
+const displayDay = $derived(data.displayDay);
 
 let selectedMealType = $state("중식");
 
@@ -115,7 +113,7 @@ function openMealDrawer(day: MealDay) {
           {#each week.days as day (day.date)}
             {@const meal = mealFor(day, selectedMealType)}
             {@const hasMeal = !!meal}
-            {@const isTodayCol = day.date === todayStr}
+            {@const isTodayCol = day.date === displayDay}
             <button
               type="button"
               onclick={() => openMealDrawer(day)}

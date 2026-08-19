@@ -2,7 +2,15 @@ import { internalAction, internalMutation, mutation, query, type ActionCtx } fro
 import { v } from "convex/values";
 import { internal } from "./_generated/api";
 import { requireAdmin } from "./auth";
-import { assertYyyymmdd, getNowKst, parseYyyymmdd } from "./dates";
+import {
+  addDaysYyyymmdd,
+  assertYyyymmdd,
+  closedYmdsFromSchedule,
+  getNowKst,
+  parseYyyymmdd,
+  resolveSchoolDisplayYmd,
+  SCHOOL_DAY_LOOKAHEAD,
+} from "./dates";
 import { projectSchedule } from "./project";
 import { customEventColor, publicEvent } from "./validators";
 
@@ -172,6 +180,25 @@ export const getEventsInRange = query({
       .withIndex("by_date", (q) => q.gte("date", start).lte("date", end))
       .collect();
     return rows.map(projectSchedule).filter((e): e is NonNullable<typeof e> => e !== null);
+  },
+});
+
+export const schoolDisplayDay = query({
+  args: { today: v.string(), afterRollover: v.boolean() },
+  returns: v.string(),
+  handler: async (ctx, { today, afterRollover }) => {
+    assertYyyymmdd(today, "today");
+    const end = addDaysYyyymmdd(today, SCHOOL_DAY_LOOKAHEAD);
+    const rows = await ctx.db
+      .query("schedules")
+      .withIndex("by_date", (q) => q.gte("date", today).lte("date", end))
+      .collect();
+    const closed = closedYmdsFromSchedule(
+      rows.map((row) => ({ date: row.date, title: row.title, eventType: row.eventType })),
+      today,
+      end,
+    );
+    return resolveSchoolDisplayYmd(today, afterRollover, closed);
   },
 });
 

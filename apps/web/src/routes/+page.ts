@@ -1,7 +1,15 @@
 import type { PageLoad } from './$types.js';
 import { api } from '@class-info/backend/convex/_generated/api';
 import { convexHttp } from '$lib/convex';
-import { addDaysYyyymmdd, getNowInKst, noticeClock, thisMondayYyyymmdd, yyyymmdd } from '$lib/date';
+import {
+	addDaysYyyymmdd,
+	getNowInKst,
+	noticeClock,
+	SCHOOL_DAY_LOOKAHEAD,
+	schoolDisplayClock,
+	thisMondayYyyymmdd,
+	yyyymmdd
+} from '$lib/date';
 
 function emptyMeals(weekStart: string) {
 	return {
@@ -18,12 +26,17 @@ function emptyMeals(weekStart: string) {
 export const load = (async () => {
 	const now = getNowInKst();
 	const clock = noticeClock(now);
+	const displayClock = schoolDisplayClock(now);
 	const weekStart = thisMondayYyyymmdd(now);
 	const todayYmd = yyyymmdd(now);
-	const rangeEnd = addDaysYyyymmdd(todayYmd, 14);
+	const horizon = addDaysYyyymmdd(todayYmd, SCHOOL_DAY_LOOKAHEAD);
 	const client = convexHttp();
 
-	const [currentGroups, timetable, nextWeekTimetable, meals, events] = await Promise.all([
+	const [displayDay, currentGroups, timetable, nextWeekTimetable, meals, events] = await Promise.all([
+		client.query(api.schedule.schoolDisplayDay, displayClock).catch((err) => {
+			console.error('home schedule.schoolDisplayDay', err);
+			return displayClock.afterRollover ? addDaysYyyymmdd(todayYmd, 1) : todayYmd;
+		}),
 		client.query(api.notices.currentGroups, clock).catch((err) => {
 			console.error('home notices.currentGroups', err);
 			return [];
@@ -40,11 +53,21 @@ export const load = (async () => {
 			console.error('home meals.getTwoWeeks', err);
 			return emptyMeals(weekStart);
 		}),
-		client.query(api.schedule.getEventsInRange, { start: todayYmd, end: rangeEnd }).catch((err) => {
+		client.query(api.schedule.getEventsInRange, { start: todayYmd, end: horizon }).catch((err) => {
 			console.error('home schedule.getEventsInRange', err);
 			return [];
 		})
 	]);
 
-	return { ...clock, weekStart, currentGroups, timetable, nextWeekTimetable, meals, events };
+	return {
+		...clock,
+		todayYmd,
+		displayDay,
+		weekStart,
+		currentGroups,
+		timetable,
+		nextWeekTimetable,
+		meals,
+		events
+	};
 }) satisfies PageLoad;

@@ -2,7 +2,13 @@
 import { useQuery } from 'convex-svelte';
 import { api } from "@class-info/backend/convex/_generated/api";
 import NoticeCard from '$lib/components/notices/NoticeCard.svelte';
-import { addCalendarDays, getNowInKst, resolveSchoolDisplayDay, yyyymmdd, WEEKDAYS_KR } from '$lib/date';
+import {
+	addDaysYyyymmdd,
+	parseYyyymmdd,
+	weekdayKrUtc,
+	weekOffsetBetween,
+	ymdWeekday
+} from '$lib/date';
 import { eventChrome } from '$lib/eventChrome';
 import type { DayGroup, MinimalNotice } from '$lib/notices';
 import type { PublicEvent } from '@class-info/backend/convex/validators';
@@ -19,55 +25,38 @@ const noticesQuery = useQuery(
 	})
 );
 
-// ── Date helpers ──────────────────────────────────────────────────────────────
-function getMondayTime(d: Date): number {
-	const copy = new Date(d);
-	const day = copy.getDay();
-	copy.setDate(copy.getDate() - (day === 0 ? 6 : day - 1));
-	copy.setHours(0, 0, 0, 0);
-	return copy.getTime();
-}
-
-const HOLIDAY_TYPES = new Set(['공휴일', '휴업일', '재량휴업일']);
-
-function isHoliday(dateStr: string): boolean {
-	return (data.events ?? []).some((e) => e.date === dateStr && HOLIDAY_TYPES.has(e.eventType ?? ''));
-}
-
-function isSchoolDay(d: Date): boolean {
-	const day = d.getDay();
-	return day >= 1 && day <= 5 && !isHoliday(yyyymmdd(d));
-}
-
-const kst = getNowInKst();
-const todayYyyymmdd = yyyymmdd(kst);
-const displayDay = resolveSchoolDisplayDay(kst, isSchoolDay);
-const displayDayStr = yyyymmdd(displayDay);
-const displayDayIndex = displayDay.getDay() - 1; // 0=Mon…4=Fri
-const isTomorrow = displayDayStr === yyyymmdd(addCalendarDays(kst, 1));
-const displayMonth = displayDay.getMonth() + 1;
-const displayDate = displayDay.getDate();
-const displayWeekday = WEEKDAYS_KR[displayDay.getDay()] ?? '';
+const displayDay = $derived(data.displayDay);
+const todayYmd = $derived(data.todayYmd);
+const isTomorrow = $derived(displayDay === addDaysYyyymmdd(todayYmd, 1));
+const parsedDisplay = $derived(parseYyyymmdd(displayDay));
+const displayMonth = $derived(parsedDisplay?.m ?? 0);
+const displayDate = $derived(parsedDisplay?.d ?? 0);
+const displayWeekday = $derived(
+	parsedDisplay ? weekdayKrUtc(parsedDisplay.y, parsedDisplay.m, parsedDisplay.d) : ''
+);
+const displayDayIndex = $derived(ymdWeekday(displayDay) - 1); // 0=Mon…4=Fri
 
 // Which week's timetable to use. We only hold this-week and next-week data, so
 // map by whole-week offset; anything further out has no timetable to show.
-const weekOffset = Math.round((getMondayTime(displayDay) - getMondayTime(kst)) / (7 * 24 * 60 * 60 * 1000));
-const displayTimetableData =
-	weekOffset === 0 ? data.timetable : weekOffset === 1 ? data.nextWeekTimetable : undefined;
-const displaySchedule = (
-	displayDayIndex >= 0 && displayDayIndex <= 4
+const weekOffset = $derived(weekOffsetBetween(todayYmd, displayDay));
+const displayTimetableData = $derived(
+	weekOffset === 0 ? data.timetable : weekOffset === 1 ? data.nextWeekTimetable : undefined
+);
+const displaySchedule = $derived(
+	(displayDayIndex >= 0 && displayDayIndex <= 4
 		? (displayTimetableData?.timetable?.[displayDayIndex] ?? [])
-		: []
-) as Array<{ period: number; subject: string; teacher: string; replaced: boolean }>;
+		: []) as Array<{ period: number; subject: string; teacher: string; replaced: boolean }>
+);
 
-// Which meal day to show
-const allMealDays = [...(data.meals?.thisWeek?.days ?? []), ...(data.meals?.nextWeek?.days ?? [])];
-const displayMealDay = allMealDays.find((d) => d.date === displayDayStr) ?? null;
-const displayLunch = displayMealDay?.lunch ?? null;
-const displayDinner = displayMealDay?.dinner ?? null;
+const allMealDays = $derived([
+	...(data.meals?.thisWeek?.days ?? []),
+	...(data.meals?.nextWeek?.days ?? [])
+]);
+const displayMealDay = $derived(allMealDays.find((d) => d.date === displayDay) ?? null);
+const displayLunch = $derived(displayMealDay?.lunch ?? null);
+const displayDinner = $derived(displayMealDay?.dinner ?? null);
 
-// ── Events ────────────────────────────────────────────────────────────────────
-const in7days = yyyymmdd(addCalendarDays(kst, 7));
+const upcomingEnd = $derived(addDaysYyyymmdd(displayDay, 7));
 
 const allEvents = $derived(
 	[...(data.events ?? [])]
@@ -75,10 +64,10 @@ const allEvents = $derived(
 		.sort((a, b) => a.date.localeCompare(b.date))
 );
 
-const displayDayEvents = $derived(allEvents.filter((e) => e.date === displayDayStr));
+const displayDayEvents = $derived(allEvents.filter((e) => e.date === displayDay));
 
 const upcomingEvents = $derived(
-	allEvents.filter((e) => e.date >= todayYyyymmdd && e.date <= in7days)
+	allEvents.filter((e) => e.date >= displayDay && e.date <= upcomingEnd)
 );
 
 // ── Notices ───────────────────────────────────────────────────────────────────
@@ -118,11 +107,9 @@ const peekNotice = $derived.by((): MinimalNotice | null => {
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 function formatEventDate(dateStr: string): string {
-	const y = Number(dateStr.slice(0, 4));
-	const m = Number(dateStr.slice(4, 6));
-	const d = Number(dateStr.slice(6, 8));
-	const date = new Date(y, m - 1, d);
-	return `${m}/${d}(${WEEKDAYS_KR[date.getDay()]})`;
+	const parsed = parseYyyymmdd(dateStr);
+	if (!parsed) return dateStr;
+	return `${parsed.m}/${parsed.d}(${weekdayKrUtc(parsed.y, parsed.m, parsed.d)})`;
 }
 
 function eventTypeLabel(event: PublicEvent): string {
@@ -130,8 +117,13 @@ function eventTypeLabel(event: PublicEvent): string {
 	return event.eventType;
 }
 
-function isToday(dateStr: string): boolean {
-	return dateStr === todayYyyymmdd;
+function eventDateLabel(dateStr: string): string {
+	if (dateStr === displayDay) return isTomorrow ? '내일' : '오늘';
+	return formatEventDate(dateStr);
+}
+
+function isDisplayDayEvent(dateStr: string): boolean {
+	return dateStr === displayDay;
 }
 </script>
 
@@ -323,8 +315,8 @@ function isToday(dateStr: string): boolean {
 						<div class="flex items-center gap-2.5 px-4 py-3">
 							<span class="w-2 h-2 rounded-full shrink-0 {eventChrome(event).dot}" aria-hidden="true"></span>
 							<span class="text-list text-foreground font-semibold flex-1 min-w-0 truncate">{event.title}</span>
-							<span class="text-sm tabular-nums shrink-0 text-right {isToday(event.date) ? 'font-semibold text-foreground' : 'text-muted-foreground'}">
-								{isToday(event.date) ? '오늘' : formatEventDate(event.date)}
+							<span class="text-sm tabular-nums shrink-0 text-right {isDisplayDayEvent(event.date) ? 'font-semibold text-foreground' : 'text-muted-foreground'}">
+								{eventDateLabel(event.date)}
 							</span>
 						</div>
 					{/each}
