@@ -33,13 +33,26 @@ let displayMonth = $state(nowKst.getMonth()); // 0-11
 const schoolEventsQuery = useQuery(
   api.schedule.getSchoolEventsByYear,
   () => ({ year: String(displayYear) }),
-  () => ({ initialData: data.schoolEvents, keepPreviousData: true })
+  () => ({
+    ...(data.schoolEvents ? { initialData: data.schoolEvents } : {}),
+    keepPreviousData: true
+  })
 );
 
 const customEventsQuery = useQuery(
   api.schedule.getCustomEventsByYear,
   () => ({ year: String(displayYear) }),
-  () => ({ initialData: data.customEvents, keepPreviousData: true })
+  () => ({
+    ...(data.customEvents ? { initialData: data.customEvents } : {}),
+    keepPreviousData: true
+  })
+);
+
+const eventsPending = $derived(
+  schoolEventsQuery.isLoading ||
+    customEventsQuery.isLoading ||
+    schoolEventsQuery.isStale ||
+    customEventsQuery.isStale
 );
 
 // Pagination bounds: Dec of last year → Feb of next year
@@ -305,7 +318,13 @@ const dayNames = ['일','월','화','수','목','금','토'];
 
   <!-- Calendar -->
   <HScroll>
-      <div class="min-w-[40rem] border border-border rounded-xl overflow-hidden">
+      <div
+        class="min-w-[40rem] border border-border rounded-xl overflow-hidden"
+        aria-busy={eventsPending}
+      >
+        {#if eventsPending}
+          <span class="sr-only" role="status">일정을 불러오는 중</span>
+        {/if}
 
         <!-- Day name header -->
         <div class="grid grid-cols-7 bg-muted border-b border-border">
@@ -326,7 +345,7 @@ const dayNames = ['일','월','화','수','목','금','토'];
               {@const isPast = cell.yyyymmdd !== null && cell.yyyymmdd < todayStr}
               {@const isSun = di === 0}
               {@const isSat = di === 6}
-              {@const cellEvents = eventsForDate(cell.yyyymmdd)}
+              {@const cellEvents = eventsPending ? [] : eventsForDate(cell.yyyymmdd)}
               {@const hasEvents = cell.day !== null && cellEvents.length > 0}
               <!-- svelte-ignore a11y_no_noninteractive_tabindex -->
               <div
@@ -373,9 +392,14 @@ const dayNames = ['일','월','화','수','목','금','토'];
                     {/if}
                   </div>
 
-                  {#each cellEvents as event (event.id)}
-                    <div class="text-xs rounded px-1 py-0.5 mb-0.5 truncate leading-tight {event.chipClass}" title={event.title}>{event.title}</div>
-                  {/each}
+                  {#if eventsPending}
+                    <div class="skeleton h-3.5 w-[88%] rounded mt-0.5"></div>
+                    <div class="skeleton h-3.5 w-[60%] rounded mt-0.5" style="animation-delay: 80ms"></div>
+                  {:else}
+                    {#each cellEvents as event (event.id)}
+                      <div class="text-xs rounded px-1 py-0.5 mb-0.5 truncate leading-tight {event.chipClass}" title={event.title}>{event.title}</div>
+                    {/each}
+                  {/if}
                 {/if}
               </div>
             {/each}
