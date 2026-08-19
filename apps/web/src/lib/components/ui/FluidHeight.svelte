@@ -2,7 +2,7 @@
 import { Tween } from 'svelte/motion';
 import { tweenMove } from '$lib/transitions';
 import type { Snippet } from 'svelte';
-import { clampWindowScroll } from '$lib/scroll';
+import { clampWindowScroll, scrollingEl, scrollIsTouchDriven, visibleTop } from '$lib/scroll';
 
 // Pixel-clip after first layout so a content swap (spinner → list) can tween
 // height. Parent <details> open/close stays instant.
@@ -36,6 +36,11 @@ $effect.pre(() => {
 	if (prevKey !== null && k !== prevKey) pendingTween = true;
 });
 
+// Set only for a height change the reader asked for. The observer's snaps are
+// reflows — a rotation, the phone's URL bar sliding in or out — and following
+// one of those with the scroll position *is* the jump, not the fix.
+let compensating = false;
+
 $effect(() => {
 	const el = inner;
 	const k = key;
@@ -54,11 +59,13 @@ $effect(() => {
 
 	if (pendingTween) {
 		prevKey = k;
-		// Cleared now, not in the promise: Svelte aborts an interrupted tween
+		// Cleared now, not in a promise: Svelte aborts an interrupted tween
 		// without settling it, so a second swap mid-flight would have left this
-		// latched on forever. The observer guards on the tween itself below.
+		// latched on forever. The observer guards on the tween itself below,
+		// and `compensating` is cleared when the tween lands.
 		pendingTween = false;
-		void height.set(next).then(clampWindowScroll);
+		compensating = true;
+		void height.set(next);
 		return;
 	}
 
@@ -84,35 +91,53 @@ $effect(() => {
 
 // Whether the current shrink is one the reader needs protecting from.
 // Decided once when the shrink starts — the block collapses downward, so its
-// top does not move while it does — rather than measured every frame.
+// top does not move while it does — rather than measured every frame, which on
+// a phone is a forced layout per frame on top of the one the height causes.
 let followShrink: boolean | null = null;
 
 $effect(() => {
 	const h = height.current;
+	const settled = Math.abs(h - height.target) < EPS;
+
 	if (!measured) {
 		lastClip = h;
 		return;
 	}
+
 	const dh = lastClip - h;
 	lastClip = h;
-	if (dh <= 0) {
+
+	// Standing down while a finger is on the glass means the page does not
+	// follow that stretch of the collapse — which is right: the reader is
+	// scrolling, not holding a position, and fighting them for it reads far
+	// worse than the drift does.
+	if (dh > 0 && compensating && !scrollIsTouchDriven()) {
+		if (followShrink === null) {
+			// Only content that has already scrolled past the top of the visible
+			// area takes the reader's position with it when it collapses. A block
+			// collapsing in view — or below the fold — is the animation itself,
+			// and scrolling to follow it yanks the page for no reason.
+			followShrink = !!outer && outer.getBoundingClientRect().top < visibleTop();
+		}
+		if (followShrink) {
+			const el = scrollingEl();
+			el.scrollTop = Math.max(0, el.scrollTop - dh);
+		}
+		// Only while shrinking: iOS leaves the page parked past the new bottom
+		// until the next touch. Growing can't strand it, so it costs no layout.
+		clampWindowScroll();
+	}
+
+	if (dh <= 0) followShrink = null;
+
+	if (settled && compensating) {
+		compensating = false;
 		followShrink = null;
-		return;
+		// Final clamp, in place of the tween's promise — an interrupted tween
+		// never settles that promise, so it could not be relied on. If a touch
+		// owns the scroll, scroll.ts clamps when the finger lifts instead.
+		if (!scrollIsTouchDriven()) clampWindowScroll();
 	}
-	if (followShrink === null) {
-		// Only content that has already scrolled past the top of the viewport
-		// takes the reader's position with it when it collapses. A block
-		// collapsing in view — or below the fold — is the animation itself, and
-		// scrolling to follow it yanks the page for no reason.
-		followShrink = !!outer && outer.getBoundingClientRect().top < 0;
-	}
-	if (followShrink) {
-		const el = document.scrollingElement ?? document.documentElement;
-		el.scrollTop = Math.max(0, el.scrollTop - dh);
-	}
-	// Only while shrinking: iOS leaves the page parked past the new bottom
-	// until the next touch. Growing can't strand it, so it costs no layout.
-	clampWindowScroll();
 });
 </script>
 
