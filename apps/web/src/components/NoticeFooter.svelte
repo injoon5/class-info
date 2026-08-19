@@ -1,6 +1,7 @@
 <script lang="ts">
 import { fly } from 'svelte/transition';
 import { generateCopyText } from '../lib/utils.js';
+import PillButton from './PillButton.svelte';
 
 const { notices }: { notices: any[] } = $props(); // groups array from server
 
@@ -8,8 +9,17 @@ let copied = $state(false);
 let lastCopied = 0;
 
 // Clipboard needs a secure context; without one the API is present but throws.
-const canCopy = $derived(
+const clipboardAvailable = $derived(
 	typeof navigator !== 'undefined' && !!navigator.clipboard && window.isSecureContext
+);
+
+// generateCopyText only emits 수행평가 rows, so "there are notices" is not the
+// same question as "there is something to copy".
+const hasCopyableText = $derived(!!generateCopyText(notices || []));
+const canCopy = $derived(clipboardAvailable && hasCopyableText);
+
+const label = $derived(
+	!clipboardAvailable ? '복사 지원 안 됨' : !hasCopyableText ? '복사할 공지 없음' : copied ? '복사됨' : '공지 복사'
 );
 
 // The layout ships a polite live region; this is what it is for. A modal
@@ -22,10 +32,7 @@ function announce(message: string) {
 
 async function copyToClipboard() {
 	const text = generateCopyText(notices || []);
-	if (!text) {
-		announce('복사할 공지가 없어요');
-		return;
-	}
+	if (!text) return;
 
 	try {
 		await navigator.clipboard.writeText(text);
@@ -45,28 +52,15 @@ async function copyToClipboard() {
 
 <!-- Buttons -->
 <div class="flex items-center justify-center gap-3 py-4 mt-6 sm:mt-8 border-t border-border text-xs text-muted-foreground">
-	<button
-		onclick={copyToClipboard}
-		disabled={!canCopy}
-		class="pressable rounded-full border border-border px-3 py-1.5 font-medium text-muted-foreground transition-colors duration-150 enabled:pointer:hover:text-foreground enabled:pointer:hover:bg-muted disabled:opacity-50 disabled:cursor-not-allowed"
-	>
+	<PillButton onclick={copyToClipboard} disabled={!canCopy} variant="secondary" size="sm">
 		<!-- Fixed width so confirming the copy doesn't resize the pill. -->
-		<span class="relative inline-flex h-4 min-w-[4.5rem] items-center justify-center">
-			{#if !canCopy}
-				복사 지원 안 됨
-			{:else}
-				{#key copied}
-					<span class="absolute inset-0 flex items-center justify-center" in:fly={{ y: 3, duration: 150 }}>
-						{copied ? '복사됨' : '공지 복사'}
-					</span>
-				{/key}
-			{/if}
+		<span class="relative inline-flex h-4 min-w-[6.5rem] items-center justify-center">
+			{#key label}
+				<span class="absolute inset-0 flex items-center justify-center whitespace-nowrap" in:fly={{ y: 3, duration: 150 }}>
+					{label}
+				</span>
+			{/key}
 		</span>
-	</button>
-	<a
-		href="/admin"
-		class="pressable rounded-full px-3 py-1.5 font-medium text-muted-foreground transition-colors duration-150 pointer:hover:text-foreground pointer:hover:bg-muted"
-	>
-		관리자
-	</a>
+	</PillButton>
+	<PillButton href="/admin" text="관리자" variant="ghost" size="sm" />
 </div>

@@ -6,6 +6,9 @@ import Drawer from '../../components/Drawer.svelte';
 import HScroll from '../../components/HScroll.svelte';
 import { getNowInKst, toYyyymmdd } from '$lib/date';
 import { focusOnElement } from '$lib/actions/focus';
+import PillButton from '../../components/PillButton.svelte';
+import { fade, fly, scale } from 'svelte/transition';
+import { expoOut } from 'svelte/easing';
 import type { PageData } from './$types.js';
 
 const { data }: { data: PageData } = $props();
@@ -63,13 +66,17 @@ function navigate(direction: number) {
   displayMonth = newMonth;
 }
 
+// Six rows always: five-week and six-week months must occupy the same height,
+// or paging between them moves everything below the grid.
+const WEEK_ROWS = 6;
+
 function getCalendarWeeks(year: number, month: number) {
   const firstDay = new Date(year, month, 1).getDay();
   const daysInMonth = new Date(year, month + 1, 0).getDate();
   const cells: Array<{ day: number | null; yyyymmdd: string | null }> = [];
   for (let i = 0; i < firstDay; i++) cells.push({ day: null, yyyymmdd: null });
   for (let d = 1; d <= daysInMonth; d++) cells.push({ day: d, yyyymmdd: toYyyymmdd(year, month, d) });
-  while (cells.length % 7 !== 0) cells.push({ day: null, yyyymmdd: null });
+  while (cells.length < WEEK_ROWS * 7) cells.push({ day: null, yyyymmdd: null });
   const weeks: (typeof cells)[] = [];
   for (let i = 0; i < cells.length; i += 7) weeks.push(cells.slice(i, i + 7));
   return weeks;
@@ -266,7 +273,7 @@ const dayNames = ['일','월','화','수','목','금','토'];
     <button
       onclick={() => navigate(-1)}
       disabled={!canNavigate(-1)}
-      class="pressable w-9 h-9 sm:w-10 sm:h-10 flex items-center justify-center rounded-full bg-card text-muted-foreground border border-border transition-colors duration-150 enabled:pointer:hover:bg-muted enabled:pointer:hover:text-foreground disabled:opacity-50 disabled:cursor-not-allowed"
+      class="pressable touch-target w-9 h-9 sm:w-10 sm:h-10 flex items-center justify-center rounded-full bg-card text-muted-foreground border border-border transition-colors duration-150 enabled:pointer:hover:bg-muted enabled:pointer:hover:text-foreground disabled:opacity-50 disabled:cursor-not-allowed"
       aria-label="이전 달"
       data-s-event="Calendar Navigate"
       data-s-event-props="direction=prev"
@@ -283,7 +290,7 @@ const dayNames = ['일','월','화','수','목','금','토'];
     <button
       onclick={() => navigate(1)}
       disabled={!canNavigate(1)}
-      class="pressable w-9 h-9 sm:w-10 sm:h-10 flex items-center justify-center rounded-full bg-card text-muted-foreground border border-border transition-colors duration-150 enabled:pointer:hover:bg-muted enabled:pointer:hover:text-foreground disabled:opacity-50 disabled:cursor-not-allowed"
+      class="pressable touch-target w-9 h-9 sm:w-10 sm:h-10 flex items-center justify-center rounded-full bg-card text-muted-foreground border border-border transition-colors duration-150 enabled:pointer:hover:bg-muted enabled:pointer:hover:text-foreground disabled:opacity-50 disabled:cursor-not-allowed"
       aria-label="다음 달"
       data-s-event="Calendar Navigate"
       data-s-event-props="direction=next"
@@ -353,7 +360,7 @@ const dayNames = ['일','월','화','수','목','금','토'];
                     {#if isAuthenticated}
                       <button
                         onclick={(e) => { e.stopPropagation(); openAddForm(cell.yyyymmdd!); }}
-                        class="relative opacity-60 sm:opacity-0 sm:group-hover:opacity-100 w-4 h-4 sm:w-5 sm:h-5 flex items-center justify-center rounded text-muted-foreground pointer:hover:text-foreground pointer:hover:bg-muted transition-opacity flex-shrink-0 after:absolute after:top-1/2 after:left-1/2 after:-translate-x-1/2 after:-translate-y-1/2 after:w-8 after:h-8"
+                        class="touch-target opacity-60 sm:opacity-0 sm:group-hover:opacity-100 w-4 h-4 sm:w-5 sm:h-5 flex items-center justify-center rounded text-muted-foreground pointer:hover:text-foreground pointer:hover:bg-muted transition-opacity duration-150 flex-shrink-0"
                         title="일정 추가"
                         aria-label="일정 추가"
                       >
@@ -394,6 +401,8 @@ const dayNames = ['일','월','화','수','목','금','토'];
   {/if}
   {#if !popupAddMode}
     <button
+      in:fly={{ y: 10, duration: 300 }}
+      out:fade={{ duration: 100 }}
       onclick={() => { popupAddMode = true; saveError = null; }}
       class="pressable w-full flex items-center justify-center gap-2 py-2.5 rounded-xl bg-muted text-sm font-medium text-foreground transition-colors duration-150 pointer:hover:bg-border"
     >
@@ -403,6 +412,7 @@ const dayNames = ['일','월','화','수','목','금','토'];
       일정 추가
     </button>
   {:else}
+    <div in:scale={{ start: 0.3, duration: 300, easing: expoOut }} out:scale={{ start: 0.3, duration: 300, easing: expoOut }}>
     <input
       type="text"
       bind:value={newEventTitle}
@@ -414,11 +424,11 @@ const dayNames = ['일','월','화','수','목','금','토'];
         if (e.key === 'Escape') { popupAddMode = false; newEventTitle = ''; }
       }}
     />
-    <div class="flex gap-2 mb-3">
+    <div class="flex gap-2 touch:gap-4 mb-3">
       {#each CUSTOM_COLORS as color}
         <button
           onclick={() => (newEventColor = color.id)}
-          class="pressable w-7 h-7 rounded-full {color.bgClass} transition-[transform,box-shadow]
+          class="pressable touch-target w-7 h-7 rounded-full {color.bgClass} transition-[transform,box-shadow]
             {newEventColor === color.id ? 'ring-2 ring-offset-2 ring-offset-card ring-ring scale-110' : 'opacity-70 pointer:hover:opacity-100 pointer:hover:scale-105'}"
           aria-label={color.id}
           aria-pressed={newEventColor === color.id}
@@ -426,22 +436,20 @@ const dayNames = ['일','월','화','수','목','금','토'];
       {/each}
     </div>
     <div class="flex gap-2">
-      <button
+      <PillButton
+        text={isSaving ? '저장 중…' : '저장'}
+        pending={isSaving}
         onclick={handleAddEvent}
         disabled={isSaving || !newEventTitle.trim()}
-        class="pressable flex-1 inline-flex items-center justify-center gap-2 py-2.5 bg-primary text-primary-foreground text-sm font-semibold rounded-xl transition-opacity duration-150 disabled:opacity-50 disabled:cursor-not-allowed"
-      >
-        {#if isSaving}
-          <span class="w-3.5 h-3.5 rounded-full border-2 border-primary-foreground/40 border-t-primary-foreground animate-spin" aria-hidden="true"></span>
-          저장 중…
-        {:else}
-          저장
-        {/if}
-      </button>
-      <button
+        class="flex-1 py-2.5"
+      />
+      <PillButton
+        text="취소"
+        variant="secondary"
         onclick={() => { popupAddMode = false; newEventTitle = ''; saveError = null; }}
-        class="pressable px-4 py-2.5 border border-border text-sm font-medium text-muted-foreground rounded-xl transition-colors duration-150 pointer:hover:bg-muted pointer:hover:text-foreground"
-      >취소</button>
+        class="py-2.5"
+      />
+    </div>
     </div>
   {/if}
 {/snippet}
@@ -506,7 +514,7 @@ const dayNames = ['일','월','화','수','목','금','토'];
             {#if isAuthenticated}
               <button
                 onclick={() => handleDeleteCustomEvent(event._id)}
-                class="pressable-icon flex-shrink-0 w-7 h-7 flex items-center justify-center rounded-full text-muted-foreground pointer:hover:text-destructive pointer:hover:bg-white/60 dark:pointer:hover:bg-black/20 transition-colors duration-150"
+                class="pressable-icon touch-target flex-shrink-0 w-7 h-7 flex items-center justify-center rounded-full text-muted-foreground pointer:hover:text-destructive pointer:hover:bg-white/60 dark:pointer:hover:bg-black/20 transition-colors duration-150"
                 aria-label="삭제" title="삭제"
               >
                 <svg viewBox="0 0 20 20" fill="currentColor" class="w-4 h-4">

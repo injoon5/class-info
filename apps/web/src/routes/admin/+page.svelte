@@ -2,12 +2,13 @@
 import { useConvexClient } from 'convex-svelte';
 import { api } from "@class-info/backend/convex/_generated/api";
 import type { Id } from "@class-info/backend/convex/_generated/dataModel";
-import { writable } from 'svelte/store';
 import { enhance } from '$app/forms';
 import FileUpload from '../../components/FileUpload.svelte';
 import { getTypeColor } from '$lib/utils';
 import { formatAbsolute, formatRelative } from '$lib/date';
 import LoadingState from '../../components/LoadingState.svelte';
+import PillButton from '../../components/PillButton.svelte';
+import { autosize } from '$lib/actions/autosize';
 import type { PageData, ActionData } from './$types';
 
 const { data, form }: { data: PageData; form: ActionData } = $props();
@@ -16,10 +17,15 @@ const client = useConvexClient();
 // Bearer token for privileged mutations; present only when authenticated.
 const sessionToken = $derived(data.sessionToken ?? '');
 
-const showForm = writable(false);
-const editingNotice = writable<any>(null);
+// null = closed, 'new' = adding, anything else = the id of the notice being
+// edited. One value, so the editor can never be open on nothing or open twice.
+let editorTarget = $state<string | null>(null);
+const isEditing = $derived(editorTarget !== null && editorTarget !== 'new');
 
-const noticeForm = writable({
+// Deleting is confirmed in the row that owns the notice, not in a modal.
+let confirmingDeleteId = $state<string | null>(null);
+
+let noticeForm = $state({
 	title: '',
 	subject: '',
 	type: '숙제' as '수행평가' | '숙제' | '준비물' | '기타',
@@ -29,14 +35,17 @@ const noticeForm = writable({
 });
 
 // PIN form state
-const pin = writable('');
+let pin = $state('');
 
 const noticeTypes = ['수행평가', '숙제', '준비물', '기타'] as const;
 
 // Server now provides grouped current notices; fetch past months on demand
 import AdminPastMonthDetails from '../../components/AdminPastMonthDetails.svelte';
 import { useQuery } from 'convex-svelte';
-const overview = useQuery(api.notices.overview, {});
+const overview = useQuery(api.notices.overview, {}, () => ({
+	initialData: data.overview,
+	keepPreviousData: true
+}));
 let openMonthKey = $state<string | null>(null);
 
 // Expected problems with the editor sit with the editor's actions; failures
@@ -45,16 +54,8 @@ let formError = $state<string | null>(null);
 let panelError = $state<string | null>(null);
 
 function resetForm() {
-	noticeForm.set({
-		title: '',
-		subject: '',
-		type: '숙제',
-		description: '',
-		dueDate: '',
-		files: []
-	});
-	editingNotice.set(null);
-	showForm.set(false);
+	noticeForm = { title: '', subject: '', type: '숙제', description: '', dueDate: '', files: [] };
+	editorTarget = null;
 	formError = null;
 }
 
@@ -74,33 +75,27 @@ async function editNotice(noticeOrId: any) {
 		return;
 	}
 	panelError = null;
-	noticeForm.set({
+	noticeForm = {
 		title: full.title || '',
 		subject: full.subject || '',
 		type: full.type || '숙제',
 		description: typeof full.description === 'string' ? full.description : '',
 		dueDate: full.dueDate || '',
 		files: Array.isArray(full.files) ? full.files : []
-	});
-	editingNotice.set({ _id: id, ...full });
-	showForm.set(true);
-	setTimeout(() => {
-		window.scrollTo({ top: 0, behavior: 'smooth' });
-	}, 100);
+	};
+	editorTarget = id;
+	formError = null;
+	confirmingDeleteId = null;
 }
 
 function handleFilesChange(fileIds: any[]) {
-	noticeForm.update(form => ({
-		...form,
-		files: fileIds
-	}));
+	noticeForm = { ...noticeForm, files: fileIds };
 }
 
 async function handleSubmit() {
-	const formData = $noticeForm;
 	const payload = {
-		...formData,
-		description: typeof formData.description === 'string' ? formData.description : ''
+		...noticeForm,
+		description: typeof noticeForm.description === 'string' ? noticeForm.description : ''
 	};
 	
 	if (!payload.title || !payload.subject || !payload.dueDate) {
@@ -110,8 +105,8 @@ async function handleSubmit() {
 	formError = null;
 	
 	try {
-		if ($editingNotice) {
-			await client.mutation(api.notices.update, { sessionToken, id: $editingNotice._id, ...payload });
+		if (isEditing) {
+			await client.mutation(api.notices.update, { sessionToken, id: editorTarget as Id<'notices'>, ...payload });
 		} else {
 			await client.mutation(api.notices.create, { sessionToken, ...payload });
 		}
@@ -122,12 +117,14 @@ async function handleSubmit() {
 }
 
 async function handleDelete(notice: any) {
-	if (!confirm('이 공지를 삭제하시겠습니까? 되돌릴 수 없습니다.')) return;
 	try {
 		await client.mutation(api.notices.remove, { sessionToken, id: notice._id });
 		panelError = null;
+		if (editorTarget === String(notice._id)) resetForm();
 	} catch (error) {
 		panelError = '삭제하지 못했습니다. 잠시 후 다시 시도해 주세요.';
+	} finally {
+		confirmingDeleteId = null;
 	}
 }
 
@@ -170,6 +167,103 @@ const lastUpdatedTs = $derived.by(() => {
 	<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
 </svelte:head>
 
+{#snippet noticeEditor()}
+		<div class="bg-card border border-border rounded-2xl p-4 sm:p-5 mb-6">
+			<h2 class="text-lg font-semibold tracking-tight mb-4 text-foreground">
+				{isEditing ? '공지 수정' : '새 공지 추가'}
+			</h2>
+
+			<form class="grid gap-4" onsubmit={(e) => { e.preventDefault(); handleSubmit(); }}>
+				<div>
+					<label for="notice-title" class="block text-sm font-medium mb-1.5 text-muted-foreground">제목 *</label>
+					<input
+						id="notice-title"
+						type="text"
+						bind:value={noticeForm.title}
+						onkeydown={(e) => { if (e.key === 'Enter' && e.isComposing) e.preventDefault(); }}
+						class="w-full h-11 px-3.5 rounded-xl border border-border text-base bg-muted text-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring/50 placeholder:text-muted-foreground transition-shadow break-words"
+						placeholder="예: 수학 과제 제출"
+					/>
+				</div>
+
+				<div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+					<div>
+						<label for="notice-subject" class="block text-sm font-medium mb-1.5 text-muted-foreground">과목 *</label>
+						<input
+							id="notice-subject"
+							type="text"
+							bind:value={noticeForm.subject}
+							onkeydown={(e) => { if (e.key === 'Enter' && e.isComposing) e.preventDefault(); }}
+							class="w-full h-11 px-3.5 rounded-xl border border-border text-base bg-muted text-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring/50 placeholder:text-muted-foreground transition-shadow break-words"
+							placeholder="예: 수학"
+						/>
+					</div>
+
+					<div>
+						<label for="notice-type" class="block text-sm font-medium mb-1.5 text-muted-foreground">종류 *</label>
+						<select id="notice-type" bind:value={noticeForm.type} class="w-full h-11 px-3 rounded-xl border border-border text-base bg-muted text-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring/50">
+							{#each noticeTypes as type}
+								<option value={type}>{type}</option>
+							{/each}
+						</select>
+					</div>
+				</div>
+
+				<div>
+					<label for="notice-date" class="block text-sm font-medium mb-1.5 text-muted-foreground">마감일 *</label>
+					<input
+						id="notice-date"
+						type="date"
+						bind:value={noticeForm.dueDate}
+						class="w-full h-11 px-3.5 rounded-xl border border-border text-base bg-muted text-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
+					/>
+				</div>
+
+				<div>
+					<label for="notice-description" class="block text-sm font-medium mb-1.5 text-muted-foreground">설명 (마크다운 지원)</label>
+					<textarea
+						id="notice-description"
+						bind:value={noticeForm.description}
+						use:autosize={noticeForm.description}
+						rows="8"
+						class="w-full px-3.5 py-2.5 rounded-xl border border-border text-base bg-muted text-foreground font-mono outline-none focus-visible:ring-2 focus-visible:ring-ring/50 placeholder:text-muted-foreground resize-none break-words overflow-hidden transition-shadow"
+						placeholder="상세 설명 또는 준비물 목록&#10;&#10;마크다운 사용 가능:&#10;**굵게** *기울임* `코드`&#10;# 제목 ## 부제목&#10;- 목록 항목&#10;> 인용구&#10;![이미지](URL)&#10;유튜브 링크는 자동 변환됩니다"
+					></textarea>
+					<p class="text-xs text-muted-foreground mt-1.5">마크다운 문법을 사용할 수 있습니다. 상세 페이지에서 형식화되어 표시됩니다.</p>
+				</div>
+
+				<div>
+					<div class="text-sm font-medium mb-1.5 text-muted-foreground">파일 첨부</div>
+					<FileUpload
+						files={noticeForm.files}
+						onFilesChange={handleFilesChange}
+						{sessionToken}
+					/>
+				</div>
+
+				{#if formError}
+					<p class="text-sm font-medium text-destructive" role="alert">{formError}</p>
+				{/if}
+
+				<div class="flex gap-2">
+					<button
+						type="submit"
+						class="pressable-lg rounded-full px-5 font-medium py-2.5 bg-primary text-primary-foreground text-sm transition-opacity pointer:hover:opacity-90"
+					>
+						{isEditing ? '수정' : '추가'}
+					</button>
+					<button
+						type="button"
+						onclick={resetForm}
+						class="pressable-lg rounded-full px-5 py-2.5 font-medium border border-border text-sm text-foreground transition-colors pointer:hover:bg-muted"
+					>
+						취소
+					</button>
+				</div>
+			</form>
+		</div>
+{/snippet}
+
 {#if !data.isAuthenticated}
 	<!-- PIN Authentication Form -->
 	<div class="flex items-center justify-center min-h-[calc(100vh-8rem)] px-4">
@@ -185,7 +279,7 @@ const lastUpdatedTs = $derived.by(() => {
 						type="password"
 						inputmode="numeric"
 						autocomplete="current-password"
-						bind:value={$pin}
+						bind:value={pin}
 						class="w-full h-12 px-3.5 rounded-xl border border-border text-base bg-muted text-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring/50 placeholder:text-muted-foreground transition-shadow"
 						placeholder="관리자 PIN을 입력하세요"
 						required
@@ -217,17 +311,14 @@ const lastUpdatedTs = $derived.by(() => {
 		<div class="flex items-center justify-between gap-3 mb-5">
 			<h1 class="text-xl font-bold tracking-tight text-foreground">공지 관리</h1>
 			<div class="flex items-center gap-2">
-				<button
-					onclick={() => showForm.set(!$showForm)}
-					class="pressable-lg rounded-full px-4 font-medium py-2 bg-primary text-primary-foreground text-sm transition-opacity pointer:hover:opacity-90 text-center"
-				>
-					{$showForm ? '취소' : '새 공지 추가'}
-				</button>
+				<PillButton
+					text={editorTarget === 'new' ? '취소' : '새 공지 추가'}
+					onclick={() => (editorTarget = editorTarget === 'new' ? null : 'new')}
+					emphasized={!overview.isLoading && allGroupedNotices.length === 0}
+				/>
 
 				<form method="POST" action="?/logout" use:enhance class="inline">
-					<button type="submit" class="pressable-lg rounded-full px-4 py-2 font-medium border border-border text-sm text-foreground transition-colors pointer:hover:bg-muted text-center">
-						로그아웃
-					</button>
+					<PillButton type="submit" text="로그아웃" variant="secondary" />
 				</form>
 			</div>
 		</div>
@@ -238,101 +329,8 @@ const lastUpdatedTs = $derived.by(() => {
 			</p>
 		{/if}
 
-		<!-- Form -->
-		{#if $showForm}
-			<div class="bg-card border border-border rounded-2xl p-4 sm:p-5 mb-6">
-				<h2 class="text-lg font-semibold tracking-tight mb-4 text-foreground">
-					{$editingNotice ? '공지 수정' : '새 공지 추가'}
-				</h2>
-
-				<form class="grid gap-4" onsubmit={(e) => { e.preventDefault(); handleSubmit(); }}>
-					<div>
-						<label for="notice-title" class="block text-sm font-medium mb-1.5 text-muted-foreground">제목 *</label>
-						<input
-							id="notice-title"
-							type="text"
-							bind:value={$noticeForm.title}
-							onkeydown={(e) => { if (e.key === 'Enter' && e.isComposing) e.preventDefault(); }}
-							class="w-full h-11 px-3.5 rounded-xl border border-border text-base bg-muted text-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring/50 placeholder:text-muted-foreground transition-shadow break-words"
-							placeholder="예: 수학 과제 제출"
-						/>
-					</div>
-
-					<div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-						<div>
-							<label for="notice-subject" class="block text-sm font-medium mb-1.5 text-muted-foreground">과목 *</label>
-							<input
-								id="notice-subject"
-								type="text"
-								bind:value={$noticeForm.subject}
-								onkeydown={(e) => { if (e.key === 'Enter' && e.isComposing) e.preventDefault(); }}
-								class="w-full h-11 px-3.5 rounded-xl border border-border text-base bg-muted text-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring/50 placeholder:text-muted-foreground transition-shadow break-words"
-								placeholder="예: 수학"
-							/>
-						</div>
-
-						<div>
-							<label for="notice-type" class="block text-sm font-medium mb-1.5 text-muted-foreground">종류 *</label>
-							<select id="notice-type" bind:value={$noticeForm.type} class="w-full h-11 px-3 rounded-xl border border-border text-base bg-muted text-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring/50">
-								{#each noticeTypes as type}
-									<option value={type}>{type}</option>
-								{/each}
-							</select>
-						</div>
-					</div>
-
-					<div>
-						<label for="notice-date" class="block text-sm font-medium mb-1.5 text-muted-foreground">마감일 *</label>
-						<input
-							id="notice-date"
-							type="date"
-							bind:value={$noticeForm.dueDate}
-							class="w-full h-11 px-3.5 rounded-xl border border-border text-base bg-muted text-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
-						/>
-					</div>
-
-					<div>
-						<label for="notice-description" class="block text-sm font-medium mb-1.5 text-muted-foreground">설명 (마크다운 지원)</label>
-						<textarea
-							id="notice-description"
-							bind:value={$noticeForm.description}
-							rows="8"
-							class="w-full px-3.5 py-2.5 rounded-xl border border-border text-base bg-muted text-foreground font-mono outline-none focus-visible:ring-2 focus-visible:ring-ring/50 placeholder:text-muted-foreground resize-none break-words overflow-hidden transition-shadow"
-							placeholder="상세 설명 또는 준비물 목록&#10;&#10;마크다운 사용 가능:&#10;**굵게** *기울임* `코드`&#10;# 제목 ## 부제목&#10;- 목록 항목&#10;> 인용구&#10;![이미지](URL)&#10;유튜브 링크는 자동 변환됩니다"
-						></textarea>
-						<p class="text-xs text-muted-foreground mt-1.5">마크다운 문법을 사용할 수 있습니다. 상세 페이지에서 형식화되어 표시됩니다.</p>
-					</div>
-
-					<div>
-						<div class="text-sm font-medium mb-1.5 text-muted-foreground">파일 첨부</div>
-						<FileUpload
-							files={$noticeForm.files}
-							onFilesChange={handleFilesChange}
-							{sessionToken}
-						/>
-					</div>
-
-					{#if formError}
-						<p class="text-sm font-medium text-destructive" role="alert">{formError}</p>
-					{/if}
-
-					<div class="flex gap-2">
-						<button
-							type="submit"
-							class="pressable-lg rounded-full px-5 font-medium py-2.5 bg-primary text-primary-foreground text-sm transition-opacity pointer:hover:opacity-90"
-						>
-							{$editingNotice ? '수정' : '추가'}
-						</button>
-						<button
-							type="button"
-							onclick={resetForm}
-							class="pressable-lg rounded-full px-5 py-2.5 font-medium border border-border text-sm text-foreground transition-colors pointer:hover:bg-muted"
-						>
-							취소
-						</button>
-					</div>
-				</form>
-			</div>
+		{#if editorTarget === 'new'}
+			{@render noticeEditor()}
 		{/if}
 
 		<!-- Notice List -->
@@ -341,7 +339,7 @@ const lastUpdatedTs = $derived.by(() => {
         {:else if overview.error}
 			<div class="text-center py-8 text-destructive">
 				<p>공지를 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.</p>
-				<button onclick={() => window.location.reload()} class="pressable mt-3 rounded-full px-4 py-2 bg-primary text-primary-foreground text-sm font-medium transition-opacity pointer:hover:opacity-90">다시 시도</button>
+				<PillButton text="다시 시도" onclick={() => window.location.reload()} class="mt-3" />
 			</div>
         {:else}
 			<!-- Current and Future Notices -->
@@ -354,6 +352,9 @@ const lastUpdatedTs = $derived.by(() => {
 
                     <div class="grid gap-2">
                         {#each group.notices as notice (notice._id)}
+                            {#if editorTarget === String(notice._id)}
+                                {@render noticeEditor()}
+                            {:else}
                             <div class="bg-card border border-border rounded-xl p-3 overflow-hidden">
                                 <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
                                     <div class="flex-1 min-w-0">
@@ -382,17 +383,29 @@ const lastUpdatedTs = $derived.by(() => {
 										{/if}
                                     </div>
                                     <div class="flex gap-2 flex-shrink-0">
-                                        <button
-                                            onclick={() => editNotice(notice)}
-                                            class="pressable rounded-lg px-3 py-1.5 text-sm font-medium border border-border text-foreground transition-colors pointer:hover:bg-muted"
-                                        >수정</button>
-                                        <button
-                                            onclick={() => handleDelete(notice)}
-                                            class="pressable rounded-lg px-3 py-1.5 text-sm font-medium border border-border text-destructive transition-colors pointer:hover:bg-destructive/10"
-                                        >삭제</button>
+                                        {#if confirmingDeleteId === String(notice._id)}
+                                            <button
+                                                onclick={() => handleDelete(notice)}
+                                                class="pressable touch-target rounded-lg px-3 py-1.5 text-sm font-medium border border-destructive bg-destructive/10 text-destructive transition-colors duration-150 pointer:hover:bg-destructive/20"
+                                            >삭제</button>
+                                            <button
+                                                onclick={() => (confirmingDeleteId = null)}
+                                                class="pressable touch-target rounded-lg px-3 py-1.5 text-sm font-medium border border-border text-muted-foreground transition-colors duration-150 pointer:hover:bg-muted pointer:hover:text-foreground"
+                                            >취소</button>
+                                        {:else}
+                                            <button
+                                                onclick={() => editNotice(notice)}
+                                                class="pressable touch-target rounded-lg px-3 py-1.5 text-sm font-medium border border-border text-foreground transition-colors duration-150 pointer:hover:bg-muted"
+                                            >수정</button>
+                                            <button
+                                                onclick={() => (confirmingDeleteId = String(notice._id))}
+                                                class="pressable touch-target rounded-lg px-3 py-1.5 text-sm font-medium border border-border text-destructive transition-colors duration-150 pointer:hover:bg-destructive/10"
+                                            >삭제</button>
+                                        {/if}
                                     </div>
                                 </div>
                             </div>
+                            {/if}
                         {/each}
                     </div>
 				</div>
@@ -408,7 +421,7 @@ const lastUpdatedTs = $derived.by(() => {
                     {#each overview.data.pastMonths as m (m.monthKey)}
                         <details class="mb-1.5 sm:mb-2 bg-card border border-border rounded-xl overflow-hidden" open={openMonthKey === m.monthKey}>
                             <summary
-                                class="px-3 sm:px-4 py-2.5 sm:py-3 cursor-pointer transition-colors pointer:hover:bg-muted text-muted-foreground font-medium text-sm sm:text-base tabular-nums"
+                                class="touch-target px-3 sm:px-4 py-2.5 sm:py-3 cursor-pointer transition-colors pointer:hover:bg-muted text-muted-foreground font-medium text-sm sm:text-base tabular-nums"
                                 onclick={(e) => {
                                     e.preventDefault();
                                     openMonthKey = openMonthKey === m.monthKey ? null : m.monthKey;
@@ -421,6 +434,8 @@ const lastUpdatedTs = $derived.by(() => {
                                 {#key m.monthKey}
                                     <AdminPastMonthDetails
                                         monthKey={m.monthKey}
+                                        {editorTarget}
+                                        editor={noticeEditor}
                                         onEdit={(id: string) => {
                                             const all: any[] = (overview.data?.currentGroups || []).flatMap((g: any) => g.notices || []);
                                             const found = all.find((n: any) => String(n?._id) === id);

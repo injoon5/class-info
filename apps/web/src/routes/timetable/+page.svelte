@@ -102,7 +102,7 @@ function getPeriodLabel(period: number): string {
 								<div class="text-[11px] sm:text-base text-muted-foreground tabular-nums leading-tight">{getPeriodLabel(i + 1)}</div>
 							</th>
 							{#each (timetableQuery.data?.timetable || []) as day}
-								<td class="border border-border py-3 sm:py-6 px-1 text-center {day[i]?.replaced ? 'bg-amber-100/70 dark:bg-amber-900/20' : 'bg-card'}">
+								<td class="border border-border py-3 sm:py-6 text-center {day[i]?.replaced ? 'bg-amber-100/70 dark:bg-amber-900/20' : 'bg-card'}">
 									{#if day[i]}
 										<div class="text-[15px] sm:text-xl font-semibold {day[i].replaced ? 'text-amber-700 dark:text-amber-300' : 'text-foreground'}">{day[i].subject}</div>
 										<div class="text-sm sm:text-base mt-0.5 font-medium text-muted-foreground">{day[i].teacher}</div>

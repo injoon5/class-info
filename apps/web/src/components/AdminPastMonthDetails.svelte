@@ -2,8 +2,26 @@
 import { useQuery } from 'convex-svelte';
 import { api } from "@class-info/backend/convex/_generated/api";
 import { getTypeColor } from '../lib/utils.js';
+import type { Snippet } from 'svelte';
 
-const { monthKey, onEdit, onDelete }: { monthKey: string; onEdit: (id: string) => void; onDelete: (id: string) => void } = $props();
+// `editorTarget` and `editor` come from the admin page so a past notice is
+// edited in its own row too, not somewhere else on the page.
+const {
+    monthKey,
+    onEdit,
+    onDelete,
+    editorTarget = null,
+    editor
+}: {
+    monthKey: string;
+    onEdit: (id: string) => void;
+    onDelete: (id: string) => void;
+    editorTarget?: string | null;
+    editor?: Snippet;
+} = $props();
+
+// Cheap destructive action: confirmed in the row, not in a modal.
+let confirmingDeleteId = $state<string | null>(null);
 
 const groups = useQuery(api.notices.pastByMonth, { monthKey });
 
@@ -22,6 +40,9 @@ const groups = useQuery(api.notices.pastByMonth, { monthKey });
                 </h3>
                 <div class="grid gap-2">
                     {#each group.notices as notice (notice._id)}
+                        {#if editor && editorTarget === String(notice._id)}
+                            {@render editor()}
+                        {:else}
                         <div class="bg-muted/40 border border-border rounded-xl p-3 overflow-hidden">
                             <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
                                 <div class="flex-1 min-w-0">
@@ -40,17 +61,29 @@ const groups = useQuery(api.notices.pastByMonth, { monthKey });
                                     </div>
                                 </div>
                                 <div class="flex gap-1.5">
-                                    <button
-                                        onclick={() => onEdit(String(notice._id))}
-                                        class="pressable rounded-lg px-2.5 py-1 text-xs font-medium border border-border text-foreground transition-colors pointer:hover:bg-muted"
-                                    >수정</button>
-                                    <button
-                                        onclick={() => onDelete(String(notice._id))}
-                                        class="pressable rounded-lg px-2.5 py-1 text-xs font-medium border border-border text-destructive transition-colors pointer:hover:bg-destructive/10"
-                                    >삭제</button>
+                                    {#if confirmingDeleteId === String(notice._id)}
+                                        <button
+                                            onclick={() => { onDelete(String(notice._id)); confirmingDeleteId = null; }}
+                                            class="pressable touch-target rounded-lg px-2.5 py-1 text-xs font-medium border border-destructive bg-destructive/10 text-destructive transition-colors duration-150 pointer:hover:bg-destructive/20"
+                                        >삭제</button>
+                                        <button
+                                            onclick={() => (confirmingDeleteId = null)}
+                                            class="pressable touch-target rounded-lg px-2.5 py-1 text-xs font-medium border border-border text-muted-foreground transition-colors duration-150 pointer:hover:bg-muted pointer:hover:text-foreground"
+                                        >취소</button>
+                                    {:else}
+                                        <button
+                                            onclick={() => onEdit(String(notice._id))}
+                                            class="pressable touch-target rounded-lg px-2.5 py-1 text-xs font-medium border border-border text-foreground transition-colors duration-150 pointer:hover:bg-muted"
+                                        >수정</button>
+                                        <button
+                                            onclick={() => (confirmingDeleteId = String(notice._id))}
+                                            class="pressable touch-target rounded-lg px-2.5 py-1 text-xs font-medium border border-border text-destructive transition-colors duration-150 pointer:hover:bg-destructive/10"
+                                        >삭제</button>
+                                    {/if}
                                 </div>
                             </div>
                         </div>
+                        {/if}
                     {/each}
                 </div>
             </div>

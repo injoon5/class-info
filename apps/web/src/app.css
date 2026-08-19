@@ -132,6 +132,26 @@ html {
 	.pressable-xl:active {
 		@apply scale-[0.97];
 	}
+	/* Guarantees a 44px touch target on coarse pointers without changing how big
+	   the control looks — the layout stays exactly where it is and the tappable
+	   area grows underneath it. */
+	.touch-target {
+		position: relative;
+	}
+	@media (pointer: coarse) {
+		.touch-target::after {
+			content: '';
+			position: absolute;
+			top: 50%;
+			left: 50%;
+			transform: translate(-50%, -50%);
+			width: 100%;
+			height: 100%;
+			min-width: 44px;
+			min-height: 44px;
+		}
+	}
+
 	/* 32px icon buttons, which need a deeper press to register at that size. */
 	.pressable-icon {
 		@apply transition-transform duration-150 ease-out;

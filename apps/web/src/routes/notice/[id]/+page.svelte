@@ -6,6 +6,7 @@ import { getTypeColor, getFirstLine, formatDate, formatFileSize } from '../../..
 import { renderMarkdown } from '$lib/markdown';
 import { formatAbsolute } from '$lib/date';
 import LoadingState from '../../../components/LoadingState.svelte';
+import PillButton from '../../../components/PillButton.svelte';
 import ErrorState from '../../../components/ErrorState.svelte';
 import type { PageData } from './$types.js';
 
@@ -155,9 +156,7 @@ $effect(() => {
 		{/if}
 	</div>
 	<div class="text-center py-4">
-		<a href="/admin" class="pressable inline-block rounded-full px-3 py-1.5 text-xs font-medium text-muted-foreground transition-colors pointer:hover:text-foreground pointer:hover:bg-muted">
-			관리자
-		</a>
+		<PillButton href="/admin" text="관리자" variant="ghost" size="sm" />
 	</div>
 </div>
 

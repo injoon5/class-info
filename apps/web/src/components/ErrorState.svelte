@@ -1,4 +1,6 @@
 <script lang="ts">
+import PillButton from './PillButton.svelte';
+
 const { error }: { error: any } = $props();
 </script>
 
@@ -13,10 +15,5 @@ const { error }: { error: any } = $props();
 	{#if error}
 		<p class="text-xs text-muted-foreground/70 mt-2 max-w-xs break-words">{error?.toString?.() ?? ''}</p>
 	{/if}
-	<button
-		onclick={() => window.location.reload()}
-		class="pressable mt-4 rounded-full bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-opacity pointer:hover:opacity-90"
-	>
-		다시 시도
-	</button>
+	<PillButton text="다시 시도" onclick={() => window.location.reload()} class="mt-4" />
 </div>
