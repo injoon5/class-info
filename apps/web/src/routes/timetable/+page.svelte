@@ -1,11 +1,11 @@
 <script lang="ts">
 import { useQuery } from 'convex-svelte';
 import { api } from "@class-info/backend/convex/_generated/api";
-import LoadingState from '../../components/LoadingState.svelte';
-import ErrorState from '../../components/ErrorState.svelte';
-import EmptyState from '../../components/EmptyState.svelte';
-import HScroll from '../../components/HScroll.svelte';
-import SegmentedControl from '../../components/SegmentedControl.svelte';
+import LoadingState from '$lib/components/ui/LoadingState.svelte';
+import ErrorState from '$lib/components/ui/ErrorState.svelte';
+import EmptyState from '$lib/components/ui/EmptyState.svelte';
+import HScroll from '$lib/components/ui/HScroll.svelte';
+import SegmentedControl from '$lib/components/ui/SegmentedControl.svelte';
 import { createBlurPulse } from '$lib/blurPulse.svelte';
 import { formatAbsolute, formatRelative } from '$lib/date';
 import { onMount } from 'svelte';

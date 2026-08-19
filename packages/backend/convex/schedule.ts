@@ -1,4 +1,4 @@
-import { internalAction, internalMutation, mutation, query } from "./_generated/server";
+import { internalAction, internalMutation, mutation, query, type ActionCtx } from "./_generated/server";
 import { v } from "convex/values";
 import { internal } from "./_generated/api";
 import { requireAdmin } from "./auth";
@@ -14,7 +14,6 @@ type ExternalScheduleEvent = {
 };
 
 const TITLE_MAX = 100;
-const YEAR_RE = /^\d{4}$/;
 
 export const upsertManySchoolEvents = internalMutation({
   args: {
@@ -67,36 +66,34 @@ export const upsertManySchoolEvents = internalMutation({
   },
 });
 
-export const fetchAndSaveSchoolSchedule = internalAction({
-  args: { startdate: v.string(), enddate: v.string(), schoolcode: v.string() },
-  returns: v.null(),
-  handler: async (ctx, { startdate, enddate, schoolcode }) => {
-    const url = `https://api.timefor.school/schedule?startdate=${encodeURIComponent(startdate)}&enddate=${encodeURIComponent(enddate)}&schoolcode=${encodeURIComponent(schoolcode)}`;
+async function pullSchoolSchedule(
+  ctx: ActionCtx,
+  startdate: string,
+  enddate: string,
+  schoolcode: string
+): Promise<void> {
+  const url = `https://api.timefor.school/schedule?startdate=${encodeURIComponent(startdate)}&enddate=${encodeURIComponent(enddate)}&schoolcode=${encodeURIComponent(schoolcode)}`;
 
-    const res = await fetch(url, { headers: { Accept: "application/json" } });
-    if (!res.ok) {
-      throw new Error(`Failed to fetch schedule: ${res.status} ${res.statusText}`);
-    }
+  const res = await fetch(url, { headers: { Accept: "application/json" } });
+  if (!res.ok) {
+    throw new Error(`Failed to fetch schedule: ${res.status} ${res.statusText}`);
+  }
 
-    const data = await res.json();
-    if (!Array.isArray(data)) {
-      return null;
-    }
+  const data = await res.json();
+  if (!Array.isArray(data)) return;
 
-    const events = (data as ExternalScheduleEvent[])
-      .filter((d) => d.AA_YMD && d.EVENT_NM)
-      .map((d) => ({
-        date: d.AA_YMD,
-        eventName: d.EVENT_NM,
-        eventType: d.SBTR_DD_SC_NM ?? "",
-        schoolCode: d.SD_SCHUL_CODE ?? schoolcode,
-      }));
+  const events = (data as ExternalScheduleEvent[])
+    .filter((d) => d.AA_YMD && d.EVENT_NM)
+    .map((d) => ({
+      date: d.AA_YMD,
+      eventName: d.EVENT_NM,
+      eventType: d.SBTR_DD_SC_NM ?? "",
+      schoolCode: d.SD_SCHUL_CODE ?? schoolcode,
+    }));
 
-    console.log(`[schedule.fetchAndSaveSchoolSchedule] range=${startdate}–${enddate} events=${events.length}`);
-    await ctx.runMutation(internal.schedule.upsertManySchoolEvents, { events, startdate, enddate });
-    return null;
-  },
-});
+  console.log(`[schedule.pullSchoolSchedule] range=${startdate}–${enddate} events=${events.length}`);
+  await ctx.runMutation(internal.schedule.upsertManySchoolEvents, { events, startdate, enddate });
+}
 
 function splitInto3MonthChunks(startdate: string, enddate: string) {
   const chunks: { start: string; end: string }[] = [];
@@ -152,41 +149,24 @@ export const fetchScheduleWindow = internalAction({
 
     const chunks = splitInto3MonthChunks(startdate, enddate);
     for (const chunk of chunks) {
-      await ctx.runAction(internal.schedule.fetchAndSaveSchoolSchedule, {
-        startdate: chunk.start,
-        enddate: chunk.end,
-        schoolcode,
-      });
+      await pullSchoolSchedule(ctx, chunk.start, chunk.end, schoolcode);
     }
     return null;
   },
 });
 
-function eventsByYear(source: "school" | "custom") {
-  return query({
-    args: { year: v.string() },
-    returns: v.array(publicEvent),
-    handler: async (ctx, { year }) => {
-      if (!YEAR_RE.test(year)) return [];
-      const rows = await ctx.db
-        .query("schedules")
-        .withIndex("by_source_date", (q) =>
-          q.eq("source", source).gte("date", `${year}0101`).lte("date", `${year}1231`)
-        )
-        .collect();
-      return rows.map(projectSchedule).filter((e): e is NonNullable<typeof e> => e !== null);
-    },
-  });
-}
-
-export const getSchoolEventsByYear = eventsByYear("school");
-export const getCustomEventsByYear = eventsByYear("custom");
+const RANGE_MAX_DAYS = 400;
 
 export const getEventsInRange = query({
   args: { start: v.string(), end: v.string() },
   returns: v.array(publicEvent),
   handler: async (ctx, { start, end }) => {
-    if (!parseYyyymmdd(start) || !parseYyyymmdd(end) || start > end) return [];
+    const startYmd = parseYyyymmdd(start);
+    const endYmd = parseYyyymmdd(end);
+    if (!startYmd || !endYmd || start > end) return [];
+    const startUtc = Date.UTC(startYmd.y, startYmd.m - 1, startYmd.d);
+    const endUtc = Date.UTC(endYmd.y, endYmd.m - 1, endYmd.d);
+    if ((endUtc - startUtc) / 86_400_000 > RANGE_MAX_DAYS) return [];
     const rows = await ctx.db
       .query("schedules")
       .withIndex("by_date", (q) => q.gte("date", start).lte("date", end))

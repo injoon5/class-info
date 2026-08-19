@@ -1,13 +1,13 @@
 <script lang="ts">
 import { useQuery } from 'convex-svelte';
 import { api } from "@class-info/backend/convex/_generated/api";
-import NoticeGroup from '../../components/NoticeGroup.svelte';
-import PastMonthDetails from '../../components/PastMonthDetails.svelte';
-import LoadingState from '../../components/LoadingState.svelte';
-import ErrorState from '../../components/ErrorState.svelte';
-import EmptyState from '../../components/EmptyState.svelte';
-import NoticeFooter from '../../components/NoticeFooter.svelte';
-import DisclosureCaret from '../../components/DisclosureCaret.svelte';
+import NoticeGroup from './NoticeGroup.svelte';
+import PastMonthDetails from './PastMonthDetails.svelte';
+import LoadingState from '$lib/components/ui/LoadingState.svelte';
+import ErrorState from '$lib/components/ui/ErrorState.svelte';
+import EmptyState from '$lib/components/ui/EmptyState.svelte';
+import NoticeFooter from './NoticeFooter.svelte';
+import DisclosureCaret from '$lib/components/ui/DisclosureCaret.svelte';
 import type { PageData } from './$types.js';
 
 const { data }: { data: PageData } = $props();
@@ -45,7 +45,7 @@ const overview = useQuery(
 	<h1 class="sr-only">공지</h1>
 	<!-- Notice Board -->
     {#if overview.isLoading}
-        <LoadingState />
+        <LoadingState variant="notices" />
     {:else if overview.error}
         <ErrorState error={overview.error} />
     {:else}

@@ -1,29 +1,18 @@
 <script lang="ts">
 import { useQuery } from 'convex-svelte';
 import { api } from "@class-info/backend/convex/_generated/api";
-import LoadingState from '../../components/LoadingState.svelte';
-import ErrorState from '../../components/ErrorState.svelte';
-import EmptyState from '../../components/EmptyState.svelte';
-import Drawer from '../../components/Drawer.svelte';
-import HScroll from '../../components/HScroll.svelte';
-import SegmentedControl from '../../components/SegmentedControl.svelte';
+import LoadingState from '$lib/components/ui/LoadingState.svelte';
+import ErrorState from '$lib/components/ui/ErrorState.svelte';
+import EmptyState from '$lib/components/ui/EmptyState.svelte';
+import Drawer from '$lib/components/ui/Drawer.svelte';
+import HScroll from '$lib/components/ui/HScroll.svelte';
+import SegmentedControl from '$lib/components/ui/SegmentedControl.svelte';
 import { createBlurPulse } from '$lib/blurPulse.svelte';
 import { getNowInKst, yyyymmdd } from '$lib/date';
+import type { MealDay, PublicMeal } from '@class-info/backend/convex/validators';
 import type { PageData } from './$types.js';
 
 const todayStr = yyyymmdd(getNowInKst());
-
-type MealDoc = {
-  _id: string;
-  date: string; // YYYYMMDD
-  mealType: string; // 중식
-  dishes: string[];
-  originInfo: string;
-  calories: string | null;
-  nutrients: string | null;
-  schoolName: string;
-  editedAt: number;
-};
 
 const { data }: { data: PageData } = $props();
 
@@ -48,12 +37,13 @@ const hasDinner = $derived(availableMealTypes.includes("석식"));
 // while it was selected), fall back to lunch so the view can't dead-end.
 $effect(() => {
   if (availableMealTypes.length > 0 && !availableMealTypes.includes(selectedMealType)) {
-    selectedMealType = availableMealTypes[0];
+    const next = availableMealTypes[0];
+    if (next) selectedMealType = next;
   }
 });
 
-function mealKey(type: string): 'lunch' | 'dinner' {
-  return type === '중식' ? 'lunch' : 'dinner';
+function mealFor(day: MealDay, type: string): PublicMeal | null {
+  return type === '중식' ? day.lunch : day.dinner;
 }
 
 function formatDateFull(dateStr: string): { year: number; month: number; day: number; weekday: string } {
@@ -72,11 +62,11 @@ function formatDateKorean(dateStr: string): string {
 
 // ── Meal drawer ───────────────────────────────────────────────────────────────
 
-type SelectedMeal = { meal: MealDoc; dateInfo: ReturnType<typeof formatDateFull> } | null;
+type SelectedMeal = { meal: PublicMeal; dateInfo: ReturnType<typeof formatDateFull> } | null;
 let selectedMeal = $state<SelectedMeal>(null);
 
-function openMealDrawer(day: any) {
-  const meal = day[mealKey(selectedMealType)] as MealDoc | null;
+function openMealDrawer(day: MealDay) {
+  const meal = mealFor(day, selectedMealType);
   if (!meal) return;
   selectedMeal = { meal, dateInfo: formatDateFull(day.date) };
 }
@@ -123,7 +113,8 @@ function openMealDrawer(day: any) {
         ] as week}
         <div class={`mb-4 grid grid-cols-5 sm:grid-cols-5 min-w-[37rem] divide-x divide-border border border-border rounded-xl overflow-hidden`}>
           {#each week.days as day (day.date)}
-            {@const hasMeal = !!(day as any)[mealKey(selectedMealType)]}
+            {@const meal = mealFor(day, selectedMealType)}
+            {@const hasMeal = !!meal}
             {@const isTodayCol = day.date === todayStr}
             <button
               type="button"
@@ -135,9 +126,9 @@ function openMealDrawer(day: any) {
             >
               <div>
                 <h2 class="text-sm sm:text-base font-semibold tabular-nums {isTodayCol ? 'text-foreground' : 'text-muted-foreground'}">{formatDateKorean(day.date)}</h2>
-                {#if hasMeal}
+                {#if meal}
                   <ul class="mt-2.5 space-y-1 text-foreground">
-                    {#each (day as any)[mealKey(selectedMealType)].dishes as dish}
+                    {#each meal.dishes as dish}
                       <li class="text-sm sm:text-list leading-snug truncate max-w-full overflow-hidden whitespace-nowrap" title={dish}>{dish}</li>
                     {/each}
                   </ul>
@@ -147,8 +138,8 @@ function openMealDrawer(day: any) {
                 {/if}
               </div>
               <div class="mt-2 min-h-[1.25rem] flex items-end">
-                {#if (day as any)[mealKey(selectedMealType)]?.calories}
-                  <p class="text-xs sm:text-sm text-muted-foreground tabular-nums">{(day as any)[mealKey(selectedMealType)].calories}</p>
+                {#if meal?.calories}
+                  <p class="text-xs sm:text-sm text-muted-foreground tabular-nums">{meal.calories}</p>
                 {/if}
               </div>
             </button>

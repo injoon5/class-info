@@ -102,7 +102,7 @@ export const publicEvent = v.object({
   title: v.string(),
   source: v.union(v.literal("school"), v.literal("custom")),
   eventType: v.optional(v.string()),
-  color: v.optional(v.string()),
+  color: v.optional(customEventColor),
 });
 
 export const fileDoc = v.object({
@@ -134,4 +134,5 @@ export type MinimalNotice = Infer<typeof minimalNotice>;
 export type DayGroup = Infer<typeof dayGroup>;
 export type MonthSummary = Infer<typeof monthSummary>;
 export type PublicMeal = Infer<typeof publicMeal>;
+export type MealDay = Infer<typeof mealDay>;
 export type PublicEvent = Infer<typeof publicEvent>;

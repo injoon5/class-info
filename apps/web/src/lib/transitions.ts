@@ -1,4 +1,4 @@
-import { expoOut } from 'svelte/easing';
+import { cubicIn, expoOut } from 'svelte/easing';
 import { prefersReducedMotion } from 'svelte/motion';
 import type { EasingFunction, TransitionConfig } from 'svelte/transition';
 
@@ -16,7 +16,9 @@ export function tweenMs(duration: number): () => number {
 }
 
 export const tweenMove = { duration: tweenMs(300), easing: expoOut };
-export const tweenPanel = { duration: tweenMs(400), easing: expoOut };
+export const tweenPanel = { duration: tweenMs(360), easing: expoOut };
+/** Dismiss: shorter, accelerates off-screen so it doesn't hang at the end. */
+export const tweenPanelClose = { duration: tweenMs(180), easing: cubicIn };
 export const tweenFade = { duration: tweenMs(200), easing: expoOut };
 export const tweenCaret = { duration: tweenMs(200), easing: expoOut };
 

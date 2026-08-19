@@ -2,13 +2,20 @@
 import { useQuery, useConvexClient } from 'convex-svelte';
 import { api } from "@class-info/backend/convex/_generated/api";
 import type { Id } from "@class-info/backend/convex/_generated/dataModel";
-import Drawer from '../../components/Drawer.svelte';
-import HScroll from '../../components/HScroll.svelte';
+import Drawer from '$lib/components/ui/Drawer.svelte';
+import HScroll from '$lib/components/ui/HScroll.svelte';
 import { getNowInKst, toYyyymmdd } from '$lib/date';
+import {
+  CUSTOM_COLOR_SWATCH,
+  CUSTOM_EVENT_COLORS,
+  eventChrome,
+  type CustomEventColor,
+} from '$lib/eventChrome';
+import type { PublicEvent } from '@class-info/backend/convex/validators';
 import { focusOnElement } from '$lib/actions/focus';
-import PillButton from '../../components/PillButton.svelte';
-import { fade, fly, slide } from 'svelte/transition';
-import { fadeFast, fadeIn, fadeOut, flyIn, slideY } from '$lib/transitions';
+import PillButton from '$lib/components/ui/PillButton.svelte';
+import { fade, slide } from 'svelte/transition';
+import { fadeFast, fadeIn, fadeOut, slideY } from '$lib/transitions';
 import type { PageData } from './$types.js';
 
 const { data }: { data: PageData } = $props();
@@ -30,30 +37,16 @@ const todayStr = toYyyymmdd(nowKst.getFullYear(), nowKst.getMonth(), nowKst.getD
 let displayYear = $state(data.year as number);
 let displayMonth = $state(nowKst.getMonth()); // 0-11
 
-const schoolEventsQuery = useQuery(
-  api.schedule.getSchoolEventsByYear,
-  () => ({ year: String(displayYear) }),
+const eventsQuery = useQuery(
+  api.schedule.getEventsInRange,
+  () => ({ start: `${displayYear}0101`, end: `${displayYear}1231` }),
   () => ({
-    ...(data.schoolEvents ? { initialData: data.schoolEvents } : {}),
+    ...(data.events ? { initialData: data.events } : {}),
     keepPreviousData: true
   })
 );
 
-const customEventsQuery = useQuery(
-  api.schedule.getCustomEventsByYear,
-  () => ({ year: String(displayYear) }),
-  () => ({
-    ...(data.customEvents ? { initialData: data.customEvents } : {}),
-    keepPreviousData: true
-  })
-);
-
-const eventsPending = $derived(
-  schoolEventsQuery.isLoading ||
-    customEventsQuery.isLoading ||
-    schoolEventsQuery.isStale ||
-    customEventsQuery.isStale
-);
+const eventsPending = $derived(eventsQuery.isLoading || eventsQuery.isStale);
 
 // Pagination bounds: Dec of last year → Feb of next year
 const minYear = nowKst.getFullYear() - 1;
@@ -97,100 +90,32 @@ function getCalendarWeeks(year: number, month: number) {
 
 const calendarWeeks = $derived(getCalendarWeeks(displayYear, displayMonth));
 
+function indexByDate(events: PublicEvent[], skipTitle?: string): Record<string, PublicEvent[]> {
+  const acc: Record<string, PublicEvent[]> = {};
+  for (const event of events) {
+    if (skipTitle && event.title === skipTitle) continue;
+    (acc[event.date] ??= []).push(event);
+  }
+  return acc;
+}
+
 const schoolEventsByDate = $derived(
-  (schoolEventsQuery.data || []).reduce((acc: Record<string, any[]>, event: any) => {
-    if (event.title === '토요휴업일') return acc;
-    if (!acc[event.date]) acc[event.date] = [];
-    acc[event.date].push(event);
-    return acc;
-  }, {} as Record<string, any[]>)
+  indexByDate((eventsQuery.data ?? []).filter((e) => e.source === 'school'), '토요휴업일')
 );
-
 const customEventsByDate = $derived(
-  (customEventsQuery.data || []).reduce((acc: Record<string, any[]>, event: any) => {
-    if (!acc[event.date]) acc[event.date] = [];
-    acc[event.date].push(event);
-    return acc;
-  }, {} as Record<string, any[]>)
+  indexByDate((eventsQuery.data ?? []).filter((e) => e.source === 'custom'))
 );
 
-// Color helpers — calendar cell chips
-function getSchoolEventClass(eventType: string): string {
-  if (eventType === '공휴일') return 'bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300';
-  if (eventType === '휴업일' || eventType === '재량휴업일') return 'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300';
-  return 'bg-sky-100 text-sky-700 dark:bg-sky-900/40 dark:text-sky-300';
-}
-
-// Narrow cells can't carry a readable label, so they carry a dot in the same hue.
-function getSchoolEventDot(eventType: string): string {
-  if (eventType === '공휴일') return 'bg-red-500 dark:bg-red-400';
-  if (eventType === '휴업일' || eventType === '재량휴업일') return 'bg-amber-500 dark:bg-amber-400';
-  return 'bg-sky-500 dark:bg-sky-400';
-}
-
-const CUSTOM_COLOR_CLASSES: Record<string, string> = {
-  blue:   'bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300',
-  green:  'bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300',
-  purple: 'bg-purple-100 text-purple-700 dark:bg-purple-900/40 dark:text-purple-300',
-  orange: 'bg-orange-100 text-orange-700 dark:bg-orange-900/40 dark:text-orange-300',
-  pink:   'bg-pink-100 text-pink-700 dark:bg-pink-900/40 dark:text-pink-300',
-  teal:   'bg-teal-100 text-teal-700 dark:bg-teal-900/40 dark:text-teal-300',
-};
-
-const CUSTOM_DOT_CLASSES: Record<string, string> = {
-  blue:   'bg-blue-500 dark:bg-blue-400',
-  green:  'bg-green-500 dark:bg-green-400',
-  purple: 'bg-purple-500 dark:bg-purple-400',
-  orange: 'bg-orange-500 dark:bg-orange-400',
-  pink:   'bg-pink-500 dark:bg-pink-400',
-  teal:   'bg-teal-500 dark:bg-teal-400',
-};
-
-const CUSTOM_COLORS = [
-  { id: 'blue',   bgClass: 'bg-blue-500' },
-  { id: 'green',  bgClass: 'bg-green-500' },
-  { id: 'purple', bgClass: 'bg-purple-500' },
-  { id: 'orange', bgClass: 'bg-orange-400' },
-  { id: 'pink',   bgClass: 'bg-pink-400' },
-  { id: 'teal',   bgClass: 'bg-teal-500' },
-] as const;
-
-type CustomEventColor = (typeof CUSTOM_COLORS)[number]['id'];
-
-type CellEvent = { id: string; title: string; chipClass: string; dotClass: string };
+type CellEvent = { id: string; title: string; chipClass: string };
 
 function eventsForDate(dateStr: string | null): CellEvent[] {
   if (!dateStr) return [];
-  const school = (schoolEventsByDate[dateStr] || []).map((e: any) => ({
+  return [...(schoolEventsByDate[dateStr] ?? []), ...(customEventsByDate[dateStr] ?? [])].map((e) => ({
     id: String(e._id),
     title: e.title,
-    chipClass: getSchoolEventClass(e.eventType),
-    dotClass: getSchoolEventDot(e.eventType),
+    chipClass: eventChrome(e).chip,
   }));
-  const custom = (customEventsByDate[dateStr] || []).map((e: any) => ({
-    id: String(e._id),
-    title: e.title,
-    chipClass: CUSTOM_COLOR_CLASSES[e.color] ?? CUSTOM_COLOR_CLASSES.blue,
-    dotClass: CUSTOM_DOT_CLASSES[e.color] ?? CUSTOM_DOT_CLASSES.blue,
-  }));
-  return [...school, ...custom];
 }
-
-// Color helpers — drawer event items
-function getSchoolEventPopupStyle(eventType: string) {
-  if (eventType === '공휴일') return { color: 'bg-red-400', bg: 'bg-red-50 dark:bg-red-400/10', label: '공휴일', labelColor: 'text-red-600 dark:text-red-400' };
-  if (eventType === '휴업일' || eventType === '재량휴업일') return { color: 'bg-amber-400', bg: 'bg-amber-50 dark:bg-amber-400/10', label: eventType, labelColor: 'text-amber-700 dark:text-amber-400' };
-  return { color: 'bg-sky-400', bg: 'bg-sky-50 dark:bg-sky-400/10', label: '학교 행사', labelColor: 'text-sky-700 dark:text-sky-400' };
-}
-
-const CUSTOM_POPUP_STYLE: Record<string, { color: string; bg: string; labelColor: string }> = {
-  blue:   { color: 'bg-blue-400',   bg: 'bg-blue-50 dark:bg-blue-400/10',   labelColor: 'text-blue-600 dark:text-blue-400' },
-  green:  { color: 'bg-green-400',  bg: 'bg-green-50 dark:bg-green-400/10',  labelColor: 'text-green-700 dark:text-green-400' },
-  purple: { color: 'bg-purple-400', bg: 'bg-purple-50 dark:bg-purple-400/10', labelColor: 'text-purple-600 dark:text-purple-400' },
-  orange: { color: 'bg-orange-400', bg: 'bg-orange-50 dark:bg-orange-400/10', labelColor: 'text-orange-700 dark:text-orange-400' },
-  pink:   { color: 'bg-pink-400',   bg: 'bg-pink-50 dark:bg-pink-400/10',   labelColor: 'text-pink-600 dark:text-pink-400' },
-  teal:   { color: 'bg-teal-400',   bg: 'bg-teal-50 dark:bg-teal-400/10',   labelColor: 'text-teal-700 dark:text-teal-400' },
-};
 
 // Admin state
 const isAuthenticated = data.isAuthenticated as boolean;
@@ -245,6 +170,7 @@ async function handleAddEvent() {
       title: newEventTitle.trim(),
       color: newEventColor,
     });
+    if (document.activeElement instanceof HTMLElement) document.activeElement.blur();
     newEventTitle = '';
     popupAddMode = false;
   } catch {
@@ -254,11 +180,11 @@ async function handleAddEvent() {
   }
 }
 
-async function handleDeleteCustomEvent(id: string) {
+async function handleDeleteCustomEvent(id: Id<'schedules'>) {
   if (!confirm('이 일정을 삭제하시겠습니까? 되돌릴 수 없습니다.')) return;
   saveError = null;
   try {
-    await client.mutation(api.schedule.deleteCustomEvent, { sessionToken, id: id as Id<'schedules'> });
+    await client.mutation(api.schedule.deleteCustomEvent, { sessionToken, id });
   } catch {
     saveError = '삭제하지 못했어요. 잠시 후 다시 시도해 주세요.';
   }
@@ -426,8 +352,9 @@ const dayNames = ['일','월','화','수','목','금','토'];
     <p class="mb-3 text-sm font-semibold text-destructive" role="alert">{saveError}</p>
   {/if}
 
+  <div class="grid">
   {#if !popupAddMode}
-    <div in:fly={flyIn} out:fade={fadeFast}>
+    <div class="col-start-1 row-start-1" out:fade={fadeFast}>
       <PillButton variant="secondary" class="w-full" onclick={() => { popupAddMode = true; saveError = null; }}>
         <svg viewBox="0 0 20 20" fill="currentColor" class="w-4 h-4 flex-shrink-0" aria-hidden="true">
           <path fill-rule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clip-rule="evenodd"/>
@@ -436,22 +363,25 @@ const dayNames = ['일','월','화','수','목','금','토'];
       </PillButton>
     </div>
   {:else}
-    <!-- The composer grows out of the button's place and shrinks back on cancel. -->
-    <div transition:slide={slideY}>
+    <!-- Height only — no fly. A transform on this node plus the keyboard
+         is what froze the sheet on iOS. -->
+    <div class="col-start-1 row-start-1" transition:slide={slideY}>
     <div class="space-y-5 pt-1" in:fade={fadeIn} out:fade={fadeOut}>
-      <!-- Title and colour are one thing — what the event is — so they sit
-           tight together, with the action band set apart from them. -->
       <div class="space-y-3.5">
         <input
           type="text"
           bind:value={newEventTitle}
-          use:focusOnElement={320}
+          use:focusOnElement={0}
           aria-label="일정 제목"
           placeholder="예: 반티 주문 마감"
           class="w-full h-11 px-3.5 rounded-lg bg-muted text-base text-foreground placeholder:text-muted-foreground"
           onkeydown={(e) => {
             if (e.key === 'Enter' && !e.isComposing) handleAddEvent();
-            if (e.key === 'Escape') { popupAddMode = false; newEventTitle = ''; }
+            if (e.key === 'Escape') {
+              if (document.activeElement instanceof HTMLElement) document.activeElement.blur();
+              popupAddMode = false;
+              newEventTitle = '';
+            }
           }}
         />
 
@@ -460,16 +390,16 @@ const dayNames = ['일','월','화','수','목','금','토'];
           <!-- A check marks the choice. A ring would have read as focus, which
                is the one signal this row must not borrow. -->
           <div class="flex gap-2.5 touch:gap-4" role="radiogroup" aria-label="일정 색상">
-            {#each CUSTOM_COLORS as color}
+            {#each CUSTOM_EVENT_COLORS as id (id)}
               <button
                 type="button"
-                onclick={() => (newEventColor = color.id)}
-                class="pressable touch-target w-7 h-7 rounded-full flex items-center justify-center {color.bgClass}"
+                onclick={() => (newEventColor = id)}
+                class="pressable touch-target w-7 h-7 rounded-full flex items-center justify-center {CUSTOM_COLOR_SWATCH[id]}"
                 role="radio"
-                aria-checked={newEventColor === color.id}
-                aria-label={color.id}
+                aria-checked={newEventColor === id}
+                aria-label={id}
               >
-                {#if newEventColor === color.id}
+                {#if newEventColor === id}
                   <svg viewBox="0 0 20 20" fill="none" stroke="white" stroke-width="3" class="w-4 h-4" aria-hidden="true">
                     <path stroke-linecap="round" stroke-linejoin="round" d="M5 10.5l3.5 3.5L15 7"/>
                   </svg>
@@ -492,12 +422,18 @@ const dayNames = ['일','월','화','수','목','금','토'];
         <PillButton
           text="취소"
           variant="secondary"
-          onclick={() => { popupAddMode = false; newEventTitle = ''; saveError = null; }}
+          onclick={() => {
+            if (document.activeElement instanceof HTMLElement) document.activeElement.blur();
+            popupAddMode = false;
+            newEventTitle = '';
+            saveError = null;
+          }}
         />
       </div>
     </div>
     </div>
   {/if}
+  </div>
 {/snippet}
 
 <!-- Day detail drawer -->
@@ -539,22 +475,22 @@ const dayNames = ['일','월','화','수','목','금','토'];
   {:else}
     <ul class="space-y-2.5">
       {#each selectedDateEvents.school as event (event._id)}
-        {@const style = getSchoolEventPopupStyle(event.eventType)}
+        {@const chrome = eventChrome(event)}
         <li class="flex rounded-lg overflow-hidden">
-          <div class="w-1.5 flex-shrink-0 {style.color}"></div>
-          <div class="flex-1 px-3 py-2.5 {style.bg}">
-            <p class="text-sm font-semibold {style.labelColor} mb-0.5">{style.label}</p>
+          <div class="w-1.5 flex-shrink-0 {chrome.popupBar}"></div>
+          <div class="flex-1 px-3 py-2.5 {chrome.popupBg}">
+            <p class="text-sm font-semibold {chrome.labelColor} mb-0.5">{chrome.label}</p>
             <p class="text-base font-semibold text-foreground leading-snug">{event.title}</p>
           </div>
         </li>
       {/each}
       {#each selectedDateEvents.custom as event (event._id)}
-        {@const style = CUSTOM_POPUP_STYLE[event.color] ?? CUSTOM_POPUP_STYLE.blue}
+        {@const chrome = eventChrome(event)}
         <li class="flex rounded-lg overflow-hidden">
-          <div class="w-1.5 flex-shrink-0 {style.color}"></div>
-          <div class="flex-1 flex items-center justify-between gap-2 px-3 py-2.5 {style.bg}">
+          <div class="w-1.5 flex-shrink-0 {chrome.popupBar}"></div>
+          <div class="flex-1 flex items-center justify-between gap-2 px-3 py-2.5 {chrome.popupBg}">
             <div class="min-w-0">
-              <p class="text-sm font-semibold {style.labelColor} mb-0.5">학급 일정</p>
+              <p class="text-sm font-semibold {chrome.labelColor} mb-0.5">{chrome.label}</p>
               <p class="text-base font-semibold text-foreground leading-snug">{event.title}</p>
             </div>
             {#if isAuthenticated}

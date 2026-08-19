@@ -1,4 +1,4 @@
-import { internalAction, internalMutation, query } from "./_generated/server";
+import { internalAction, internalMutation, query, type ActionCtx } from "./_generated/server";
 import { v } from "convex/values";
 import { internal } from "./_generated/api";
 import { addDaysYyyymmdd, getWeekRangeKst, parseYyyymmdd, toYyyymmdd } from "./dates";
@@ -44,18 +44,24 @@ export const upsertMany = internalMutation({
 
     // One indexed range read over the batch's date span, then match in memory,
     // instead of a separate query per meal.
-    const dates = meals.map((m) => m.date).sort();
+    const byKey = new Map<string, (typeof meals)[number]>();
+    for (const meal of meals) byKey.set(`${meal.date} ${meal.mealType}`, meal);
+    const uniqueMeals = [...byKey.values()];
+    const dates = uniqueMeals.map((m) => m.date).sort();
+    const rangeStart = dates[0];
+    const rangeEnd = dates[dates.length - 1];
+    if (!rangeStart || !rangeEnd) return null;
     const existingRows = await ctx.db
       .query("meals")
       .withIndex("by_date_type", (q) =>
-        q.gte("date", dates[0]).lte("date", dates[dates.length - 1])
+        q.gte("date", rangeStart).lte("date", rangeEnd)
       )
       .collect();
     const existingByKey = new Map(existingRows.map((r) => [`${r.date} ${r.mealType}`, r]));
 
     const now = Date.now();
     let updated = 0, inserted = 0;
-    for (const meal of meals) {
+    for (const meal of uniqueMeals) {
       const existing = existingByKey.get(`${meal.date} ${meal.mealType}`);
       if (existing) {
         await ctx.db.patch(existing._id, { ...meal, editedAt: now });
@@ -70,58 +76,51 @@ export const upsertMany = internalMutation({
   },
 });
 
-export const fetchAndSave = internalAction({
-  args: {
-    startdate: v.string(), // YYYYMMDD
-    enddate: v.string(), // YYYYMMDD
-    schoolcode: v.string(),
-  },
-  returns: v.null(),
-  handler: async (ctx, { startdate, enddate, schoolcode }) => {
-    const url = `https://api.timefor.school/lunch?startdate=${encodeURIComponent(startdate)}&enddate=${encodeURIComponent(enddate)}&schoolcode=${encodeURIComponent(schoolcode)}`;
+async function pullMeals(
+  ctx: ActionCtx,
+  startdate: string,
+  enddate: string,
+  schoolcode: string
+): Promise<void> {
+  const url = `https://api.timefor.school/lunch?startdate=${encodeURIComponent(startdate)}&enddate=${encodeURIComponent(enddate)}&schoolcode=${encodeURIComponent(schoolcode)}`;
 
-    const res = await fetch(url, { headers: { Accept: "application/json" } });
-    if (!res.ok) {
-      throw new Error(`Failed to fetch meals: ${res.status} ${res.statusText}`);
-    }
-    const data = await res.json();
+  const res = await fetch(url, { headers: { Accept: "application/json" } });
+  if (!res.ok) {
+    throw new Error(`Failed to fetch meals: ${res.status} ${res.statusText}`);
+  }
+  const data = await res.json();
 
-    // Ignore INFO-200 "해당하는 데이터가 없습니다." error response
-    if (!Array.isArray(data)) return null;
+  // Ignore INFO-200 "해당하는 데이터가 없습니다." error response
+  if (!Array.isArray(data)) return;
 
-    const meals = (data as ExternalMeal[])
-      .filter((d) => d.MMEAL_SC_NM && d.DDISH_NM)
-      .map((d) => ({
-        date: d.MLSV_YMD,
-        mealType: d.MMEAL_SC_NM,
-        dishes: d.DDISH_NM.split("\n").map((s) => s.trim()).filter(Boolean),
-        originInfo: d.ORPLC_INFO ?? "",
-        calories: d.CAL_INFO ?? null,
-        nutrients: d.NTR_INFO ?? null,
-        schoolCode: d.SD_SCHUL_CODE,
-        schoolName: d.SCHUL_NM,
-        loadedAt: d.LOAD_DTM,
-      }));
+  const meals = (data as ExternalMeal[])
+    .filter((d) => d.MMEAL_SC_NM && d.DDISH_NM)
+    .map((d) => ({
+      date: d.MLSV_YMD,
+      mealType: d.MMEAL_SC_NM,
+      dishes: d.DDISH_NM.split("\n").map((s) => s.trim()).filter(Boolean),
+      originInfo: d.ORPLC_INFO ?? "",
+      calories: d.CAL_INFO ?? null,
+      nutrients: d.NTR_INFO ?? null,
+      schoolCode: d.SD_SCHUL_CODE,
+      schoolName: d.SCHUL_NM,
+      loadedAt: d.LOAD_DTM,
+    }));
 
-    console.log(`[meals.fetchAndSave] range=${startdate}–${enddate} fetched=${meals.length}`);
-    if (meals.length > 0) {
-      await ctx.runMutation(internal.meals.upsertMany, { meals });
-    }
-    return null;
-  },
-});
+  console.log(`[meals.pullMeals] range=${startdate}–${enddate} fetched=${meals.length}`);
+  if (meals.length > 0) {
+    await ctx.runMutation(internal.meals.upsertMany, { meals });
+  }
+}
 
 // Fetch a single KST week (offsetWeeks: 0 = this week, 1 = next week).
+// Cron args are static, so the week bounds are computed at run time here.
 export const fetchWeek = internalAction({
   args: { schoolcode: v.string(), offsetWeeks: v.number() },
   returns: v.null(),
   handler: async (ctx, { schoolcode, offsetWeeks }) => {
     const { start, end } = getWeekRangeKst(offsetWeeks);
-    await ctx.runAction(internal.meals.fetchAndSave, {
-      startdate: toYyyymmdd(start),
-      enddate: toYyyymmdd(end),
-      schoolcode,
-    });
+    await pullMeals(ctx, toYyyymmdd(start), toYyyymmdd(end), schoolcode);
     return null;
   },
 });

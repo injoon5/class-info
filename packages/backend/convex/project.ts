@@ -47,7 +47,16 @@ export function projectSchedule(e: Doc<"schedules">): Infer<typeof publicEvent> 
   };
   // Optional keys must be omitted, not set to undefined — undefined is not a Convex value.
   if (typeof e.eventType === "string") out.eventType = e.eventType;
-  if (typeof e.color === "string") out.color = e.color;
+  if (
+    e.color === "blue" ||
+    e.color === "green" ||
+    e.color === "purple" ||
+    e.color === "orange" ||
+    e.color === "pink" ||
+    e.color === "teal"
+  ) {
+    out.color = e.color;
+  }
   return out;
 }
 

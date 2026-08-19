@@ -15,29 +15,6 @@ function emptyMeals(weekStart: string) {
 	};
 }
 
-async function loadEvents(
-	client: ReturnType<typeof convexHttp>,
-	start: string,
-	end: string,
-	year: number,
-	month: number
-) {
-	try {
-		return await client.query(api.schedule.getEventsInRange, { start, end });
-	} catch (err) {
-		// Preview/frontend can ship before Convex has getEventsInRange.
-		console.error('home schedule.getEventsInRange', err);
-		const years = month === 11 ? [year, year + 1] : [year];
-		const chunks = await Promise.all(
-			years.flatMap((y) => [
-				client.query(api.schedule.getSchoolEventsByYear, { year: String(y) }).catch(() => []),
-				client.query(api.schedule.getCustomEventsByYear, { year: String(y) }).catch(() => [])
-			])
-		);
-		return chunks.flat().filter((e) => e.date >= start && e.date <= end);
-	}
-}
-
 export const load = (async () => {
 	const now = getNowInKst();
 	const clock = noticeClock(now);
@@ -63,7 +40,10 @@ export const load = (async () => {
 			console.error('home meals.getTwoWeeks', err);
 			return emptyMeals(weekStart);
 		}),
-		loadEvents(client, todayYmd, rangeEnd, now.getFullYear(), now.getMonth())
+		client.query(api.schedule.getEventsInRange, { start: todayYmd, end: rangeEnd }).catch((err) => {
+			console.error('home schedule.getEventsInRange', err);
+			return [];
+		})
 	]);
 
 	return { ...clock, weekStart, currentGroups, timetable, nextWeekTimetable, meals, events };

@@ -3,21 +3,22 @@ import { useConvexClient } from 'convex-svelte';
 import { api } from "@class-info/backend/convex/_generated/api";
 import type { Id } from "@class-info/backend/convex/_generated/dataModel";
 import { enhance } from '$app/forms';
-import FileUpload from '../../components/FileUpload.svelte';
-import { getTypeColor } from '$lib/utils';
+import FileUpload from './FileUpload.svelte';
+import { noticeTypeClass, type DayGroup, type MinimalNotice } from '$lib/notices';
 import { formatAbsolute, formatRelative } from '$lib/date';
-import LoadingState from '../../components/LoadingState.svelte';
-import PillButton from '../../components/PillButton.svelte';
-import ConfirmDeleteActions from '../../components/ConfirmDeleteActions.svelte';
-import AdminPastMonthDetails from '../../components/AdminPastMonthDetails.svelte';
-import DisclosureCaret from '../../components/DisclosureCaret.svelte';
+import LoadingState from '$lib/components/ui/LoadingState.svelte';
+import PillButton from '$lib/components/ui/PillButton.svelte';
+import ConfirmDeleteActions from '$lib/components/ui/ConfirmDeleteActions.svelte';
+import AdminPastMonthDetails from './AdminPastMonthDetails.svelte';
+import DisclosureCaret from '$lib/components/ui/DisclosureCaret.svelte';
 import { autosize } from '$lib/actions/autosize';
-import { onMount } from 'svelte';
+import { onMount, tick } from 'svelte';
 import { SvelteSet } from 'svelte/reactivity';
 import { fade, slide } from 'svelte/transition';
 import { flip } from 'svelte/animate';
 import { fadeIn, fadeOut, flipMove, slideNone, slideY, slideYOut } from '$lib/transitions';
 import { useQuery } from 'convex-svelte';
+import { followCollapsing } from '$lib/scroll';
 import type { PageData, ActionData } from './$types';
 
 const { data, form }: { data: PageData; form: ActionData } = $props();
@@ -38,10 +39,10 @@ let dismissedIds = new SvelteSet<string>();
 let noticeForm = $state({
 	title: '',
 	subject: '',
-	type: '숙제' as '수행평가' | '숙제' | '준비물' | '기타',
+	type: '숙제' as MinimalNotice['type'],
 	description: '',
 	dueDate: '',
-	files: [] as any[]
+	files: [] as Id<'files'>[]
 });
 
 // PIN form state
@@ -68,15 +69,22 @@ let panelError = $state<string | null>(null);
 const EMPTY_NOTICE = {
 	title: '',
 	subject: '',
-	type: '숙제' as '수행평가' | '숙제' | '준비물' | '기타',
+	type: '숙제' as MinimalNotice['type'],
 	description: '',
 	dueDate: '',
-	files: [] as any[]
+	files: [] as Id<'files'>[]
 };
 
 // Toggling the header button must open an empty editor, not inherit whatever
 // notice happened to be open.
-function startNewNotice() {
+function resetForm() {
+	followCollapsing(document.getElementById('notice-editor'));
+	noticeForm = { ...EMPTY_NOTICE };
+	editorTarget = null;
+	formError = null;
+}
+
+async function startNewNotice() {
 	if (editorTarget === 'new') {
 		resetForm();
 		return;
@@ -85,44 +93,38 @@ function startNewNotice() {
 	formError = null;
 	confirmingDeleteId = null;
 	editorTarget = 'new';
+	await tick();
+	document.getElementById('notice-editor')?.scrollIntoView({ block: 'nearest' });
 }
 
-function resetForm() {
-	noticeForm = { ...EMPTY_NOTICE };
-	editorTarget = null;
-	formError = null;
-}
-
-async function editNotice(noticeOrId: any) {
-	const id = typeof noticeOrId === 'string' ? noticeOrId : String(noticeOrId?._id);
+async function editNotice(id: Id<'notices'>) {
 	// Always load the authoritative record. The list/overview projection is a
 	// MinimalNotice (no description/files), so editing from it and saving would
 	// wipe those fields — never fall back to it.
-	let full: any = null;
 	try {
-		full = await client.query(api.notices.getById, { id: id as unknown as Id<'notices'> });
+		const { notice: full } = await client.query(api.notices.detail, { id });
+		if (!full) {
+			panelError = '공지를 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.';
+			return;
+		}
+		panelError = null;
+		noticeForm = {
+			title: full.title || '',
+			subject: full.subject || '',
+			type: full.type || '숙제',
+			description: typeof full.description === 'string' ? full.description : '',
+			dueDate: full.dueDate || '',
+			files: Array.isArray(full.files) ? full.files : []
+		};
+		editorTarget = id;
+		formError = null;
+		confirmingDeleteId = null;
 	} catch {
-		full = null;
-	}
-	if (!full) {
 		panelError = '공지를 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.';
-		return;
 	}
-	panelError = null;
-	noticeForm = {
-		title: full.title || '',
-		subject: full.subject || '',
-		type: full.type || '숙제',
-		description: typeof full.description === 'string' ? full.description : '',
-		dueDate: full.dueDate || '',
-		files: Array.isArray(full.files) ? full.files : []
-	};
-	editorTarget = id;
-	formError = null;
-	confirmingDeleteId = null;
 }
 
-function handleFilesChange(fileIds: any[]) {
+function handleFilesChange(fileIds: Id<'files'>[]) {
 	noticeForm = { ...noticeForm, files: fileIds };
 }
 
@@ -145,32 +147,32 @@ async function handleSubmit() {
 			await client.mutation(api.notices.create, { sessionToken, ...payload });
 		}
 		resetForm();
-	} catch (error) {
+	} catch {
 		formError = '저장하지 못했습니다. 잠시 후 다시 시도해 주세요.';
 	}
 }
 
-async function handleDelete(notice: any) {
-	const id = String(notice._id);
+async function handleDelete(id: Id<'notices'>) {
+	const key = String(id);
 	// Drop it from the list now so the row outro starts on confirm, not after
 	// the mutation round-trip (which just snapped the row away).
-	dismissedIds.add(id);
+	dismissedIds.add(key);
 	confirmingDeleteId = null;
 	try {
-		await client.mutation(api.notices.remove, { sessionToken, id: notice._id });
+		await client.mutation(api.notices.remove, { sessionToken, id });
 		panelError = null;
-		if (editorTarget === id) resetForm();
-	} catch (error) {
-		dismissedIds.delete(id);
+		if (editorTarget === key) resetForm();
+	} catch {
+		dismissedIds.delete(key);
 		panelError = '삭제하지 못했습니다. 잠시 후 다시 시도해 주세요.';
 	}
 }
 
-function hideDismissed(groups: any[] | undefined) {
+function hideDismissed(groups: DayGroup[] | undefined) {
 	return (groups ?? [])
 		.map((g) => ({
 			...g,
-			notices: (g.notices ?? []).filter((n: any) => !dismissedIds.has(String(n._id)))
+			notices: g.notices.filter((n) => !dismissedIds.has(String(n._id)))
 		}))
 		.filter((g) => g.notices.length > 0);
 }
@@ -190,9 +192,9 @@ const listSlide = $derived(live ? slideY : slideNone);
 // returning -Infinity → "Invalid Date").
 const lastUpdatedTs = $derived.by(() => {
 	const ts = allGroupedNotices
-		.flatMap((g: any) => g.notices || [])
-		.map((n: any) => n.updatedAt || n.createdAt)
-		.filter((t: any): t is number => typeof t === 'number');
+		.flatMap((g) => g.notices)
+		.map((n) => n.updatedAt ?? n.createdAt)
+		.filter((t): t is number => typeof t === 'number');
 	return ts.length > 0 ? Math.max(...ts) : null;
 });
 </script>
@@ -217,7 +219,7 @@ const lastUpdatedTs = $derived.by(() => {
 </svelte:head>
 
 {#snippet noticeEditor()}
-	<div transition:slide={slideY}>
+	<div id="notice-editor" in:slide={slideY} out:slide={slideYOut}>
 		<div
 			class="bg-card border border-border rounded-3xl p-4 mb-6"
 			in:fade={fadeIn}
@@ -276,13 +278,13 @@ const lastUpdatedTs = $derived.by(() => {
 					</div>
 				</div>
 
-				<div>
+				<div class="min-w-0 overflow-hidden">
 					<label for="notice-date" class="block text-sm font-semibold mb-1.5 text-muted-foreground">마감일 *</label>
 					<input
 						id="notice-date"
 						type="date"
 						bind:value={noticeForm.dueDate}
-						class="w-full h-11 px-3.5 rounded-lg bg-muted text-base text-foreground placeholder:text-muted-foreground"
+						class="date-input w-full min-w-0 max-w-full h-11 px-3.5 rounded-lg bg-muted text-base text-foreground"
 					/>
 				</div>
 
@@ -393,7 +395,7 @@ const lastUpdatedTs = $derived.by(() => {
 
 		<!-- Notice List -->
 		{#if overview.isLoading}
-			<LoadingState />
+			<LoadingState variant="notices" />
         {:else if overview.error}
 			<div class="text-center py-8 text-destructive">
 				<p>공지를 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.</p>
@@ -423,7 +425,7 @@ const lastUpdatedTs = $derived.by(() => {
                                 <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
                                     <div class="flex-1 min-w-0">
                                         <div class="flex items-center gap-1.5 sm:gap-2 mb-1">
-                                            <span class="px-1.5 py-0.5 text-xs sm:text-sm font-semibold rounded-md {getTypeColor(notice.type)}">
+                                            <span class="px-1.5 py-0.5 text-xs sm:text-sm font-semibold rounded-md {noticeTypeClass(notice.type)}">
                                                 {notice.type}
                                             </span>
                                             <span class="text-sm font-semibold text-muted-foreground">
@@ -448,9 +450,9 @@ const lastUpdatedTs = $derived.by(() => {
                                     </div>
                                     <ConfirmDeleteActions
                                         confirming={confirmingDeleteId === String(notice._id)}
-                                        onEdit={() => editNotice(notice)}
+                                        onEdit={() => editNotice(notice._id)}
                                         onAskDelete={() => (confirmingDeleteId = String(notice._id))}
-                                        onConfirmDelete={() => handleDelete(notice)}
+                                        onConfirmDelete={() => handleDelete(notice._id)}
                                         onCancel={() => (confirmingDeleteId = null)}
                                     />
                                 </div>
@@ -497,16 +499,8 @@ const lastUpdatedTs = $derived.by(() => {
                                     {dismissedIds}
                                     {editorTarget}
                                     editor={noticeEditor}
-                                    onEdit={(id: string) => {
-                                        const all: any[] = (overview.data?.currentGroups || []).flatMap((g: any) => g.notices || []);
-                                        const found = all.find((n: any) => String(n?._id) === id);
-                                        if (found) {
-                                            editNotice(found);
-                                        } else {
-                                            editNotice(id);
-                                        }
-                                    }}
-                                    onDelete={(id: string) => handleDelete({ _id: id } as any)}
+                                    onEdit={editNotice}
+                                    onDelete={handleDelete}
                                 />
                             {/if}
                         </details>

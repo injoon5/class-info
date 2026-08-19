@@ -1,4 +1,4 @@
-import { internalMutation, mutation, query, type MutationCtx } from "./_generated/server";
+import { mutation, query, type MutationCtx } from "./_generated/server";
 import { v } from "convex/values";
 import { R2 } from "@convex-dev/r2";
 import { components } from "./_generated/api";
@@ -8,35 +8,9 @@ import { fileDoc } from "./validators";
 
 const MAX_FILE_BYTES = 10 * 1024 * 1024;
 const ALLOWED_TYPE_PREFIXES = ["image/", "application/pdf"] as const;
+const STORAGE_ID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 export const r2 = new R2(components.r2);
-
-export const { generateUploadUrl, syncMetadata } = r2.clientApi({
-  checkUpload: async (_ctx, _bucket) => {
-    // NOTE: the R2 clientApi only passes (ctx, bucket) here — no session token —
-    // so upload-URL generation cannot be gated by our bearer-token scheme.
-    // An anonymous caller could still push objects into the bucket (a
-    // storage-fill nuisance), but cannot ATTACH them to a notice: both
-    // updateFileMetadataByStorageId and the notice create/update mutations
-    // require an admin session. Fully gating uploads needs Convex Auth
-    // (ctx.auth identity) wired through the upload flow.
-  },
-  onUpload: async (ctx, bucket, key) => {
-    // Store file metadata in our database with custom domain URL
-    const url = `https://files.timefor.school/${key}`;
-
-    const fileName = key.split("/").pop() || key;
-
-    await ctx.db.insert("files", {
-      name: fileName,
-      type: "unknown",
-      size: 0,
-      url,
-      storageId: key,
-      uploadedAt: Date.now(),
-    });
-  },
-});
 
 function assertFileMeta(type: string, size: number): void {
   if (!Number.isFinite(size) || size < 0 || size > MAX_FILE_BYTES) {
@@ -47,44 +21,27 @@ function assertFileMeta(type: string, size: number): void {
   }
 }
 
-// Unused by clients; kept internal-only to avoid an anonymous write path.
-export const createFileRecord = internalMutation({
-  args: {
-    name: v.string(),
-    type: v.string(),
-    size: v.number(),
-    url: v.string(),
-    storageId: v.string(),
-  },
-  returns: v.id("files"),
-  handler: async (ctx, { name, type, size, url, storageId }) => {
-    return await ctx.db.insert("files", {
-      name,
-      type,
-      size,
-      url,
-      storageId,
-      uploadedAt: Date.now(),
-    });
-  },
-});
+function assertStorageId(storageId: string): void {
+  if (!STORAGE_ID_RE.test(storageId)) {
+    throw new Error("Invalid storage id");
+  }
+}
 
-// Unused by clients; kept internal-only to avoid an anonymous write path.
-export const updateFileMetadata = internalMutation({
-  args: {
-    fileId: v.id("files"),
-    name: v.string(),
-    type: v.string(),
-    size: v.number(),
-  },
-  returns: v.null(),
-  handler: async (ctx, { fileId, name, type, size }) => {
-    await ctx.db.patch(fileId, {
-      name,
-      type,
-      size,
-    });
-    return null;
+function publicFileUrl(key: string): string {
+  return `https://files.timefor.school/${key}`;
+}
+
+/**
+ * Admin-only signed PUT URL. The R2 clientApi `generateUploadUrl` mutation
+ * takes no args, so it cannot see our session cookie/token — that path is
+ * intentionally not exported.
+ */
+export const generateUploadUrl = mutation({
+  args: { sessionToken: v.string() },
+  returns: v.object({ key: v.string(), url: v.string() }),
+  handler: async (ctx, { sessionToken }) => {
+    await requireAdmin(ctx, sessionToken);
+    return await r2.generateUploadUrl();
   },
 });
 
@@ -99,31 +56,33 @@ export const updateFileMetadataByStorageId = mutation({
   returns: v.id("files"),
   handler: async (ctx, { sessionToken, storageId, name, type, size }) => {
     await requireAdmin(ctx, sessionToken);
+    assertStorageId(storageId);
     assertFileMeta(type, size);
     const file = await ctx.db
       .query("files")
       .withIndex("by_storage_id", (q) => q.eq("storageId", storageId))
       .first();
 
+    const url = publicFileUrl(storageId);
     if (!file) {
-      throw new Error("File not found");
+      return await ctx.db.insert("files", {
+        name,
+        type,
+        size,
+        url,
+        storageId,
+        uploadedAt: Date.now(),
+      });
     }
 
     await ctx.db.patch(file._id, {
       name,
       type,
       size,
+      url,
     });
 
     return file._id;
-  },
-});
-
-export const getFile = query({
-  args: { fileId: v.id("files") },
-  returns: v.union(fileDoc, v.null()),
-  handler: async (ctx, { fileId }) => {
-    return await ctx.db.get(fileId);
   },
 });
 
@@ -143,7 +102,19 @@ export async function deleteFilesByIds(
   ctx: MutationCtx,
   fileIds: Id<"files">[]
 ): Promise<void> {
-  for (const fileId of fileIds) {
+  const unique = [...new Set(fileIds)];
+  if (unique.length === 0) return;
+
+  const notices = await ctx.db.query("notices").collect();
+  for (const notice of notices) {
+    if (!Array.isArray(notice.files) || notice.files.length === 0) continue;
+    const next = notice.files.filter((id) => !unique.includes(id));
+    if (next.length !== notice.files.length) {
+      await ctx.db.patch(notice._id, { files: next });
+    }
+  }
+
+  for (const fileId of unique) {
     const file = await ctx.db.get(fileId);
     if (!file) continue;
     try {

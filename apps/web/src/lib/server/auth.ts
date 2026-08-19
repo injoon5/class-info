@@ -14,20 +14,20 @@ export const SESSION_MAX_AGE = 60 * 60 * 24; // 24h, matches the Convex session 
  * or expired tokens get the cookie cleared.
  */
 export async function getAdminSession(
-  cookies: Cookies
+	cookies: Cookies
 ): Promise<{ isAuthenticated: boolean; sessionToken: string | null }> {
-  const token = cookies.get(SESSION_COOKIE);
-  if (!token) return { isAuthenticated: false, sessionToken: null };
+	const token = cookies.get(SESSION_COOKIE);
+	if (!token) return { isAuthenticated: false, sessionToken: null };
 
-  try {
-    const valid = await convexHttp().query(api.settings.verifySession, { token });
-    if (valid) return { isAuthenticated: true, sessionToken: token };
-  } catch {
-    // Network/backend hiccup — treat as unauthenticated but keep the cookie so
-    // a transient failure doesn't force re-login.
-    return { isAuthenticated: false, sessionToken: null };
-  }
+	try {
+		const valid = await convexHttp().mutation(api.settings.verifySession, { token });
+		if (valid) return { isAuthenticated: true, sessionToken: token };
+	} catch {
+		// Network/backend hiccup — treat as unauthenticated but keep the cookie so
+		// a transient failure doesn't force re-login.
+		return { isAuthenticated: false, sessionToken: null };
+	}
 
-  cookies.delete(SESSION_COOKIE, { path: '/' });
-  return { isAuthenticated: false, sessionToken: null };
+	cookies.delete(SESSION_COOKIE, { path: '/' });
+	return { isAuthenticated: false, sessionToken: null };
 }
