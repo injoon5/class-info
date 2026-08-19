@@ -5,7 +5,6 @@ import {
 	addDaysYyyymmdd,
 	getNowInKst,
 	noticeClock,
-	SCHOOL_DAY_LOOKAHEAD,
 	schoolDisplayClock,
 	thisMondayYyyymmdd,
 	yyyymmdd
@@ -29,13 +28,17 @@ export const load = (async () => {
 	const displayClock = schoolDisplayClock(now);
 	const weekStart = thisMondayYyyymmdd(now);
 	const todayYmd = yyyymmdd(now);
-	const horizon = addDaysYyyymmdd(todayYmd, SCHOOL_DAY_LOOKAHEAD);
 	const client = convexHttp();
 
-	const [displayDay, currentGroups, timetable, nextWeekTimetable, meals, events] = await Promise.all([
-		client.query(api.schedule.schoolDisplayDay, displayClock).catch((err) => {
-			console.error('home schedule.schoolDisplayDay', err);
-			return displayClock.afterRollover ? addDaysYyyymmdd(todayYmd, 1) : todayYmd;
+	// One query for both the display day and the events around it — they come
+	// out of the same schedule scan on the server.
+	const [schedule, currentGroups, timetable, nextWeekTimetable, meals] = await Promise.all([
+		client.query(api.schedule.homeSchedule, displayClock).catch((err) => {
+			console.error('home schedule.homeSchedule', err);
+			return {
+				displayDay: displayClock.afterRollover ? addDaysYyyymmdd(todayYmd, 1) : todayYmd,
+				events: []
+			};
 		}),
 		client.query(api.notices.currentGroups, clock).catch((err) => {
 			console.error('home notices.currentGroups', err);
@@ -52,22 +55,18 @@ export const load = (async () => {
 		client.query(api.meals.getTwoWeeks, { weekStart }).catch((err) => {
 			console.error('home meals.getTwoWeeks', err);
 			return emptyMeals(weekStart);
-		}),
-		client.query(api.schedule.getEventsInRange, { start: todayYmd, end: horizon }).catch((err) => {
-			console.error('home schedule.getEventsInRange', err);
-			return [];
 		})
 	]);
 
 	return {
 		...clock,
 		todayYmd,
-		displayDay,
+		displayDay: schedule.displayDay,
 		weekStart,
 		currentGroups,
 		timetable,
 		nextWeekTimetable,
 		meals,
-		events
+		events: schedule.events
 	};
 }) satisfies PageLoad;

@@ -163,17 +163,31 @@ export type ScheduleHint = {
   date: string;
   title: string;
   eventType?: string | null;
+  source?: string | null;
 };
 
 export function isClosedEventType(eventType: string | null | undefined): boolean {
   return CLOSED_EVENT_TYPES.has(eventType ?? "");
 }
 
-// 방학식 is still a school day. 여름방학 / 겨울방학 / 방학 start a break.
-export function isVacationTitle(title: string): boolean {
-  return title.includes("방학") && !title.includes("방학식");
+// Only NEIS rows drive break detection. Admin-authored custom events share this
+// table and routinely mention 방학 in passing ("방학 과제 제출일"), which must not
+// close the school.
+function isSchoolSourced(hint: ScheduleHint): boolean {
+  return hint.source === "school";
 }
 
+// Anchored on purpose: a break marker is the whole title ("여름방학", "방학",
+// "겨울방학 시작"), never a title that merely contains the word. 방학식 is the
+// closing ceremony and is still a school day, so it must not match.
+const VACATION_TITLE = /^[가-힣]*방학(\s*시작)?$/;
+
+export function isVacationTitle(title: string): boolean {
+  return VACATION_TITLE.test(title.trim());
+}
+
+// Deliberately looser than the vacation match. A missed 개학 leaves a break
+// running to the end of the range; a spurious one only ends it early.
 export function isReopenTitle(title: string): boolean {
   return title.includes("개학");
 }
@@ -186,6 +200,11 @@ function isWeekendYmd(s: string): boolean {
 // Build the set of YYYYMMDD dates that are not school days in [rangeStart, rangeEnd].
 // 휴업일/공휴일 close that date. A 방학 title closes every day until the next 개학
 // (exclusive), because NEIS often tags only the first day of break.
+//
+// That span-fill is why rangeStart must reach back far enough to include the
+// marker of a break already under way — pass a start at least SCHOOL_DAY_LOOKAHEAD
+// days behind today, or every day from the second day of a break onward looks
+// like a school day.
 export function closedYmdsFromSchedule(
   events: ScheduleHint[],
   rangeStart: string,
@@ -197,6 +216,7 @@ export function closedYmdsFromSchedule(
   for (const event of events) {
     if (event.date < rangeStart || event.date > rangeEnd) continue;
     if (isClosedEventType(event.eventType)) closed.add(event.date);
+    if (!isSchoolSourced(event)) continue;
     if (isVacationTitle(event.title)) vacationStarts.push(event.date);
     if (isReopenTitle(event.title)) reopens.push(event.date);
   }
@@ -219,7 +239,8 @@ export function isSchoolYmd(ymd: string, closed: Set<string>): boolean {
   return !closed.has(ymd);
 }
 
-// Long enough to jump a summer break. Not a cron — the indexed range is small.
+// Long enough to jump a summer break, in both directions: forward to find the
+// next school day, backward to find the 방학 marker that started the current one.
 export const SCHOOL_DAY_LOOKAHEAD = 90;
 
 export function resolveSchoolDisplayYmd(
@@ -234,7 +255,12 @@ export function resolveSchoolDisplayYmd(
     const ymd = addDaysYyyymmdd(today, i);
     if (isSchoolYmd(ymd, closed)) return ymd;
   }
-  return addDaysYyyymmdd(today, lookahead);
+  // Nothing open in the whole lookahead — missing or malformed schedule data.
+  // Show the next weekday rather than a date three months out; the timetable
+  // and meal for it will simply be empty.
+  let fallback = addDaysYyyymmdd(today, 1);
+  while (isWeekendYmd(fallback)) fallback = addDaysYyyymmdd(fallback, 1);
+  return fallback;
 }
 
 // Monday–Friday of the KST week `offsetWeeks` away from today (times normalized

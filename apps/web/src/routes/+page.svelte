@@ -27,18 +27,21 @@ const noticesQuery = useQuery(
 
 const displayDay = $derived(data.displayDay);
 const todayYmd = $derived(data.todayYmd);
-const isTomorrow = $derived(displayDay === addDaysYyyymmdd(todayYmd, 1));
+const tomorrowYmd = $derived(addDaysYyyymmdd(todayYmd, 1));
+const isTomorrow = $derived(displayDay === tomorrowYmd);
 const parsedDisplay = $derived(parseYyyymmdd(displayDay));
 const displayMonth = $derived(parsedDisplay?.m ?? 0);
 const displayDate = $derived(parsedDisplay?.d ?? 0);
 const displayWeekday = $derived(
 	parsedDisplay ? weekdayKrUtc(parsedDisplay.y, parsedDisplay.m, parsedDisplay.d) : ''
 );
-const displayDayIndex = $derived(ymdWeekday(displayDay) - 1); // 0=Mon…4=Fri
+// ymdWeekday/weekOffsetBetween throw on a malformed date, so gate them on the
+// same parse the labels above already degrade through.
+const displayDayIndex = $derived(parsedDisplay ? ymdWeekday(displayDay) - 1 : -1); // 0=Mon…4=Fri
 
 // Which week's timetable to use. We only hold this-week and next-week data, so
 // map by whole-week offset; anything further out has no timetable to show.
-const weekOffset = $derived(weekOffsetBetween(todayYmd, displayDay));
+const weekOffset = $derived(parsedDisplay ? weekOffsetBetween(todayYmd, displayDay) : -1);
 const displayTimetableData = $derived(
 	weekOffset === 0 ? data.timetable : weekOffset === 1 ? data.nextWeekTimetable : undefined
 );
@@ -56,8 +59,6 @@ const displayMealDay = $derived(allMealDays.find((d) => d.date === displayDay) ?
 const displayLunch = $derived(displayMealDay?.lunch ?? null);
 const displayDinner = $derived(displayMealDay?.dinner ?? null);
 
-const upcomingEnd = $derived(addDaysYyyymmdd(displayDay, 7));
-
 const allEvents = $derived(
 	[...(data.events ?? [])]
 		.filter((e) => e.title !== '토요휴업일')
@@ -66,9 +67,11 @@ const allEvents = $derived(
 
 const displayDayEvents = $derived(allEvents.filter((e) => e.date === displayDay));
 
-const upcomingEvents = $derived(
-	allEvents.filter((e) => e.date >= displayDay && e.date <= upcomingEnd)
-);
+// Spans from today, not from the display day: an event still happening today
+// shouldn't vanish from the list at 4pm just because the timetable rolled over.
+// The display day is emphasised within the list instead. The far end is the
+// server's window (display day + a week), so there's nothing to re-bound here.
+const upcomingEvents = $derived(allEvents.filter((e) => e.date >= todayYmd));
 
 // ── Notices ───────────────────────────────────────────────────────────────────
 const PREVIEW_NOTICE_LIMIT = 4;
@@ -117,8 +120,11 @@ function eventTypeLabel(event: PublicEvent): string {
 	return event.eventType;
 }
 
+// Relative only where it is actually true. The display day can be several days
+// out (a weekend, a holiday, a break), and calling that "오늘" is a lie.
 function eventDateLabel(dateStr: string): string {
-	if (dateStr === displayDay) return isTomorrow ? '내일' : '오늘';
+	if (dateStr === todayYmd) return '오늘';
+	if (dateStr === tomorrowYmd) return '내일';
 	return formatEventDate(dateStr);
 }
 

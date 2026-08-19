@@ -8,11 +8,22 @@ import Drawer from '$lib/components/ui/Drawer.svelte';
 import HScroll from '$lib/components/ui/HScroll.svelte';
 import SegmentedControl from '$lib/components/ui/SegmentedControl.svelte';
 import { createBlurPulse } from '$lib/blurPulse.svelte';
+import { addDaysYyyymmdd } from '$lib/date';
 import type { MealDay, PublicMeal } from '@class-info/backend/convex/validators';
 import type { PageData } from './$types.js';
 
 const { data }: { data: PageData } = $props();
+// The column the grid highlights: today until the 4pm rollover, then the next
+// school day. Labelled in the header so the highlight is never unexplained.
 const displayDay = $derived(data.displayDay);
+const todayYmd = $derived(data.todayYmd);
+const tomorrowYmd = $derived(addDaysYyyymmdd(todayYmd, 1));
+
+function relativeDayLabel(date: string): string {
+  if (date === todayYmd) return '오늘';
+  if (date === tomorrowYmd) return '내일';
+  return '';
+}
 
 let selectedMealType = $state("중식");
 
@@ -113,17 +124,23 @@ function openMealDrawer(day: MealDay) {
           {#each week.days as day (day.date)}
             {@const meal = mealFor(day, selectedMealType)}
             {@const hasMeal = !!meal}
-            {@const isTodayCol = day.date === displayDay}
+            {@const isDisplayCol = day.date === displayDay}
+            {@const dayLabel = relativeDayLabel(day.date)}
             <button
               type="button"
               onclick={() => openMealDrawer(day)}
               disabled={!hasMeal}
               class="relative p-2.5 sm:px-3 sm:py-3 flex flex-col justify-between min-h-[15rem] text-left w-full transition-colors
-                {isTodayCol ? 'bg-muted/60' : 'bg-card'}
+                {isDisplayCol ? 'bg-muted/60' : 'bg-card'}
                 {hasMeal ? 'cursor-pointer pointer:hover:bg-muted' : 'cursor-default'}"
             >
               <div>
-                <h2 class="text-sm sm:text-base font-semibold tabular-nums {isTodayCol ? 'text-foreground' : 'text-muted-foreground'}">{formatDateKorean(day.date)}</h2>
+                <h2 class="flex items-baseline gap-1.5 text-sm sm:text-base font-semibold {isDisplayCol ? 'text-foreground' : 'text-muted-foreground'}">
+                  <span class="tabular-nums">{formatDateKorean(day.date)}</span>
+                  {#if dayLabel}
+                    <span class="text-xs font-semibold {dayLabel === '내일' ? 'text-amber-700 dark:text-amber-400' : 'text-muted-foreground'}">{dayLabel}</span>
+                  {/if}
+                </h2>
                 {#if meal}
                   <ul class="mt-2.5 space-y-1 text-foreground">
                     {#each meal.dishes as dish}
