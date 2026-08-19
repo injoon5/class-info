@@ -8,6 +8,7 @@
   "scripts": {
     "dev": "turbo dev",
     "build": "turbo build",
+    "build:vercel": "pnpm -C packages/backend exec convex deploy --cmd-url-env-var-name PUBLIC_CONVEX_URL --cmd 'pnpm -C ../.. -F web build'",
     "check-types": "turbo check-types",
     "dev:native": "turbo -F native dev",
     "dev:web": "turbo -F web dev",
@@ -15,7 +16,7 @@
     "dev:setup": "turbo -F @class-info/backend dev:setup"
   },
   "devDependencies": {
-    "convex": "^1.36.0",
+    "convex": "^1.44.0",
     "turbo": "^2.5.4"
   },
   "packageManager": "pnpm@8.8.0"

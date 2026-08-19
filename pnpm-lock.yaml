@@ -9,8 +9,8 @@ importers:
   .:
     devDependencies:
       convex:
-        specifier: ^1.36.0
-        version: 1.36.0
+        specifier: ^1.44.0
+        version: 1.44.0
       turbo:
         specifier: ^2.5.4
         version: 2.5.6
@@ -21,17 +21,17 @@ importers:
         specifier: workspace:*
         version: link:../../packages/backend
       '@convex-dev/r2':
-        specifier: ^0.10.0
-        version: 0.10.0(convex-svelte@0.0.11)(convex@1.36.0)(svelte@5.38.7)(typescript@5.9.2)(zod@4.1.5)
+        specifier: ^0.10.2
+        version: 0.10.2(convex-svelte@0.0.11)(convex@1.44.0)(svelte@5.38.7)(typescript@5.9.2)(zod@4.1.5)
       '@tanstack/svelte-form':
         specifier: ^1.19.2
         version: 1.19.4(svelte@5.38.7)
       convex:
-        specifier: ^1.36.0
-        version: 1.36.0
+        specifier: ^1.44.0
+        version: 1.44.0
       convex-svelte:
         specifier: ^0.0.11
-        version: 0.0.11(convex@1.36.0)(svelte@5.38.7)
+        version: 0.0.11(convex@1.44.0)(svelte@5.38.7)
       marked:
         specifier: ^16.2.1
         version: 16.2.1
@@ -73,11 +73,11 @@ importers:
   packages/backend:
     dependencies:
       '@convex-dev/r2':
-        specifier: ^0.10.0
-        version: 0.10.0(convex-svelte@0.0.11)(convex@1.36.0)(svelte@5.38.7)(typescript@5.9.2)(zod@4.1.5)
+        specifier: ^0.10.2
+        version: 0.10.2(convex-svelte@0.0.11)(convex@1.44.0)(svelte@5.38.7)(typescript@5.9.2)(zod@4.1.5)
       convex:
-        specifier: ^1.36.0
-        version: 1.36.0
+        specifier: ^1.44.0
+        version: 1.44.0
     devDependencies:
       '@types/node':
         specifier: ^24.3.0
@@ -681,19 +681,19 @@ packages:
     resolution: {integrity: sha512-5L/uBxmjaCIX5h8Z+uu+kA9BQLkc/Wl06UGR5ajNRxu+/XjonB5i8JpgFMrPj3LXTCPA0pv8yxUvbUi+QthGGA==}
     dev: false
 
-  /@convex-dev/action-retrier@0.3.0(convex@1.36.0):
+  /@convex-dev/action-retrier@0.3.0(convex@1.44.0):
     resolution: {integrity: sha512-opBNsgOPSuVY3qSARNub98XqPzSpSS7Jga0oGeWFhO+DcWBMt2gD3ssUeEA1Gi7wTNiZBX+T6OBfBnqMfv6Tuw==}
     peerDependencies:
       convex: ^1.24.8
     dependencies:
-      convex: 1.36.0
+      convex: 1.44.0
     dev: false
 
-  /@convex-dev/r2@0.10.0(convex-svelte@0.0.11)(convex@1.36.0)(svelte@5.38.7)(typescript@5.9.2)(zod@4.1.5):
-    resolution: {integrity: sha512-yRrzxn51Vh0pCdtZOgYRtip1ZhNzC82vcVIB2No+W318IgNzJZe1xCslXvGT4BxaE3SdyRrpXy9Vk1RUc0yw7A==}
+  /@convex-dev/r2@0.10.2(convex-svelte@0.0.11)(convex@1.44.0)(svelte@5.38.7)(typescript@5.9.2)(zod@4.1.5):
+    resolution: {integrity: sha512-9FuL3k+CDjuCXYTSuriVxOIpBuUI6qdBWydwJ+9xYJwVh1Z2CpXDRS0kuTsMGsIg8Yr/OiPvNS9W06mfmRBDrg==}
     peerDependencies:
       convex: ^1.24.8
-      convex-svelte: ^0.0.11
+      convex-svelte: ^0.0.11 || ^0.0.12
       convex-vue: ^0.1.5
       react: ^18 || ^19
       react-dom: ^18 || ^19
@@ -715,13 +715,13 @@ packages:
     dependencies:
       '@aws-sdk/client-s3': 3.1034.0
       '@aws-sdk/s3-request-presigner': 3.1034.0
-      '@convex-dev/action-retrier': 0.3.0(convex@1.36.0)
-      convex: 1.36.0
-      convex-helpers: 0.1.104(convex@1.36.0)(typescript@5.9.2)(zod@4.1.5)
-      convex-svelte: 0.0.11(convex@1.36.0)(svelte@5.38.7)
+      '@convex-dev/action-retrier': 0.3.0(convex@1.44.0)
+      convex: 1.44.0
+      convex-helpers: 0.1.104(convex@1.44.0)(typescript@5.9.2)(zod@4.1.5)
+      convex-svelte: 0.0.11(convex@1.44.0)(svelte@5.38.7)
       file-type: 21.3.4
       svelte: 5.38.7
-      uuid: 11.1.0
+      uuid: 14.0.2
     transitivePeerDependencies:
       - '@standard-schema/spec'
       - aws-crt
@@ -2201,7 +2201,7 @@ packages:
     resolution: {integrity: sha512-eYm0QWBtUrBWZWG0d386OGAw16Z995PiOVo2B7bjWSbHedGl5e0ZWaq65kOGgUSNesEIDkB9ISbTg/JK9dhCZA==}
     engines: {node: '>=6'}
 
-  /convex-helpers@0.1.104(convex@1.36.0)(typescript@5.9.2)(zod@4.1.5):
+  /convex-helpers@0.1.104(convex@1.44.0)(typescript@5.9.2)(zod@4.1.5):
     resolution: {integrity: sha512-7CYvx7T3K6n+McDTK4ZQaQNNGBzq5aWezpjzsKbOxPXx7oNcTP9wrpef3JxeXWFzkByJv5hRCjseh9B7eNJ7Ig==}
     hasBin: true
     peerDependencies:
@@ -2223,29 +2223,29 @@ packages:
       zod:
         optional: true
     dependencies:
-      convex: 1.36.0
+      convex: 1.44.0
       typescript: 5.9.2
       zod: 4.1.5
     dev: false
 
-  /convex-svelte@0.0.11(convex@1.36.0)(svelte@5.38.7):
+  /convex-svelte@0.0.11(convex@1.44.0)(svelte@5.38.7):
     resolution: {integrity: sha512-N/29gg5Zqy72vKL4xHSLk3jGwXVKIWXPs6xzq6KxGL84y/D6hG85pG2CPOzn08EzMmByts5FTkJ5p3var6yDng==}
     peerDependencies:
       convex: ^1.10.0
       svelte: ^5.0.0
     dependencies:
-      convex: 1.36.0
+      convex: 1.44.0
       svelte: 5.38.7
     dev: false
 
-  /convex@1.36.0:
-    resolution: {integrity: sha512-17cfDr2z+Apd59291rKWij6jq79eVwzY9u2MQOnuVkOsfEPXcuerWHQLf1ngXAbQjeTXD1nwQYsxQBhZnjZMIQ==}
+  /convex@1.44.0:
+    resolution: {integrity: sha512-84bBa1ufSX4qohXdycXuQl2c2kAmfVpTCpypcmIgxpS5rUBgv5qjhArYugTkJVbljMs5SH2mW30bjJo+SQwe1w==}
     engines: {node: '>=18.0.0', npm: '>=7.0.0'}
     hasBin: true
     peerDependencies:
       '@auth0/auth0-react': ^2.0.1
       '@clerk/clerk-react': ^4.12.8 || ^5.0.0
-      '@clerk/react': ^6.0.0
+      '@clerk/react': ^6.4.3
       react: ^18.0.0 || ^19.0.0-0 || ^19.0.0
     peerDependenciesMeta:
       '@auth0/auth0-react':
@@ -2259,7 +2259,7 @@ packages:
     dependencies:
       esbuild: 0.27.0
       prettier: 3.6.2
-      ws: 8.18.0
+      ws: 8.21.0
     transitivePeerDependencies:
       - bufferutil
       - utf-8-validate
@@ -2882,8 +2882,8 @@ packages:
     resolution: {integrity: sha512-t5Fy/nfn+14LuOc2KNYg75vZqClpAiqscVvMygNnlsHBFpSXdJaYtXMcdNLpl/Qvc3P2cB3s6lOV51nqsFq4ag==}
     dev: true
 
-  /uuid@11.1.0:
-    resolution: {integrity: sha512-0/A9rDy9P7cJ+8w1c9WD9V//9Wj15Ce2MPz8Ri6032usz+NfePxx5AcN3bN+r6ZL6jEo066/yNYB3tn4pQEx+A==}
+  /uuid@14.0.2:
+    resolution: {integrity: sha512-xZe/16rV4aa+HGSOCiY2YeLT1OybRLrrkL/Rqaq7p7GMVXjFh+6wN4oMYgjFmnSnhY8t6Xpdl2l9qmnHYuMHwQ==}
     hasBin: true
     dev: false
 
@@ -2948,8 +2948,8 @@ packages:
       vite: 7.1.5
     dev: true
 
-  /ws@8.18.0:
-    resolution: {integrity: sha512-8VbfWfHLbbwu3+N6OKsOMpBdT4kXPDDB9cJk2bJ6mh9ucxdlnNvH1e+roYkKmN9Nxw2yjz7VzeO9oOz2zJ04Pw==}
+  /ws@8.21.0:
+    resolution: {integrity: sha512-Vsp28b7DRcimFQvrqu2Wek3z1iYxDCWqHYB8Qsnk/S4RfaCQzPGPyBNuVjJV3cd6UiKtUtp6sNM77gWvzcCH+g==}
     engines: {node: '>=10.0.0'}
     peerDependencies:
       bufferutil: ^4.0.1
