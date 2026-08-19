@@ -1,6 +1,5 @@
 <script lang="ts">
 import { useConvexClient } from 'convex-svelte';
-import { useUploadFile } from "@convex-dev/r2/svelte";
 import { api } from "@class-info/backend/convex/_generated/api";
 import type { Id } from "@class-info/backend/convex/_generated/dataModel";
 import { fly } from 'svelte/transition';
@@ -14,7 +13,6 @@ const {
 }: { files: any[]; onFilesChange: (fileIds: any[]) => void; sessionToken?: string } = $props();
 
 const client = useConvexClient();
-const uploadFile = useUploadFile(api.files);
 let isUploading = $state(false);
 let dragOver = $state(false);
 // Upload problems belong on the drop zone, not in a browser modal.
@@ -61,7 +59,11 @@ async function loadFiles(ids: any[]) {
 
 async function handleFileUpload(fileList: FileList) {
   if (!fileList.length) return;
-  
+  if (!sessionToken) {
+    uploadError = '로그인이 필요합니다.';
+    return;
+  }
+
   isUploading = true;
   uploadError = null;
   const rejected: string[] = [];
@@ -81,14 +83,13 @@ async function handleFileUpload(fileList: FileList) {
         return null;
       }
       
-      // Upload file using the useUploadFile hook
-      const storageId = await uploadFile(file);
-      // console.log('Upload result (storageId):', storageId);
-      
-      // Update file metadata using storage ID and get the file ID back
+      const { key, url } = await client.mutation(api.files.generateUploadUrl, { sessionToken });
+      const put = await fetch(url, { method: 'PUT', body: file });
+      if (!put.ok) throw new Error('Upload failed');
+
       const fileId = await client.mutation(api.files.updateFileMetadataByStorageId, {
         sessionToken,
-        storageId,
+        storageId: key,
         name: file.name,
         type: file.type,
         size: file.size,

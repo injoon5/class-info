@@ -24,9 +24,13 @@ export const load: PageServerLoad = async ({ cookies }) => {
 };
 
 export const actions: Actions = {
-	login: async ({ request, cookies }) => {
+	login: async ({ request, cookies, url }) => {
 		const data = await request.formData();
-		const pin = data.get('pin') as string;
+		const pinValue = data.get('pin');
+		const pin = typeof pinValue === 'string' ? pinValue : '';
+		if (!/^\d{4,8}$/.test(pin)) {
+			return { success: false, error: '잘못된 PIN입니다' };
+		}
 
 		try {
 			const result = await convexHttp().mutation(api.settings.login, { pin });
@@ -35,7 +39,7 @@ export const actions: Actions = {
 					path: '/',
 					maxAge: SESSION_MAX_AGE,
 					sameSite: 'strict',
-					secure: process.env.NODE_ENV === 'production',
+					secure: url.protocol === 'https:',
 					httpOnly: true
 				});
 				return { success: true };
@@ -47,7 +51,7 @@ export const actions: Actions = {
 		return { success: false, error: '잘못된 PIN입니다' };
 	},
 
-	logout: async ({ cookies }) => {
+	logout: async ({ cookies, url }) => {
 		const token = cookies.get(SESSION_COOKIE);
 		if (token) {
 			try {
@@ -56,7 +60,11 @@ export const actions: Actions = {
 				// best-effort server-side revocation
 			}
 		}
-		cookies.delete(SESSION_COOKIE, { path: '/' });
+		cookies.delete(SESSION_COOKIE, {
+			path: '/',
+			sameSite: 'strict',
+			secure: url.protocol === 'https:'
+		});
 		throw redirect(302, '/');
 	}
 };

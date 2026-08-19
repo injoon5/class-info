@@ -5,6 +5,11 @@ import { noticeClock } from '$lib/date';
 
 export const load = (async () => {
 	const clock = noticeClock();
-	const overview = await convexHttp().query(api.notices.overview, clock);
-	return { ...clock, ...overview };
+	try {
+		const overview = await convexHttp().query(api.notices.overview, clock);
+		return { ...clock, ...overview };
+	} catch (err) {
+		console.error('notices.overview', err);
+		return { ...clock, currentGroups: [], pastMonths: [] };
+	}
 }) satisfies PageLoad;

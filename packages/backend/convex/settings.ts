@@ -3,7 +3,6 @@ import {
   internalMutation,
   internalQuery,
   mutation,
-  query,
   type MutationCtx,
   type QueryCtx,
 } from "./_generated/server";
@@ -19,6 +18,8 @@ const MAX_FAILS = 5;
 const WINDOW_MS = 15 * 60 * 1000;
 const LOCKOUT_MS = 15 * 60 * 1000;
 const PIN_RE = /^\d{4,8}$/;
+const PBKDF2_ITERS = 100_000;
+const PBKDF2_PREFIX = "pbkdf2$";
 
 type ThrottleState = { fails: number; windowStart: number; lockedUntil: number };
 
@@ -27,6 +28,98 @@ function generateToken(): string {
     crypto.randomUUID().replace(/-/g, "") +
     crypto.randomUUID().replace(/-/g, "")
   );
+}
+
+function timingSafeEqualBytes(a: Uint8Array, b: Uint8Array): boolean {
+  if (a.length !== b.length) return false;
+  let out = 0;
+  for (let i = 0; i < a.length; i++) out |= a[i]! ^ b[i]!;
+  return out === 0;
+}
+
+function bytesToB64(bytes: Uint8Array): string {
+  let bin = "";
+  for (const byte of bytes) bin += String.fromCharCode(byte);
+  return btoa(bin);
+}
+
+function b64ToBytes(b64: string): Uint8Array {
+  const bin = atob(b64);
+  const out = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
+  return out;
+}
+
+function toArrayBuffer(bytes: Uint8Array): ArrayBuffer {
+  return bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength) as ArrayBuffer;
+}
+
+async function pbkdf2(pin: string, salt: Uint8Array): Promise<Uint8Array> {
+  const key = await crypto.subtle.importKey(
+    "raw",
+    new TextEncoder().encode(pin),
+    "PBKDF2",
+    false,
+    ["deriveBits"]
+  );
+  const bits = await crypto.subtle.deriveBits(
+    { name: "PBKDF2", hash: "SHA-256", salt: toArrayBuffer(salt), iterations: PBKDF2_ITERS },
+    key,
+    256
+  );
+  return new Uint8Array(bits);
+}
+
+async function hashPin(pin: string): Promise<string> {
+  const salt = crypto.getRandomValues(new Uint8Array(16));
+  const hash = await pbkdf2(pin, salt);
+  return `${PBKDF2_PREFIX}${PBKDF2_ITERS}$${bytesToB64(salt)}$${bytesToB64(hash)}`;
+}
+
+async function verifyHashedPin(stored: string, pin: string): Promise<boolean> {
+  const parts = stored.split("$");
+  if (parts.length !== 4 || parts[0] !== "pbkdf2") return false;
+  const iterations = Number(parts[1]);
+  if (!Number.isInteger(iterations) || iterations < 1 || iterations > 1_000_000) {
+    return false;
+  }
+  let salt: Uint8Array;
+  let expected: Uint8Array;
+  try {
+    salt = b64ToBytes(parts[2] ?? "");
+    expected = b64ToBytes(parts[3] ?? "");
+  } catch {
+    return false;
+  }
+  if (salt.length === 0 || expected.length === 0) return false;
+  const key = await crypto.subtle.importKey(
+    "raw",
+    new TextEncoder().encode(pin),
+    "PBKDF2",
+    false,
+    ["deriveBits"]
+  );
+  const saltBuf = toArrayBuffer(salt);
+  const bits = await crypto.subtle.deriveBits(
+    { name: "PBKDF2", hash: "SHA-256", salt: saltBuf, iterations },
+    key,
+    expected.length * 8
+  );
+  return timingSafeEqualBytes(new Uint8Array(bits), expected);
+}
+
+async function verifyPin(stored: string, pin: string): Promise<{ ok: boolean; needsRehash: boolean }> {
+  if (stored.startsWith(PBKDF2_PREFIX)) {
+    return { ok: await verifyHashedPin(stored, pin), needsRehash: false };
+  }
+  const a = new TextEncoder().encode(stored);
+  const b = new TextEncoder().encode(pin);
+  if (a.length !== b.length) {
+    // Still run a dummy compare so wrong-length guesses aren't a timing oracle.
+    timingSafeEqualBytes(a, a);
+    return { ok: false, needsRehash: false };
+  }
+  return { ok: timingSafeEqualBytes(a, b), needsRehash: true };
 }
 
 type SettingsCtx = QueryCtx | MutationCtx;
@@ -63,7 +156,7 @@ export const setPin = internalMutation({
     if (!PIN_RE.test(args.newPin)) {
       throw new Error("PIN must be 4–8 digits");
     }
-    await writeSetting(ctx, "admin_pin", args.newPin);
+    await writeSetting(ctx, "admin_pin", await hashPin(args.newPin));
     return null;
   },
 });
@@ -98,11 +191,9 @@ export const login = mutation({
       return { ok: false as const };
     }
 
-    const pinRow = await readSetting(ctx, "admin_pin");
-    const adminPin = pinRow?.value || DEFAULT_PIN;
-
-    if (pin !== adminPin) {
-      // Reset the counting window if it has elapsed.
+    // Reject malformed PINs as a failed attempt so an attacker can't probe
+    // the hasher with arbitrary-length strings for free.
+    if (!PIN_RE.test(pin)) {
       if (now - throttle.windowStart > WINDOW_MS) {
         throttle = { fails: 0, windowStart: now, lockedUntil: 0 };
       }
@@ -116,7 +207,31 @@ export const login = mutation({
       return { ok: false as const };
     }
 
-    // Success — clear the throttle and mint a token.
+    const pinRow = await readSetting(ctx, "admin_pin");
+    const storedPin = pinRow?.value || DEFAULT_PIN;
+    if (!pinRow?.value) {
+      console.warn("[settings.login] admin_pin is unset; using the default PIN. Set one via settings.setPin.");
+    }
+
+    const { ok, needsRehash } = await verifyPin(storedPin, pin);
+    if (!ok) {
+      if (now - throttle.windowStart > WINDOW_MS) {
+        throttle = { fails: 0, windowStart: now, lockedUntil: 0 };
+      }
+      throttle.fails += 1;
+      if (throttle.fails >= MAX_FAILS) {
+        throttle.lockedUntil = now + LOCKOUT_MS;
+        throttle.fails = 0;
+        throttle.windowStart = now;
+      }
+      await writeSetting(ctx, THROTTLE_KEY, JSON.stringify(throttle));
+      return { ok: false as const };
+    }
+
+    if (needsRehash || !pinRow?.value) {
+      await writeSetting(ctx, "admin_pin", await hashPin(pin));
+    }
+
     if (throttleRow) {
       await writeSetting(
         ctx,
@@ -132,18 +247,23 @@ export const login = mutation({
   },
 });
 
-export const verifySession = query({
+export const verifySession = mutation({
   args: { token: v.string() },
   returns: v.boolean(),
-  // Date.now() is required here: expiry must be checked against server time,
-  // not a client-supplied clock (that would let an expired token pass).
+  // Mutation on purpose: a query that calls Date.now() can keep returning
+  // a cached `true` after expiresAt. Mutations always re-run.
   handler: async (ctx, { token }) => {
     if (!token) return false;
     const session = await ctx.db
       .query("sessions")
       .withIndex("by_token", (q) => q.eq("token", token))
       .first();
-    return Boolean(session && session.expiresAt > Date.now());
+    if (!session) return false;
+    if (session.expiresAt <= Date.now()) {
+      await ctx.db.delete(session._id);
+      return false;
+    }
+    return true;
   },
 });
 

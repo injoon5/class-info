@@ -182,11 +182,18 @@ function eventsByYear(source: "school" | "custom") {
 export const getSchoolEventsByYear = eventsByYear("school");
 export const getCustomEventsByYear = eventsByYear("custom");
 
+const RANGE_MAX_DAYS = 400;
+
 export const getEventsInRange = query({
   args: { start: v.string(), end: v.string() },
   returns: v.array(publicEvent),
   handler: async (ctx, { start, end }) => {
-    if (!parseYyyymmdd(start) || !parseYyyymmdd(end) || start > end) return [];
+    const startYmd = parseYyyymmdd(start);
+    const endYmd = parseYyyymmdd(end);
+    if (!startYmd || !endYmd || start > end) return [];
+    const startUtc = Date.UTC(startYmd.y, startYmd.m - 1, startYmd.d);
+    const endUtc = Date.UTC(endYmd.y, endYmd.m - 1, endYmd.d);
+    if ((endUtc - startUtc) / 86_400_000 > RANGE_MAX_DAYS) return [];
     const rows = await ctx.db
       .query("schedules")
       .withIndex("by_date", (q) => q.gte("date", start).lte("date", end))

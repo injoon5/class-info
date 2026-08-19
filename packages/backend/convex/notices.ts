@@ -26,6 +26,9 @@ const SUBJECT_MAX = 80;
 const DESCRIPTION_MAX = 100_000;
 const SLUG_MAX = 48;
 const SLUG_RE = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
+const FILES_MAX = 16;
+const DETAIL_ID_MAX = 128;
+const SLUG_ATTEMPTS = 8;
 
 const noticeFields = {
   title: v.string(),
@@ -89,15 +92,22 @@ async function isSlugTaken(ctx: QueryCtx, slug: string, excludeId?: Id<"notices"
 }
 
 async function createUniqueSlug(ctx: QueryCtx, excludeId?: Id<"notices">): Promise<string> {
-  const base = generateRandomSlug();
-  let slug = base;
-  let suffix = 0;
-  while (await isSlugTaken(ctx, slug, excludeId)) {
-    suffix += 1;
-    const tail = suffix.toString(36);
-    slug = `${base}-${tail}`.slice(0, SLUG_MAX);
+  for (let attempt = 0; attempt < SLUG_ATTEMPTS; attempt++) {
+    const slug = generateRandomSlug();
+    if (!(await isSlugTaken(ctx, slug, excludeId))) return slug;
   }
-  return slug;
+  throw new Error("Could not allocate a unique slug");
+}
+
+async function assertExistingFileIds(ctx: QueryCtx, fileIds: Id<"files">[] | undefined): Promise<Id<"files">[] | undefined> {
+  if (fileIds === undefined) return undefined;
+  const unique = [...new Set(fileIds)];
+  if (unique.length > FILES_MAX) throw new Error("Too many files");
+  for (const fileId of unique) {
+    const file = await ctx.db.get(fileId);
+    if (!file) throw new Error("File not found");
+  }
+  return unique;
 }
 
 async function resolveNewSlug(
@@ -286,6 +296,9 @@ export const detail = query({
     files: v.array(fileDoc),
   }),
   handler: async (ctx, { id }) => {
+    if (id.length === 0 || id.length > DETAIL_ID_MAX) {
+      return { notice: null, files: [] as Doc<"files">[] };
+    }
     let notice = await ctx.db
       .query("notices")
       .withIndex("by_slug", (q) => q.eq("slug", id))
@@ -326,9 +339,18 @@ export const create = mutation({
     const title = fields.title.trim();
     const subject = fields.subject.trim();
     assertNoticeWrite({ ...fields, title, subject });
+    const files = await assertExistingFileIds(ctx, fields.files);
     const now = Date.now();
     const slug = await resolveNewSlug(ctx, fields.slug);
-    return await ctx.db.insert("notices", { ...fields, title, subject, slug, createdAt: now, updatedAt: now });
+    return await ctx.db.insert("notices", {
+      ...fields,
+      title,
+      subject,
+      ...(files !== undefined ? { files } : {}),
+      slug,
+      createdAt: now,
+      updatedAt: now,
+    });
   },
 });
 
@@ -343,7 +365,14 @@ export const update = mutation({
     const title = updates.title.trim();
     const subject = updates.subject.trim();
     assertNoticeWrite({ ...updates, title, subject });
-    const patch: Partial<Doc<"notices">> = { ...updates, title, subject, updatedAt: Date.now() };
+    const files = await assertExistingFileIds(ctx, updates.files);
+    const patch: Partial<Doc<"notices">> = {
+      ...updates,
+      title,
+      subject,
+      ...(files !== undefined ? { files } : {}),
+      updatedAt: Date.now(),
+    };
     if (slug !== undefined) {
       patch.slug = await resolveNewSlug(ctx, slug, id);
     }

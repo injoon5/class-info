@@ -42,9 +42,9 @@ crons.daily(
   { schoolcode: SCHOOL_CODE }
 );
 
-crons.daily(
+crons.interval(
   "purge expired admin sessions",
-  { hourUTC: 4, minuteUTC: 0 },
+  { hours: 1 },
   internal.settings.purgeExpiredSessions
 );
 

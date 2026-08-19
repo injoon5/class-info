@@ -44,18 +44,24 @@ export const upsertMany = internalMutation({
 
     // One indexed range read over the batch's date span, then match in memory,
     // instead of a separate query per meal.
-    const dates = meals.map((m) => m.date).sort();
+    const byKey = new Map<string, (typeof meals)[number]>();
+    for (const meal of meals) byKey.set(`${meal.date} ${meal.mealType}`, meal);
+    const uniqueMeals = [...byKey.values()];
+    const dates = uniqueMeals.map((m) => m.date).sort();
+    const rangeStart = dates[0];
+    const rangeEnd = dates[dates.length - 1];
+    if (!rangeStart || !rangeEnd) return null;
     const existingRows = await ctx.db
       .query("meals")
       .withIndex("by_date_type", (q) =>
-        q.gte("date", dates[0]).lte("date", dates[dates.length - 1])
+        q.gte("date", rangeStart).lte("date", rangeEnd)
       )
       .collect();
     const existingByKey = new Map(existingRows.map((r) => [`${r.date} ${r.mealType}`, r]));
 
     const now = Date.now();
     let updated = 0, inserted = 0;
-    for (const meal of meals) {
+    for (const meal of uniqueMeals) {
       const existing = existingByKey.get(`${meal.date} ${meal.mealType}`);
       if (existing) {
         await ctx.db.patch(existing._id, { ...meal, editedAt: now });

@@ -30,12 +30,24 @@ function htmlToMarkdown(html: string): string {
 		.trim();
 }
 
+function applySecurityHeaders(response: Response): void {
+	response.headers.set('X-Content-Type-Options', 'nosniff');
+	response.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin');
+	response.headers.set('X-Frame-Options', 'DENY');
+	response.headers.set(
+		'Permissions-Policy',
+		'camera=(), microphone=(), geolocation=(), payment=(), usb=()'
+	);
+}
+
 export const handle: Handle = async ({ event, resolve }) => {
 	const accept = event.request.headers.get('accept') ?? '';
 	const wantsMarkdown = accept.includes('text/markdown');
+	const isAdmin = event.url.pathname === '/admin' || event.url.pathname.startsWith('/admin/');
 
-	if (wantsMarkdown) {
+	if (wantsMarkdown && !isAdmin) {
 		const response = await resolve(event);
+		applySecurityHeaders(response);
 		const contentType = response.headers.get('content-type') ?? '';
 		if (contentType.includes('text/html')) {
 			const html = await response.text();
@@ -46,6 +58,11 @@ export const handle: Handle = async ({ event, resolve }) => {
 					'Content-Type': 'text/markdown; charset=utf-8',
 					'Cache-Control': response.headers.get('cache-control') ?? 'no-cache',
 					Vary: 'Accept',
+					'X-Content-Type-Options': 'nosniff',
+					'Referrer-Policy': 'strict-origin-when-cross-origin',
+					'X-Frame-Options': 'DENY',
+					'Permissions-Policy':
+						'camera=(), microphone=(), geolocation=(), payment=(), usb=()',
 				},
 			});
 		}
@@ -54,6 +71,7 @@ export const handle: Handle = async ({ event, resolve }) => {
 	}
 
 	const response = await resolve(event);
+	applySecurityHeaders(response);
 
 	if (event.url.pathname === '/') {
 		const origin = event.url.origin;

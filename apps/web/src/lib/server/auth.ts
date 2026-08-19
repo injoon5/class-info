@@ -19,9 +19,9 @@ export async function getAdminSession(
   const token = cookies.get(SESSION_COOKIE);
   if (!token) return { isAuthenticated: false, sessionToken: null };
 
-  try {
-    const valid = await convexHttp().query(api.settings.verifySession, { token });
-    if (valid) return { isAuthenticated: true, sessionToken: token };
+	try {
+		const valid = await convexHttp().mutation(api.settings.verifySession, { token });
+		if (valid) return { isAuthenticated: true, sessionToken: token };
   } catch {
     // Network/backend hiccup — treat as unauthenticated but keep the cookie so
     // a transient failure doesn't force re-login.
