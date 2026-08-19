@@ -1,9 +1,15 @@
 <script lang="ts">
 import { getTypeColor } from '../lib/utils.js';
 
-const { notice, isPast = false }: { notice: any; isPast?: boolean } = $props();
+const {
+	notice,
+	isPast = false,
+	interactive = true
+}: { notice: any; isPast?: boolean; interactive?: boolean } = $props();
 
-const isLink = $derived(Boolean((notice?.summary && String(notice.summary).trim()) || notice?.hasFiles));
+const isLink = $derived(
+	interactive && Boolean((notice?.summary && String(notice.summary).trim()) || notice?.hasFiles)
+);
 
 const containerClass = $derived(
     `${isPast ? 'bg-card/60 border-border opacity-80 rounded-lg' : 'bg-card border-border rounded-xl'} border p-2.5 sm:p-3${isLink ? ' pressable-xl' : ''} ${isLink ? (isPast ? 'transition-opacity pointer:hover:opacity-100' : 'transition-colors pointer:hover:border-muted-foreground/40') : ''}`

@@ -2,7 +2,6 @@
 import { useQuery } from 'convex-svelte';
 import { api } from "@class-info/backend/convex/_generated/api";
 import NoticeCard from '../components/NoticeCard.svelte';
-import PillButton from '../components/PillButton.svelte';
 import { getNowInKst, yyyymmdd, WEEKDAYS_KR } from '$lib/date';
 import { eventDotClass } from '$lib/utils';
 import type { PageData } from './$types.js';
@@ -307,29 +306,27 @@ function isToday(dateStr: string): boolean {
 
 					{#if peekNotice}
 						<!-- The list is shown continuing rather than described as
-						     continuing: the next notice is cropped, faded into the page,
-						     and the link sits on the fade. Decorative only — it is out of
-						     the tab order and the a11y tree, and the link is the target. -->
-						<div class="relative -mt-2.5">
-							<div class="h-20 overflow-hidden" aria-hidden="true" inert>
-								<NoticeCard notice={peekNotice} />
-							</div>
+						     continuing: the next notice dissolves into the page instead
+						     of being cut off, and the link sits in the space that opens
+						     up before the next section. The card is decorative — not a
+						     link, out of the a11y tree, out of the tab order. -->
+						<div class="relative -mt-2.5" aria-hidden="true" inert>
+							<NoticeCard notice={peekNotice} interactive={false} />
 							<div
-								class="pointer-events-none absolute inset-0 bg-gradient-to-b from-background/0 via-background/70 to-background"
-								aria-hidden="true"
+								class="pointer-events-none absolute inset-0 bg-gradient-to-b from-background/0 via-background/75 via-55% to-background to-92%"
 							></div>
-							<div class="absolute inset-x-0 bottom-0 flex justify-center">
-								<PillButton
-									href="/notices"
-									text="모두 보기"
-									variant="secondary"
-									size="sm"
-									class="bg-background"
-								/>
-							</div>
 						</div>
 					{/if}
 				</div>
+
+				{#if peekNotice}
+					<a
+						href="/notices"
+						class="block text-center text-sm font-semibold text-muted-foreground pt-3 pb-8 transition-colors duration-150 pointer:hover:text-foreground"
+					>
+						모두 보기 <span aria-hidden="true">→</span>
+					</a>
+				{/if}
 			{/if}
 		</section>
 
