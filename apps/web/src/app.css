@@ -231,7 +231,7 @@ select:focus-visible {
 
 	@page {
 		size: A4 portrait;
-		margin: 20mm;
+		margin: 12mm;
 	}
 
 	html,
@@ -259,11 +259,14 @@ select:focus-visible {
 		display: none !important;
 	}
 
-	/* The subject of the page gets the sheet, centred inside the page margin. */
+	/* The subject of the page gets the sheet, centred, with its own breathing
+	   room. The padding lives on the element rather than only in @page, because
+	   a reader who sets "Margins: none" in the print dialog drops the page
+	   margin and would otherwise get a table welded to the corner of the sheet. */
 	main :where(.max-w-4xl) {
 		max-width: none !important;
 		margin-inline: auto !important;
-		padding: 0 !important;
+		padding: 10mm 8mm !important;
 	}
 
 	/* A horizontal scroller must not crop what it holds on paper. */
