@@ -37,30 +37,16 @@ const todayStr = toYyyymmdd(nowKst.getFullYear(), nowKst.getMonth(), nowKst.getD
 let displayYear = $state(data.year as number);
 let displayMonth = $state(nowKst.getMonth()); // 0-11
 
-const schoolEventsQuery = useQuery(
-  api.schedule.getSchoolEventsByYear,
-  () => ({ year: String(displayYear) }),
+const eventsQuery = useQuery(
+  api.schedule.getEventsInRange,
+  () => ({ start: `${displayYear}0101`, end: `${displayYear}1231` }),
   () => ({
-    ...(data.schoolEvents ? { initialData: data.schoolEvents } : {}),
+    ...(data.events ? { initialData: data.events } : {}),
     keepPreviousData: true
   })
 );
 
-const customEventsQuery = useQuery(
-  api.schedule.getCustomEventsByYear,
-  () => ({ year: String(displayYear) }),
-  () => ({
-    ...(data.customEvents ? { initialData: data.customEvents } : {}),
-    keepPreviousData: true
-  })
-);
-
-const eventsPending = $derived(
-  schoolEventsQuery.isLoading ||
-    customEventsQuery.isLoading ||
-    schoolEventsQuery.isStale ||
-    customEventsQuery.isStale
-);
+const eventsPending = $derived(eventsQuery.isLoading || eventsQuery.isStale);
 
 // Pagination bounds: Dec of last year → Feb of next year
 const minYear = nowKst.getFullYear() - 1;
@@ -113,8 +99,12 @@ function indexByDate(events: PublicEvent[], skipTitle?: string): Record<string, 
   return acc;
 }
 
-const schoolEventsByDate = $derived(indexByDate(schoolEventsQuery.data ?? [], '토요휴업일'));
-const customEventsByDate = $derived(indexByDate(customEventsQuery.data ?? []));
+const schoolEventsByDate = $derived(
+  indexByDate((eventsQuery.data ?? []).filter((e) => e.source === 'school'), '토요휴업일')
+);
+const customEventsByDate = $derived(
+  indexByDate((eventsQuery.data ?? []).filter((e) => e.source === 'custom'))
+);
 
 type CellEvent = { id: string; title: string; chipClass: string };
 

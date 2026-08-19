@@ -98,7 +98,7 @@ async function editNotice(id: Id<'notices'>) {
 	// MinimalNotice (no description/files), so editing from it and saving would
 	// wipe those fields — never fall back to it.
 	try {
-		const full = await client.query(api.notices.getById, { id });
+		const { notice: full } = await client.query(api.notices.detail, { id });
 		if (!full) {
 			panelError = '공지를 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.';
 			return;

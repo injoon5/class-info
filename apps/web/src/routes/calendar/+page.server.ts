@@ -7,20 +7,17 @@ import { getNowInKst } from '$lib/date';
 export const load = (async ({ cookies }) => {
 	const kstNow = getNowInKst();
 	const year = kstNow.getFullYear();
-	const client = convexHttp();
+	const start = `${year}0101`;
+	const end = `${year}1231`;
 
-	const [schoolEvents, customEvents] = await Promise.all([
-		client.query(api.schedule.getSchoolEventsByYear, { year: String(year) }).catch((err) => {
-			console.error('calendar getSchoolEventsByYear', err);
+	const events = await convexHttp()
+		.query(api.schedule.getEventsInRange, { start, end })
+		.catch((err) => {
+			console.error('calendar getEventsInRange', err);
 			return undefined;
-		}),
-		client.query(api.schedule.getCustomEventsByYear, { year: String(year) }).catch((err) => {
-			console.error('calendar getCustomEventsByYear', err);
-			return undefined;
-		})
-	]);
+		});
 
 	const { isAuthenticated, sessionToken } = await getAdminSession(cookies);
 
-	return { schoolEvents, customEvents, isAuthenticated, sessionToken, year };
+	return { events, isAuthenticated, sessionToken, year };
 }) satisfies PageServerLoad;

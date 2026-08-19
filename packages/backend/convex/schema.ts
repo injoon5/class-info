@@ -90,6 +90,5 @@ export default defineSchema({
     createdAt: v.number(),
     updatedAt: v.number(),
   })
-    .index("by_date", ["date"])
-    .index("by_source_date", ["source", "date"]),
+    .index("by_date", ["date"]),
 });

@@ -307,14 +307,6 @@ export const detail = query({
   },
 });
 
-export const getById = query({
-  args: { id: v.id("notices") },
-  returns: v.union(noticeDoc, v.null()),
-  handler: async (ctx, args) => {
-    return await ctx.db.get(args.id);
-  },
-});
-
 // ── Mutations ────────────────────────────────────────────────────────────────
 
 export const create = mutation({
