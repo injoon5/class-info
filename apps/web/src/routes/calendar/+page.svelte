@@ -8,7 +8,7 @@ import { getNowInKst, toYyyymmdd } from '$lib/date';
 import { focusOnElement } from '$lib/actions/focus';
 import PillButton from '../../components/PillButton.svelte';
 import { fade, fly, slide } from 'svelte/transition';
-import { expoOut } from 'svelte/easing';
+import { fadeFast, fadeIn, fadeOut, flyIn, slideY } from '$lib/transitions';
 import type { PageData } from './$types.js';
 
 const { data }: { data: PageData } = $props();
@@ -403,7 +403,7 @@ const dayNames = ['일','월','화','수','목','금','토'];
   {/if}
 
   {#if !popupAddMode}
-    <div in:fly={{ y: 10, duration: 300 }} out:fade={{ duration: 100 }}>
+    <div in:fly={flyIn} out:fade={fadeFast}>
       <PillButton variant="secondary" class="w-full" onclick={() => { popupAddMode = true; saveError = null; }}>
         <svg viewBox="0 0 20 20" fill="currentColor" class="w-4 h-4 flex-shrink-0" aria-hidden="true">
           <path fill-rule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clip-rule="evenodd"/>
@@ -413,8 +413,8 @@ const dayNames = ['일','월','화','수','목','금','토'];
     </div>
   {:else}
     <!-- The composer grows out of the button's place and shrinks back on cancel. -->
-    <div transition:slide={{ duration: 300, easing: expoOut }}>
-    <div class="space-y-5 pt-1" in:fade={{ duration: 200, delay: 80 }} out:fade={{ duration: 120 }}>
+    <div transition:slide={slideY}>
+    <div class="space-y-5 pt-1" in:fade={fadeIn} out:fade={fadeOut}>
       <!-- Title and colour are one thing — what the event is — so they sit
            tight together, with the action band set apart from them. -->
       <div class="space-y-3.5">

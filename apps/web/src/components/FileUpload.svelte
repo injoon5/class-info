@@ -4,6 +4,7 @@ import { useUploadFile } from "@convex-dev/r2/svelte";
 import { api } from "@class-info/backend/convex/_generated/api";
 import type { Id } from "@class-info/backend/convex/_generated/dataModel";
 import { fly } from 'svelte/transition';
+import { flyHelper } from '$lib/transitions';
 import PillButton from './PillButton.svelte';
 
 const {
@@ -167,16 +168,15 @@ function handleDrop(e: DragEvent) {
 
 <div class="space-y-3">
   {#if uploadError}
-    <p class="whitespace-pre-line rounded-xl border border-destructive/30 bg-destructive/10 px-3.5 py-2.5 text-sm font-semibold text-destructive" role="alert">
+    <p class="whitespace-pre-line rounded-2xl border border-destructive/30 bg-destructive/10 px-3.5 py-2.5 text-sm font-semibold text-destructive" role="alert">
       {uploadError}
     </p>
   {/if}
 
-  <!-- File Upload Area -->
   <div
     role="group"
     aria-label="파일 업로드"
-    class="border-2 border-dashed rounded-lg {dragOver ? 'border-ring bg-muted' : 'border-border'} p-5 text-center transition-colors duration-150"
+    class="border-2 border-dashed rounded-2xl {dragOver ? 'border-ring bg-muted' : 'border-border'} p-5 text-center transition-colors duration-150"
     ondragover={handleDragOver}
     ondragleave={handleDragLeave}
     ondrop={handleDrop}
@@ -192,7 +192,10 @@ function handleDrop(e: DragEvent) {
     />
 
     {#if isUploading}
-      <p class="text-sm text-muted-foreground">파일 업로드 중…</p>
+      <div class="flex items-center justify-center gap-2.5 text-sm text-muted-foreground" role="status" aria-live="polite">
+        <span class="w-4 h-4 rounded-full border-2 border-border border-t-foreground animate-spin" aria-hidden="true"></span>
+        <span>파일 업로드 중…</span>
+      </div>
     {:else}
       <label for="file-upload" class="cursor-pointer">
         <p class="text-sm text-muted-foreground mb-3">
@@ -214,7 +217,7 @@ function handleDrop(e: DragEvent) {
       <div class="space-y-1.5">
         {#each uploadedFiles as file (file._id)}
           <div
-            class="flex items-center justify-between gap-2 p-2 rounded-xl bg-muted/50 border border-border group"
+            class="flex items-center justify-between gap-2 p-2 rounded-2xl bg-muted/50 border border-border group"
             title="클릭하면 마크다운 코드를 복사할 수 있습니다"
           >
             <div class="flex items-center gap-2 flex-1 min-w-0">
@@ -243,7 +246,7 @@ function handleDrop(e: DragEvent) {
               >
                 <span class="relative inline-flex h-4 min-w-[2.5rem] items-center justify-center">
                   {#key copiedFileId === file._id}
-                    <span class="absolute inset-0 flex items-center justify-center" in:fly={{ y: 3, duration: 150 }}>
+                    <span class="absolute inset-0 flex items-center justify-center" in:fly={flyHelper}>
                       {copiedFileId === file._id ? '복사됨' : '복사'}
                     </span>
                   {/key}

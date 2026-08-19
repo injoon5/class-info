@@ -9,7 +9,6 @@ import SegmentedControl from '../../components/SegmentedControl.svelte';
 import { createBlurPulse } from '$lib/blurPulse.svelte';
 import { formatAbsolute, formatRelative } from '$lib/date';
 import { onMount } from 'svelte';
-import PillButton from '../../components/PillButton.svelte';
 import type { PageData } from './$types.js';
 
 const { data }: { data: PageData } = $props();
@@ -103,12 +102,12 @@ function getPeriodLabel(period: number): string {
 	<meta name="robots" content="noindex" />
 </svelte:head>
 
-<div class="max-w-4xl mx-auto px-4 pt-4 pb-1 sm:pt-5 sm:pb-0 sm:px-4">
+<div class="max-w-4xl mx-auto px-4 pt-4 pb-1 sm:pt-5 sm:pb-0 sm:px-4 print-sheet">
 	<h1 class="sr-only print:hidden">시간표</h1>
 
 	<!-- Printed heading. Screen readers already have the h1 above, and on paper
 	     this is the only thing identifying the sheet. -->
-	<h1 class="hidden print:block mb-8 text-center text-2xl font-bold tracking-tight text-foreground">
+	<h1 class="hidden print:block mb-5 text-center text-2xl font-bold tracking-tight text-foreground">
 		{printTitle || DEFAULT_PRINT_TITLE}
 	</h1>
 
@@ -169,17 +168,21 @@ function getPeriodLabel(period: number): string {
 				</tbody>
 			</table>
 		</HScroll>
-		<!-- Print controls: the title that will head the sheet, and the action. -->
-		<div class="mt-3 flex items-center gap-2 print:hidden">
+		<!-- Print controls: same well as the week toggle — one bar, concentric inners. -->
+		<div class="mt-3 flex items-center h-10 sm:h-11 rounded-xl bg-muted p-1 print:hidden">
 			<label for="print-title" class="sr-only">인쇄 제목</label>
 			<input
 				id="print-title"
 				type="text"
 				bind:value={printTitle}
 				placeholder={DEFAULT_PRINT_TITLE}
-				class="h-10 flex-1 min-w-0 px-3.5 rounded-lg bg-muted text-sm text-foreground placeholder:text-muted-foreground"
+				class="h-8 sm:h-9 flex-1 min-w-0 bg-transparent px-3.5 text-sm text-foreground placeholder:text-muted-foreground rounded-lg"
 			/>
-			<PillButton text="인쇄" variant="secondary" onclick={() => window.print()} />
+			<button
+				type="button"
+				onclick={() => window.print()}
+				class="pressable touch-target h-8 sm:h-9 px-3.5 rounded-lg bg-elevated shadow-sm dark:shadow-none text-sm font-semibold text-foreground"
+			>인쇄</button>
 		</div>
 
 		{#if timetableQuery.data}
