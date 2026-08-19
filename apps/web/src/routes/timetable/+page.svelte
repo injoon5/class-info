@@ -100,7 +100,7 @@ function getPeriodLabel(period: number): string {
 	</div>
 
 	{#if timetableQuery.isLoading}
-		<LoadingState variant="timetable" />
+		<LoadingState />
 	{:else if timetableQuery.error}
 		<ErrorState error={timetableQuery.error} />
 	{:else if !timetableQuery.data}

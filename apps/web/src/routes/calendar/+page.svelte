@@ -14,6 +14,7 @@ import {
 import type { PublicEvent } from '@class-info/backend/convex/validators';
 import { focusOnElement } from '$lib/actions/focus';
 import PillButton from '$lib/components/ui/PillButton.svelte';
+import Spinner from '$lib/components/ui/Spinner.svelte';
 import { fade, slide } from 'svelte/transition';
 import { fadeFast, fadeIn, fadeOut, slideY } from '$lib/transitions';
 import type { PageData } from './$types.js';
@@ -224,8 +225,13 @@ const dayNames = ['일','월','화','수','목','금','토'];
       </svg>
     </button>
 
-    <h1 class="text-base sm:text-lg font-semibold text-foreground tabular-nums">
+    <h1 class="relative whitespace-nowrap text-base sm:text-lg font-semibold text-foreground tabular-nums">
       {displayYear}년 {monthNames[displayMonth]}
+      {#if eventsPending}
+        <span class="absolute left-full top-1/2 ml-2.5 -translate-y-1/2 text-foreground">
+          <Spinner size="sm" />
+        </span>
+      {/if}
     </h1>
 
     <button
@@ -318,14 +324,9 @@ const dayNames = ['일','월','화','수','목','금','토'];
                     {/if}
                   </div>
 
-                  {#if eventsPending}
-                    <div class="skeleton h-3.5 w-[88%] rounded mt-0.5"></div>
-                    <div class="skeleton h-3.5 w-[60%] rounded mt-0.5" style="animation-delay: 80ms"></div>
-                  {:else}
-                    {#each cellEvents as event (event.id)}
-                      <div class="text-xs rounded px-1 py-0.5 mb-0.5 truncate leading-tight {event.chipClass}" title={event.title}>{event.title}</div>
-                    {/each}
-                  {/if}
+                  {#each cellEvents as event (event.id)}
+                    <div class="text-xs rounded px-1 py-0.5 mb-0.5 truncate leading-tight {event.chipClass}" title={event.title}>{event.title}</div>
+                  {/each}
                 {/if}
               </div>
             {/each}
