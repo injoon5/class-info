@@ -45,33 +45,9 @@ export const handle: Handle = async ({ event, resolve }) => {
 	const wantsMarkdown = accept.includes('text/markdown');
 	const isAdmin = event.url.pathname === '/admin' || event.url.pathname.startsWith('/admin/');
 
-	if (wantsMarkdown && !isAdmin) {
-		const response = await resolve(event);
-		applySecurityHeaders(response);
-		const contentType = response.headers.get('content-type') ?? '';
-		if (contentType.includes('text/html')) {
-			const html = await response.text();
-			const markdown = htmlToMarkdown(html);
-			return new Response(markdown, {
-				status: response.status,
-				headers: {
-					'Content-Type': 'text/markdown; charset=utf-8',
-					'Cache-Control': response.headers.get('cache-control') ?? 'no-cache',
-					Vary: 'Accept',
-					'X-Content-Type-Options': 'nosniff',
-					'Referrer-Policy': 'strict-origin-when-cross-origin',
-					'X-Frame-Options': 'DENY',
-					'Permissions-Policy':
-						'camera=(), microphone=(), geolocation=(), payment=(), usb=()',
-				},
-			});
-		}
-		response.headers.append('Vary', 'Accept');
-		return response;
-	}
-
 	const response = await resolve(event);
 	applySecurityHeaders(response);
+	response.headers.append('Vary', 'Accept');
 
 	if (event.url.pathname === '/') {
 		const origin = event.url.origin;
@@ -79,7 +55,20 @@ export const handle: Handle = async ({ event, resolve }) => {
 		response.headers.append('Link', `<${origin}/robots.txt>; rel="robots-txt"`);
 	}
 
-	response.headers.append('Vary', 'Accept');
+	if (wantsMarkdown && !isAdmin) {
+		const contentType = response.headers.get('content-type') ?? '';
+		if (contentType.includes('text/html')) {
+			const html = await response.text();
+			if (!response.headers.has('cache-control')) {
+				response.headers.set('Cache-Control', 'no-cache');
+			}
+			response.headers.set('Content-Type', 'text/markdown; charset=utf-8');
+			return new Response(htmlToMarkdown(html), {
+				status: response.status,
+				headers: response.headers,
+			});
+		}
+	}
 
 	return response;
 };

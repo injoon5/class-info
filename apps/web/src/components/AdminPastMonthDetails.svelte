@@ -1,6 +1,7 @@
 <script lang="ts">
 import { useQuery } from 'convex-svelte';
 import { api } from "@class-info/backend/convex/_generated/api";
+import type { Id } from "@class-info/backend/convex/_generated/dataModel";
 import { getTypeColor } from '../lib/utils.js';
 import type { Snippet } from 'svelte';
 import { SvelteSet } from 'svelte/reactivity';
@@ -26,8 +27,8 @@ const {
     monthKey: string;
     cutoff: string;
     today: string;
-    onEdit: (id: string) => void;
-    onDelete: (id: string) => void;
+    onEdit: (id: Id<'notices'>) => void;
+    onDelete: (id: Id<'notices'>) => void;
     editorTarget?: string | null;
     editor?: Snippet;
     dismissedIds?: Set<string>;
@@ -114,10 +115,10 @@ const visibleGroups = $derived(
                                 <ConfirmDeleteActions
                                     size="sm"
                                     confirming={confirmingDeleteId === String(notice._id)}
-                                    onEdit={() => onEdit(String(notice._id))}
+                                    onEdit={() => onEdit(notice._id)}
                                     onAskDelete={() => (confirmingDeleteId = String(notice._id))}
                                     onConfirmDelete={() => {
-                                        onDelete(String(notice._id));
+                                        onDelete(notice._id);
                                         confirmingDeleteId = null;
                                     }}
                                     onCancel={() => (confirmingDeleteId = null)}

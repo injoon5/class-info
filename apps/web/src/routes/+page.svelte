@@ -3,7 +3,8 @@ import { useQuery } from 'convex-svelte';
 import { api } from "@class-info/backend/convex/_generated/api";
 import NoticeCard from '../components/NoticeCard.svelte';
 import { getNowInKst, yyyymmdd, WEEKDAYS_KR } from '$lib/date';
-import { eventDotClass } from '$lib/utils';
+import { eventChrome } from '$lib/eventChrome';
+import type { DayGroup, MinimalNotice, PublicEvent } from '@class-info/backend/convex/validators';
 import type { PageData } from './$types.js';
 
 const { data }: { data: PageData } = $props();
@@ -34,7 +35,7 @@ const todayWeekday = WEEKDAYS_KR[kst.getDay()];
 
 // ── School-day logic ──────────────────────────────────────────────────────────
 function isHoliday(dateStr: string): boolean {
-	return (data.events ?? []).some((e: any) =>
+	return (data.events ?? []).some((e) =>
 		e.date === dateStr &&
 		(e.eventType === '공휴일' || e.eventType === '휴업일' || e.eventType === '재량휴업일')
 	);
@@ -72,7 +73,7 @@ const displaySchedule = (
 
 // Which meal day to show
 const allMealDays = [...(data.meals?.thisWeek?.days ?? []), ...(data.meals?.nextWeek?.days ?? [])];
-const displayMealDay = allMealDays.find((d: any) => d.date === displayDayStr) ?? null;
+const displayMealDay = allMealDays.find((d) => d.date === displayDayStr) ?? null;
 const displayLunch = displayMealDay?.lunch ?? null;
 const displayDinner = displayMealDay?.dinner ?? null;
 
@@ -92,14 +93,14 @@ const in7days = yyyymmdd(new Date(kst.getTime() + 7 * 24 * 60 * 60 * 1000));
 
 const allEvents = $derived(
 	[...(data.events ?? [])]
-		.filter((e: any) => e.title !== '토요휴업일')
-		.sort((a: any, b: any) => a.date.localeCompare(b.date))
+		.filter((e) => e.title !== '토요휴업일')
+		.sort((a, b) => a.date.localeCompare(b.date))
 );
 
-const todayEvents = $derived(allEvents.filter((e: any) => e.date === todayYyyymmdd));
+const todayEvents = $derived(allEvents.filter((e) => e.date === todayYyyymmdd));
 
 const upcomingEvents = $derived(
-	allEvents.filter((e: any) => e.date >= todayYyyymmdd && e.date <= in7days)
+	allEvents.filter((e) => e.date >= todayYyyymmdd && e.date <= in7days)
 );
 
 // ── Notices ───────────────────────────────────────────────────────────────────
@@ -111,9 +112,9 @@ const hasNotices = $derived(currentGroups.length > 0);
 // Take whole groups until the budget runs out, trimming the last group rather
 // than dropping it — the earliest deadlines are the ones worth showing.
 const noticePreview = $derived.by(() => {
-	const preview: any[] = [];
+	const preview: DayGroup[] = [];
 	let budget = PREVIEW_NOTICE_LIMIT;
-	for (const group of currentGroups as any[]) {
+	for (const group of currentGroups) {
 		if (budget <= 0) break;
 		const notices = (group.notices ?? []).slice(0, budget);
 		if (notices.length === 0) continue;
@@ -126,10 +127,10 @@ const noticePreview = $derived.by(() => {
 // The first notice past the cut. It is what the fade is drawn over, so the
 // "there is more" hint is the actual next notice rather than a decoy — and when
 // this is null there is genuinely nothing more, and no hint is drawn at all.
-const peekNotice = $derived.by(() => {
-	const shown = noticePreview.reduce((n, g: any) => n + (g.notices?.length ?? 0), 0);
+const peekNotice = $derived.by((): MinimalNotice | null => {
+	const shown = noticePreview.reduce((n, g) => n + (g.notices?.length ?? 0), 0);
 	let i = 0;
-	for (const group of currentGroups as any[]) {
+	for (const group of currentGroups) {
 		for (const notice of group.notices ?? []) {
 			if (i++ === shown) return notice;
 		}
@@ -146,18 +147,9 @@ function formatEventDate(dateStr: string): string {
 	return `${m}/${d}(${WEEKDAYS_KR[date.getDay()]})`;
 }
 
-function eventTypeLabel(event: any): string {
+function eventTypeLabel(event: PublicEvent): string {
 	if (event.source === 'custom' || !event.eventType) return '';
 	return event.eventType;
-}
-
-function eventTypeCss(event: any): string {
-	switch (event.eventType) {
-		case '공휴일': return 'text-red-600 dark:text-red-400';
-		case '휴업일':
-		case '재량휴업일': return 'text-amber-700 dark:text-amber-400';
-		default: return 'text-sky-700 dark:text-sky-400';
-	}
 }
 
 function isToday(dateStr: string): boolean {
@@ -192,7 +184,7 @@ function isToday(dateStr: string): boolean {
 					<span class="inline-flex items-baseline gap-1.5">
 						<span class="font-semibold text-foreground">{event.title}</span>
 						{#if eventTypeLabel(event)}
-							<span class="text-sm font-semibold {eventTypeCss(event)}">{eventTypeLabel(event)}</span>
+							<span class="text-sm font-semibold {eventChrome(event).labelColor}">{eventTypeLabel(event)}</span>
 						{/if}
 					</span>
 				{/each}
@@ -348,7 +340,7 @@ function isToday(dateStr: string): boolean {
 				<div class="bg-card border border-border rounded-2xl overflow-hidden divide-y divide-border">
 					{#each upcomingEvents as event, i (event._id ?? i)}
 						<div class="flex items-center gap-2.5 px-4 py-3">
-							<span class="w-2 h-2 rounded-full shrink-0 {eventDotClass(event)}" aria-hidden="true"></span>
+							<span class="w-2 h-2 rounded-full shrink-0 {eventChrome(event).dot}" aria-hidden="true"></span>
 							<span class="text-list text-foreground font-semibold flex-1 min-w-0 truncate">{event.title}</span>
 							<span class="text-sm tabular-nums shrink-0 text-right {isToday(event.date) ? 'font-semibold text-foreground' : 'text-muted-foreground'}">
 								{isToday(event.date) ? '오늘' : formatEventDate(event.date)}

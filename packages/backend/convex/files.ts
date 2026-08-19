@@ -1,4 +1,4 @@
-import { internalMutation, mutation, query, type MutationCtx } from "./_generated/server";
+import { mutation, query, type MutationCtx } from "./_generated/server";
 import { v } from "convex/values";
 import { R2 } from "@convex-dev/r2";
 import { components } from "./_generated/api";
@@ -45,47 +45,6 @@ export const generateUploadUrl = mutation({
   },
 });
 
-// Unused by clients; kept internal-only to avoid an anonymous write path.
-export const createFileRecord = internalMutation({
-  args: {
-    name: v.string(),
-    type: v.string(),
-    size: v.number(),
-    url: v.string(),
-    storageId: v.string(),
-  },
-  returns: v.id("files"),
-  handler: async (ctx, { name, type, size, url, storageId }) => {
-    return await ctx.db.insert("files", {
-      name,
-      type,
-      size,
-      url,
-      storageId,
-      uploadedAt: Date.now(),
-    });
-  },
-});
-
-// Unused by clients; kept internal-only to avoid an anonymous write path.
-export const updateFileMetadata = internalMutation({
-  args: {
-    fileId: v.id("files"),
-    name: v.string(),
-    type: v.string(),
-    size: v.number(),
-  },
-  returns: v.null(),
-  handler: async (ctx, { fileId, name, type, size }) => {
-    await ctx.db.patch(fileId, {
-      name,
-      type,
-      size,
-    });
-    return null;
-  },
-});
-
 export const updateFileMetadataByStorageId = mutation({
   args: {
     sessionToken: v.string(),
@@ -124,14 +83,6 @@ export const updateFileMetadataByStorageId = mutation({
     });
 
     return file._id;
-  },
-});
-
-export const getFile = query({
-  args: { fileId: v.id("files") },
-  returns: v.union(fileDoc, v.null()),
-  handler: async (ctx, { fileId }) => {
-    return await ctx.db.get(fileId);
   },
 });
 

@@ -1,28 +1,35 @@
-// Shared KST (UTC+9) date helpers for the frontend. Convex stores KST-based
-// dates, so the client computes "now" the same way the backend does.
+// Calendar parse/KST math lives in the backend dates module (Convex is UTC).
+// Re-export it so the client doesn't keep a second, local-Date copy of the
+// same functions. Timestamp formatters stay here — they're UI-only.
 
-export const WEEKDAYS_KR = ['일', '월', '화', '수', '목', '금', '토'] as const;
+import {
+	WEEKDAYS_KR,
+	getNowKst as getNowInKst,
+	parseIsoDate,
+	parseYyyymmdd,
+	addDaysYyyymmdd,
+	toIsoDate,
+	toYyyymmdd as yyyymmdd,
+	weekdayKr,
+	weekdayKrUtc,
+	kstCutoffDateString as noticeCutoffIso,
+} from '@class-info/backend/convex/dates';
 
-export function getNowInKst(): Date {
-	const now = new Date();
-	const utc = now.getTime() + now.getTimezoneOffset() * 60_000;
-	return new Date(utc + 9 * 60 * 60_000);
-}
+export {
+	WEEKDAYS_KR,
+	getNowInKst,
+	parseIsoDate,
+	parseYyyymmdd,
+	addDaysYyyymmdd,
+	toIsoDate,
+	yyyymmdd,
+	weekdayKr,
+	weekdayKrUtc,
+	noticeCutoffIso,
+};
 
 export function pad2(n: number): string {
 	return String(n).padStart(2, '0');
-}
-
-// YYYY-MM-DD from a Date's local fields (KST-shifted Dates from getNowInKst).
-export function toIsoDate(d: Date): string {
-	return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
-}
-
-// Notices roll to "past" at 16:00 KST. Passed into Convex so queries stay cacheable.
-export function noticeCutoffIso(now: Date = getNowInKst()): string {
-	const moveToTomorrow = now.getHours() >= 16;
-	const d = new Date(now.getFullYear(), now.getMonth(), now.getDate() + (moveToTomorrow ? 1 : 0));
-	return toIsoDate(d);
 }
 
 export function todayIso(now: Date = getNowInKst()): string {
@@ -33,7 +40,6 @@ export function noticeClock(now: Date = getNowInKst()): { cutoff: string; today:
 	return { cutoff: noticeCutoffIso(now), today: todayIso(now) };
 }
 
-// Monday of the current KST week as YYYYMMDD — meal query bound, not Date.now().
 export function thisMondayYyyymmdd(now: Date = getNowInKst()): string {
 	const day = now.getDay();
 	const monday = new Date(now);
@@ -41,37 +47,9 @@ export function thisMondayYyyymmdd(now: Date = getNowInKst()): string {
 	return yyyymmdd(monday);
 }
 
-export function addDaysYyyymmdd(s: string, days: number): string {
-	const y = Number(s.slice(0, 4));
-	const m = Number(s.slice(4, 6));
-	const d = Number(s.slice(6, 8));
-	const dt = new Date(y, m - 1, d + days);
-	return yyyymmdd(dt);
-}
-
-export function parseIsoDate(iso: string): { y: number; m: number; d: number } | null {
-	const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(iso);
-	if (!match) return null;
-	const y = Number(match[1]);
-	const m = Number(match[2]);
-	const d = Number(match[3]);
-	const dt = new Date(y, m - 1, d);
-	if (dt.getFullYear() !== y || dt.getMonth() !== m - 1 || dt.getDate() !== d) return null;
-	return { y, m, d };
-}
-
-// YYYYMMDD from a Date's local fields.
-export function yyyymmdd(d: Date): string {
-	return `${d.getFullYear()}${pad2(d.getMonth() + 1)}${pad2(d.getDate())}`;
-}
-
-// YYYYMMDD from explicit parts (month is 0-indexed).
+// YYYYMMDD from explicit parts (month is 0-indexed). Distinct from `yyyymmdd(Date)`.
 export function toYyyymmdd(year: number, month: number, day: number): string {
 	return `${year}${pad2(month + 1)}${pad2(day)}`;
-}
-
-export function weekdayKr(d: Date): string {
-	return WEEKDAYS_KR[d.getDay()];
 }
 
 // ── Timestamps ───────────────────────────────────────────────────────────────

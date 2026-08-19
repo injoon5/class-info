@@ -6,6 +6,7 @@ import { enhance } from '$app/forms';
 import FileUpload from '../../components/FileUpload.svelte';
 import { getTypeColor } from '$lib/utils';
 import { formatAbsolute, formatRelative } from '$lib/date';
+import type { DayGroup, MinimalNotice } from '@class-info/backend/convex/validators';
 import LoadingState from '../../components/LoadingState.svelte';
 import PillButton from '../../components/PillButton.svelte';
 import ConfirmDeleteActions from '../../components/ConfirmDeleteActions.svelte';
@@ -38,10 +39,10 @@ let dismissedIds = new SvelteSet<string>();
 let noticeForm = $state({
 	title: '',
 	subject: '',
-	type: '숙제' as '수행평가' | '숙제' | '준비물' | '기타',
+	type: '숙제' as MinimalNotice['type'],
 	description: '',
 	dueDate: '',
-	files: [] as any[]
+	files: [] as Id<'files'>[]
 });
 
 // PIN form state
@@ -68,10 +69,10 @@ let panelError = $state<string | null>(null);
 const EMPTY_NOTICE = {
 	title: '',
 	subject: '',
-	type: '숙제' as '수행평가' | '숙제' | '준비물' | '기타',
+	type: '숙제' as MinimalNotice['type'],
 	description: '',
 	dueDate: '',
-	files: [] as any[]
+	files: [] as Id<'files'>[]
 };
 
 // Toggling the header button must open an empty editor, not inherit whatever
@@ -93,36 +94,34 @@ function resetForm() {
 	formError = null;
 }
 
-async function editNotice(noticeOrId: any) {
-	const id = typeof noticeOrId === 'string' ? noticeOrId : String(noticeOrId?._id);
+async function editNotice(id: Id<'notices'>) {
 	// Always load the authoritative record. The list/overview projection is a
 	// MinimalNotice (no description/files), so editing from it and saving would
 	// wipe those fields — never fall back to it.
-	let full: any = null;
 	try {
-		full = await client.query(api.notices.getById, { id: id as unknown as Id<'notices'> });
+		const full = await client.query(api.notices.getById, { id });
+		if (!full) {
+			panelError = '공지를 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.';
+			return;
+		}
+		panelError = null;
+		noticeForm = {
+			title: full.title || '',
+			subject: full.subject || '',
+			type: full.type || '숙제',
+			description: typeof full.description === 'string' ? full.description : '',
+			dueDate: full.dueDate || '',
+			files: Array.isArray(full.files) ? full.files : []
+		};
+		editorTarget = id;
+		formError = null;
+		confirmingDeleteId = null;
 	} catch {
-		full = null;
-	}
-	if (!full) {
 		panelError = '공지를 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.';
-		return;
 	}
-	panelError = null;
-	noticeForm = {
-		title: full.title || '',
-		subject: full.subject || '',
-		type: full.type || '숙제',
-		description: typeof full.description === 'string' ? full.description : '',
-		dueDate: full.dueDate || '',
-		files: Array.isArray(full.files) ? full.files : []
-	};
-	editorTarget = id;
-	formError = null;
-	confirmingDeleteId = null;
 }
 
-function handleFilesChange(fileIds: any[]) {
+function handleFilesChange(fileIds: Id<'files'>[]) {
 	noticeForm = { ...noticeForm, files: fileIds };
 }
 
@@ -145,32 +144,32 @@ async function handleSubmit() {
 			await client.mutation(api.notices.create, { sessionToken, ...payload });
 		}
 		resetForm();
-	} catch (error) {
+	} catch {
 		formError = '저장하지 못했습니다. 잠시 후 다시 시도해 주세요.';
 	}
 }
 
-async function handleDelete(notice: any) {
-	const id = String(notice._id);
+async function handleDelete(id: Id<'notices'>) {
+	const key = String(id);
 	// Drop it from the list now so the row outro starts on confirm, not after
 	// the mutation round-trip (which just snapped the row away).
-	dismissedIds.add(id);
+	dismissedIds.add(key);
 	confirmingDeleteId = null;
 	try {
-		await client.mutation(api.notices.remove, { sessionToken, id: notice._id });
+		await client.mutation(api.notices.remove, { sessionToken, id });
 		panelError = null;
-		if (editorTarget === id) resetForm();
-	} catch (error) {
-		dismissedIds.delete(id);
+		if (editorTarget === key) resetForm();
+	} catch {
+		dismissedIds.delete(key);
 		panelError = '삭제하지 못했습니다. 잠시 후 다시 시도해 주세요.';
 	}
 }
 
-function hideDismissed(groups: any[] | undefined) {
+function hideDismissed(groups: DayGroup[] | undefined) {
 	return (groups ?? [])
 		.map((g) => ({
 			...g,
-			notices: (g.notices ?? []).filter((n: any) => !dismissedIds.has(String(n._id)))
+			notices: g.notices.filter((n) => !dismissedIds.has(String(n._id)))
 		}))
 		.filter((g) => g.notices.length > 0);
 }
@@ -190,9 +189,9 @@ const listSlide = $derived(live ? slideY : slideNone);
 // returning -Infinity → "Invalid Date").
 const lastUpdatedTs = $derived.by(() => {
 	const ts = allGroupedNotices
-		.flatMap((g: any) => g.notices || [])
-		.map((n: any) => n.updatedAt || n.createdAt)
-		.filter((t: any): t is number => typeof t === 'number');
+		.flatMap((g) => g.notices)
+		.map((n) => n.updatedAt ?? n.createdAt)
+		.filter((t): t is number => typeof t === 'number');
 	return ts.length > 0 ? Math.max(...ts) : null;
 });
 </script>
@@ -448,9 +447,9 @@ const lastUpdatedTs = $derived.by(() => {
                                     </div>
                                     <ConfirmDeleteActions
                                         confirming={confirmingDeleteId === String(notice._id)}
-                                        onEdit={() => editNotice(notice)}
+                                        onEdit={() => editNotice(notice._id)}
                                         onAskDelete={() => (confirmingDeleteId = String(notice._id))}
-                                        onConfirmDelete={() => handleDelete(notice)}
+                                        onConfirmDelete={() => handleDelete(notice._id)}
                                         onCancel={() => (confirmingDeleteId = null)}
                                     />
                                 </div>
@@ -497,16 +496,8 @@ const lastUpdatedTs = $derived.by(() => {
                                     {dismissedIds}
                                     {editorTarget}
                                     editor={noticeEditor}
-                                    onEdit={(id: string) => {
-                                        const all: any[] = (overview.data?.currentGroups || []).flatMap((g: any) => g.notices || []);
-                                        const found = all.find((n: any) => String(n?._id) === id);
-                                        if (found) {
-                                            editNotice(found);
-                                        } else {
-                                            editNotice(id);
-                                        }
-                                    }}
-                                    onDelete={(id: string) => handleDelete({ _id: id } as any)}
+                                    onEdit={editNotice}
+                                    onDelete={handleDelete}
                                 />
                             {/if}
                         </details>

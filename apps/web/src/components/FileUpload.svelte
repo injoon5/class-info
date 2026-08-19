@@ -5,23 +5,24 @@ import type { Id } from "@class-info/backend/convex/_generated/dataModel";
 import { fly } from 'svelte/transition';
 import { flyHelper } from '$lib/transitions';
 import PillButton from './PillButton.svelte';
+import { formatFileSize } from '$lib/utils';
 
 const {
   files = [],
   onFilesChange,
   sessionToken = ''
-}: { files: any[]; onFilesChange: (fileIds: any[]) => void; sessionToken?: string } = $props();
+}: { files: Id<'files'>[]; onFilesChange: (fileIds: Id<'files'>[]) => void; sessionToken?: string } = $props();
 
 const client = useConvexClient();
 let isUploading = $state(false);
 let dragOver = $state(false);
 // Upload problems belong on the drop zone, not in a browser modal.
 let uploadError = $state<string | null>(null);
-let copiedFileId = $state<string | null>(null);
+let copiedFileId = $state<Id<'files'> | null>(null);
 let lastCopied = 0;
 
 interface UploadedFile {
-  _id: string;
+  _id: Id<'files'>;
   name: string;
   type: string;
   size: number;
@@ -44,14 +45,14 @@ $effect(() => {
   loadFiles(ids);
 });
 
-async function loadFiles(ids: any[]) {
+async function loadFiles(ids: Id<'files'>[]) {
   const token = ++loadToken;
   try {
     const results = await client.query(api.files.getFiles, {
-      fileIds: ids as Id<'files'>[],
+      fileIds: ids,
     });
     if (token !== loadToken) return; // a newer load superseded this one
-    uploadedFiles = results.filter((f) => f !== null) as UploadedFile[];
+    uploadedFiles = results;
   } catch {
     if (token === loadToken) uploadedFiles = [];
   }
@@ -98,27 +99,25 @@ async function handleFileUpload(fileList: FileList) {
       return fileId;
     });
     
-    const newFileIds = (await Promise.all(uploadPromises)).filter(Boolean);
+    const newFileIds = (await Promise.all(uploadPromises)).filter((id): id is Id<'files'> => id !== null);
     const updatedFiles = [...files, ...newFileIds];
     onFilesChange(updatedFiles);
     if (rejected.length > 0) uploadError = rejected.join('\n');
-  } catch (error) {
-    // console.error('Upload error:', error);
+  } catch {
     uploadError = '업로드하지 못했습니다. 잠시 후 다시 시도해 주세요.';
   } finally {
     isUploading = false;
   }
 }
 
-async function removeFile(fileId: string) {
+async function removeFile(fileId: Id<'files'>) {
   try {
-    await client.mutation(api.files.deleteFile, { sessionToken, fileId: fileId as Id<'files'> });
+    await client.mutation(api.files.deleteFile, { sessionToken, fileId });
     const updatedFiles = files.filter(id => id !== fileId);
     onFilesChange(updatedFiles);
     // Also update the local uploadedFiles array immediately
     uploadedFiles = uploadedFiles.filter(file => file._id !== fileId);
-  } catch (error) {
-    // console.error('Error removing file:', error);
+  } catch {
     uploadError = '파일을 삭제하지 못했습니다. 잠시 후 다시 시도해 주세요.';
   }
 }
@@ -138,14 +137,6 @@ function copyMarkdownToClipboard(file: UploadedFile) {
   }).catch(() => {
     uploadError = '복사하지 못했습니다.';
   });
-}
-
-function formatFileSize(bytes: number) {
-  if (bytes === 0) return '0 Bytes';
-  const k = 1024;
-  const sizes = ['Bytes', 'KB', 'MB'];
-  const i = Math.floor(Math.log(bytes) / Math.log(k));
-  return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
 }
 
 function handleDragOver(e: DragEvent) {

@@ -1,7 +1,6 @@
 import { v } from "convex/values";
 import {
   internalMutation,
-  internalQuery,
   mutation,
   type MutationCtx,
   type QueryCtx,
@@ -54,7 +53,7 @@ function toArrayBuffer(bytes: Uint8Array): ArrayBuffer {
   return bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength) as ArrayBuffer;
 }
 
-async function pbkdf2(pin: string, salt: Uint8Array): Promise<Uint8Array> {
+async function pbkdf2(pin: string, salt: Uint8Array, iterations: number): Promise<Uint8Array> {
   const key = await crypto.subtle.importKey(
     "raw",
     new TextEncoder().encode(pin),
@@ -63,7 +62,7 @@ async function pbkdf2(pin: string, salt: Uint8Array): Promise<Uint8Array> {
     ["deriveBits"]
   );
   const bits = await crypto.subtle.deriveBits(
-    { name: "PBKDF2", hash: "SHA-256", salt: toArrayBuffer(salt), iterations: PBKDF2_ITERS },
+    { name: "PBKDF2", hash: "SHA-256", salt: toArrayBuffer(salt), iterations },
     key,
     256
   );
@@ -72,7 +71,7 @@ async function pbkdf2(pin: string, salt: Uint8Array): Promise<Uint8Array> {
 
 async function hashPin(pin: string): Promise<string> {
   const salt = crypto.getRandomValues(new Uint8Array(16));
-  const hash = await pbkdf2(pin, salt);
+  const hash = await pbkdf2(pin, salt, PBKDF2_ITERS);
   return `${PBKDF2_PREFIX}${PBKDF2_ITERS}$${bytesToB64(salt)}$${bytesToB64(hash)}`;
 }
 
@@ -92,20 +91,8 @@ async function verifyHashedPin(stored: string, pin: string): Promise<boolean> {
     return false;
   }
   if (salt.length === 0 || expected.length === 0) return false;
-  const key = await crypto.subtle.importKey(
-    "raw",
-    new TextEncoder().encode(pin),
-    "PBKDF2",
-    false,
-    ["deriveBits"]
-  );
-  const saltBuf = toArrayBuffer(salt);
-  const bits = await crypto.subtle.deriveBits(
-    { name: "PBKDF2", hash: "SHA-256", salt: saltBuf, iterations },
-    key,
-    expected.length * 8
-  );
-  return timingSafeEqualBytes(new Uint8Array(bits), expected);
+  const hash = await pbkdf2(pin, salt, iterations);
+  return timingSafeEqualBytes(hash, expected);
 }
 
 async function verifyPin(stored: string, pin: string): Promise<{ ok: boolean; needsRehash: boolean }> {
@@ -140,14 +127,23 @@ async function writeSetting(ctx: MutationCtx, key: string, value: string): Promi
   }
 }
 
-export const getPin = internalQuery({
-  args: {},
-  returns: v.string(),
-  handler: async (ctx) => {
-    const setting = await readSetting(ctx, "admin_pin");
-    return setting?.value || DEFAULT_PIN;
-  },
-});
+function nextFailure(throttle: ThrottleState, now: number): ThrottleState {
+  const next =
+    now - throttle.windowStart > WINDOW_MS
+      ? { fails: 0, windowStart: now, lockedUntil: 0 }
+      : { ...throttle };
+  next.fails += 1;
+  if (next.fails >= MAX_FAILS) {
+    next.lockedUntil = now + LOCKOUT_MS;
+    next.fails = 0;
+    next.windowStart = now;
+  }
+  return next;
+}
+
+async function recordFailure(ctx: MutationCtx, throttle: ThrottleState, now: number): Promise<void> {
+  await writeSetting(ctx, THROTTLE_KEY, JSON.stringify(nextFailure(throttle, now)));
+}
 
 export const setPin = internalMutation({
   args: { newPin: v.string() },
@@ -194,16 +190,7 @@ export const login = mutation({
     // Reject malformed PINs as a failed attempt so an attacker can't probe
     // the hasher with arbitrary-length strings for free.
     if (!PIN_RE.test(pin)) {
-      if (now - throttle.windowStart > WINDOW_MS) {
-        throttle = { fails: 0, windowStart: now, lockedUntil: 0 };
-      }
-      throttle.fails += 1;
-      if (throttle.fails >= MAX_FAILS) {
-        throttle.lockedUntil = now + LOCKOUT_MS;
-        throttle.fails = 0;
-        throttle.windowStart = now;
-      }
-      await writeSetting(ctx, THROTTLE_KEY, JSON.stringify(throttle));
+      await recordFailure(ctx, throttle, now);
       return { ok: false as const };
     }
 
@@ -215,16 +202,7 @@ export const login = mutation({
 
     const { ok, needsRehash } = await verifyPin(storedPin, pin);
     if (!ok) {
-      if (now - throttle.windowStart > WINDOW_MS) {
-        throttle = { fails: 0, windowStart: now, lockedUntil: 0 };
-      }
-      throttle.fails += 1;
-      if (throttle.fails >= MAX_FAILS) {
-        throttle.lockedUntil = now + LOCKOUT_MS;
-        throttle.fails = 0;
-        throttle.windowStart = now;
-      }
-      await writeSetting(ctx, THROTTLE_KEY, JSON.stringify(throttle));
+      await recordFailure(ctx, throttle, now);
       return { ok: false as const };
     }
 

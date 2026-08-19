@@ -2,9 +2,10 @@
 import { fly } from 'svelte/transition';
 import { flyHelper } from '$lib/transitions';
 import { generateCopyText } from '../lib/utils.js';
+import type { DayGroup } from '@class-info/backend/convex/validators';
 import PillButton from './PillButton.svelte';
 
-const { notices }: { notices: any[] } = $props(); // groups array from server
+const { notices }: { notices: DayGroup[] } = $props();
 
 let copied = $state(false);
 let lastCopied = 0;

@@ -236,19 +236,6 @@ export const currentGroups = query({
   },
 });
 
-export const pastMonths = query({
-  args: { cutoff: v.string() },
-  returns: v.array(monthSummary),
-  handler: async (ctx, { cutoff }) => {
-    assertIsoDate(cutoff, "cutoff");
-    const rows = await ctx.db
-      .query("notices")
-      .withIndex("by_due_date", (q) => q.lt("dueDate", cutoff))
-      .collect();
-    return summarizeMonths(rows);
-  },
-});
-
 export const pastByMonth = query({
   args: { monthKey: v.string(), cutoff: v.string(), today: v.string() },
   returns: v.array(dayGroup),
