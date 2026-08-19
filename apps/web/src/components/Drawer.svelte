@@ -1,5 +1,7 @@
 <script lang="ts">
 import type { Snippet } from 'svelte';
+import { Tween } from 'svelte/motion';
+import { tweenFade, tweenPanel } from '$lib/transitions';
 
 interface Props {
   open: boolean;
@@ -11,7 +13,7 @@ interface Props {
 
 const { open, onclose, header, children, footer }: Props = $props();
 
-const TRANSITION_MS = 340;
+const TRANSITION_MS = 400;
 
 // ── Animation state ─────────────────────────────────────────────────────────
 
@@ -19,12 +21,16 @@ let mounted = $state(false);
 let isVisible = $state(false);
 let isClosing = false; // non-reactive guard
 
-// Not reactive: written to the DOM directly while dragging. Vaul's lesson was
-// about CSS variables forcing a recalc on every child; the same instinct
-// applies to re-deriving a style string 60 times a second.
+// Drag writes transform on the node (Vaul: don't restyle children 60fps).
+// Open/close/snap-back are Tweens so they share expoOut with the rest of the app.
 let dragY = 0;
 let isDragging = $state(false);
 let panelHeight = $state(800);
+
+const panelY = new Tween(0, tweenPanel);
+const panelScale = new Tween(0.95, tweenPanel);
+const panelOpacity = new Tween(0, tweenFade);
+const scrimOpacity = new Tween(0, tweenPanel);
 
 let panelEl = $state<HTMLElement | undefined>();
 let contentEl = $state<HTMLElement | undefined>();
@@ -46,14 +52,12 @@ $effect(() => {
   if (panelEl) panelHeight = panelEl.offsetHeight;
 });
 
-// Resting styles only — the drag positions are written imperatively below, and
-// Svelte takes the panel back over the moment the drag ends.
-const backdropOpacity = $derived(isVisible ? 1 : 0);
-
 const panelStyle = $derived(
-  isMobile
-    ? `transform: translateY(${isVisible ? 0 : panelHeight}px); transition: transform ${isDragging ? 0 : TRANSITION_MS}ms cubic-bezier(0.32, 0.72, 0, 1);`
-    : `transform: translateY(0px) scale(${isVisible ? 1 : 0.95}); opacity: ${isVisible ? 1 : 0}; transition: transform ${isDragging ? 0 : TRANSITION_MS}ms cubic-bezier(0.32, 0.72, 0, 1), opacity ${isDragging ? 0 : Math.round(TRANSITION_MS * 0.65)}ms;`
+  isDragging
+    ? ''
+    : isMobile
+      ? `transform: translateY(${panelY.current}px)`
+      : `transform: translateY(0px) scale(${panelScale.current}); opacity: ${panelOpacity.current}`
 );
 
 // One write per frame, coalesced onto the animation frame.
@@ -76,11 +80,32 @@ function scheduleDragPaint() {
 
 // ── Open / close ─────────────────────────────────────────────────────────────
 
+function settleOpen() {
+  if (isMobile) {
+    panelY.target = 0;
+    panelScale.set(1, { duration: 0 });
+    panelOpacity.set(1, { duration: 0 });
+  } else {
+    panelY.set(0, { duration: 0 });
+    panelScale.target = 1;
+    panelOpacity.target = 1;
+  }
+  scrimOpacity.target = 1;
+}
+
 async function close() {
   if (isClosing) return;
   isClosing = true;
   isDragging = false;
   isVisible = false;
+  if (panelEl) panelEl.style.transform = '';
+  if (backdropEl) backdropEl.style.opacity = '';
+  if (isMobile) panelY.target = panelHeight;
+  else {
+    panelScale.target = 0.95;
+    panelOpacity.target = 0;
+  }
+  scrimOpacity.target = 0;
   await new Promise<void>(r => setTimeout(r, TRANSITION_MS + 30));
   mounted = false;
   isClosing = false;
@@ -92,7 +117,18 @@ $effect(() => {
     mounted = true;
     requestAnimationFrame(() => requestAnimationFrame(() => {
       if (panelEl) panelHeight = panelEl.offsetHeight;
+      if (isMobile) {
+        panelY.set(panelHeight, { duration: 0 });
+        panelScale.set(1, { duration: 0 });
+        panelOpacity.set(1, { duration: 0 });
+      } else {
+        panelY.set(0, { duration: 0 });
+        panelScale.set(0.95, { duration: 0 });
+        panelOpacity.set(0, { duration: 0 });
+      }
+      scrimOpacity.set(0, { duration: 0 });
       isVisible = true;
+      settleOpen();
     }));
   } else if (!open && mounted && !isClosing) {
     close();
@@ -190,6 +226,13 @@ function startDrag(y: number) {
   pointerVelocity = 0;
   dragY = 0;
   isDragging = true;
+  // Hold the current pose on the node before Svelte drops the Tween style.
+  if (panelEl) {
+    panelEl.style.transform = isMobile
+      ? `translateY(${panelY.current}px)`
+      : `translateY(0px) scale(1)`;
+  }
+  if (backdropEl) backdropEl.style.opacity = String(scrimOpacity.current);
   return true;
 }
 
@@ -210,15 +253,19 @@ function endDrag() {
   if (!isDragging) return;
   if (dragFrame) { cancelAnimationFrame(dragFrame); dragFrame = 0; }
   const dismiss = dragY > panelHeight * 0.4 || pointerVelocity > 0.5;
-  isDragging = false;
+  const y = dragY;
   dragY = 0;
-  if (dismiss) {
-    close();
-  } else if (backdropEl) {
-    // Hand the elements back to Svelte's resting styles.
-    backdropEl.style.opacity = '';
-  }
   pointerVelocity = 0;
+  if (panelEl) panelEl.style.transform = '';
+  if (backdropEl) backdropEl.style.opacity = '';
+  isDragging = false;
+  if (dismiss) {
+    panelY.set(y, { duration: 0 });
+    close();
+  } else {
+    panelY.set(y, { duration: 0 });
+    settleOpen();
+  }
 }
 
 // ── Touch drag (non-passive so we can preventDefault) ───────────────────────
@@ -323,7 +370,7 @@ function onPanelKeydown(e: KeyboardEvent) {
   <div
     bind:this={backdropEl}
     class="fixed inset-0 bg-black/40 dark:bg-black/60 z-50 backdrop-blur-sm"
-    style="opacity: {backdropOpacity}; transition: opacity {isDragging ? 0 : TRANSITION_MS}ms;"
+    style={isDragging ? '' : `opacity: ${scrimOpacity.current}`}
     role="presentation"
     onclick={close}
   ></div>

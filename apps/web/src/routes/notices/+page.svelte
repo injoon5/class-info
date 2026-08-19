@@ -1,6 +1,4 @@
 <script lang="ts">
-import { slide } from 'svelte/transition';
-import { expoOut } from 'svelte/easing';
 import { useQuery } from 'convex-svelte';
 import { api } from "@class-info/backend/convex/_generated/api";
 import NoticeGroup from '../../components/NoticeGroup.svelte';
@@ -9,6 +7,7 @@ import LoadingState from '../../components/LoadingState.svelte';
 import ErrorState from '../../components/ErrorState.svelte';
 import EmptyState from '../../components/EmptyState.svelte';
 import NoticeFooter from '../../components/NoticeFooter.svelte';
+import DisclosureCaret from '../../components/DisclosureCaret.svelte';
 import type { PageData } from './$types.js';
 
 const { data }: { data: PageData } = $props();
@@ -65,21 +64,11 @@ const overview = useQuery(api.notices.overview, {}, () => ({
                                 openMonthKey = openMonthKey === month.monthKey ? null : month.monthKey;
                             }}
                         >
-                            <svg
-                                viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2"
-                                class="w-4 h-4 flex-shrink-0 text-muted-foreground transition-[rotate] duration-200 ease-out-expo {openMonthKey === month.monthKey ? 'rotate-90' : ''}"
-                                aria-hidden="true"
-                            >
-                                <path stroke-linecap="round" stroke-linejoin="round" d="M7.5 4.5l5 5.5-5 5.5"/>
-                            </svg>
+                            <DisclosureCaret open={openMonthKey === month.monthKey} />
                             {month.monthName} ({month.total}개)
                         </summary>
                         {#if openMonthKey === month.monthKey}
-                            <div transition:slide={{ duration: 300, easing: expoOut }}>
-                                {#key month.monthKey}
-                                    <PastMonthDetails monthKey={month.monthKey} />
-                                {/key}
-                            </div>
+                            <PastMonthDetails monthKey={month.monthKey} />
                         {/if}
                     </details>
                 {/each}

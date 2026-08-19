@@ -8,9 +8,16 @@ import { getTypeColor } from '$lib/utils';
 import { formatAbsolute, formatRelative } from '$lib/date';
 import LoadingState from '../../components/LoadingState.svelte';
 import PillButton from '../../components/PillButton.svelte';
+import ConfirmDeleteActions from '../../components/ConfirmDeleteActions.svelte';
+import AdminPastMonthDetails from '../../components/AdminPastMonthDetails.svelte';
+import DisclosureCaret from '../../components/DisclosureCaret.svelte';
 import { autosize } from '$lib/actions/autosize';
+import { onMount } from 'svelte';
+import { SvelteSet } from 'svelte/reactivity';
 import { fade, slide } from 'svelte/transition';
-import { expoOut } from 'svelte/easing';
+import { flip } from 'svelte/animate';
+import { fadeIn, fadeOut, flipMove, slideNone, slideY, slideYOut } from '$lib/transitions';
+import { useQuery } from 'convex-svelte';
 import type { PageData, ActionData } from './$types';
 
 const { data, form }: { data: PageData; form: ActionData } = $props();
@@ -26,6 +33,7 @@ const isEditing = $derived(editorTarget !== null && editorTarget !== 'new');
 
 // Deleting is confirmed in the row that owns the notice, not in a modal.
 let confirmingDeleteId = $state<string | null>(null);
+let dismissedIds = new SvelteSet<string>();
 
 let noticeForm = $state({
 	title: '',
@@ -42,8 +50,6 @@ let pin = $state('');
 const noticeTypes = ['수행평가', '숙제', '준비물', '기타'] as const;
 
 // Server now provides grouped current notices; fetch past months on demand
-import AdminPastMonthDetails from '../../components/AdminPastMonthDetails.svelte';
-import { useQuery } from 'convex-svelte';
 const overview = useQuery(api.notices.overview, {}, () => ({
 	initialData: data.overview,
 	keepPreviousData: true
@@ -141,19 +147,40 @@ async function handleSubmit() {
 }
 
 async function handleDelete(notice: any) {
+	const id = String(notice._id);
+	// Drop it from the list now so the row outro starts on confirm, not after
+	// the mutation round-trip (which just snapped the row away).
+	dismissedIds.add(id);
+	confirmingDeleteId = null;
 	try {
 		await client.mutation(api.notices.remove, { sessionToken, id: notice._id });
 		panelError = null;
-		if (editorTarget === String(notice._id)) resetForm();
+		if (editorTarget === id) resetForm();
 	} catch (error) {
+		dismissedIds.delete(id);
 		panelError = '삭제하지 못했습니다. 잠시 후 다시 시도해 주세요.';
-	} finally {
-		confirmingDeleteId = null;
 	}
+}
+
+function hideDismissed(groups: any[] | undefined) {
+	return (groups ?? [])
+		.map((g) => ({
+			...g,
+			notices: (g.notices ?? []).filter((n: any) => !dismissedIds.has(String(n._id)))
+		}))
+		.filter((g) => g.notices.length > 0);
 }
 
 // Grouped notices from overview
 const allGroupedNotices = $derived(overview.data?.currentGroups || []);
+const visibleGroups = $derived(hideDismissed(allGroupedNotices));
+
+// First paint is silent so a page of date groups doesn't all slide in.
+let live = $state(false);
+onMount(() => {
+	live = true;
+});
+const listSlide = $derived(live ? slideY : slideNone);
 
 // Most recent notice timestamp, or null when there are none (avoids Math.max()
 // returning -Infinity → "Invalid Date").
@@ -186,11 +213,11 @@ const lastUpdatedTs = $derived.by(() => {
 </svelte:head>
 
 {#snippet noticeEditor()}
-	<div transition:slide={{ duration: 300, easing: expoOut }}>
+	<div transition:slide={slideY}>
 		<div
 			class="bg-card border border-border rounded-3xl p-4 mb-6"
-			in:fade={{ duration: 200, delay: 80 }}
-			out:fade={{ duration: 120 }}
+			in:fade={fadeIn}
+			out:fade={fadeOut}
 		>
 			<h2 class="text-lg font-semibold mb-4 text-foreground">
 				{isEditing ? '공지 수정' : '새 공지 추가'}
@@ -369,16 +396,22 @@ const lastUpdatedTs = $derived.by(() => {
 				<PillButton text="다시 시도" onclick={() => window.location.reload()} class="mt-3" />
 			</div>
         {:else}
-			<!-- Current and Future Notices -->
-            {#if allGroupedNotices && allGroupedNotices.length > 0}
-            {#each allGroupedNotices as group (group.date)}
-				<div class="mb-6">
+			<!-- Current and Future Notices. Else on the each so the last date
+			     group can outro instead of a length check tearing it down. -->
+            {#each visibleGroups as group (group.date)}
+				<div
+					class="mb-6"
+					animate:flip={flipMove}
+					in:slide={listSlide}
+					out:slide={slideYOut}
+				>
 					<h2 class="text-base font-semibold mb-3 text-foreground border-l-[3px] border-foreground pl-3">
 						{group.displayDate}
 					</h2>
 
                     <div class="grid gap-2">
                         {#each group.notices as notice (notice._id)}
+                            <div animate:flip={flipMove} in:slide={listSlide} out:slide={slideYOut}>
                             {#if editorTarget === String(notice._id)}
                                 {@render noticeEditor()}
                             {:else}
@@ -409,44 +442,39 @@ const lastUpdatedTs = $derived.by(() => {
                                         </p>
 										{/if}
                                     </div>
-                                    <div class="flex gap-2 flex-shrink-0">
-                                        {#if confirmingDeleteId === String(notice._id)}
-                                            <button
-                                                onclick={() => handleDelete(notice)}
-                                                class="pressable touch-target rounded-lg px-3 py-1.5 text-sm font-semibold border border-destructive bg-destructive/10 text-destructive transition-colors duration-150 pointer:hover:bg-destructive/20"
-                                            >삭제</button>
-                                            <button
-                                                onclick={() => (confirmingDeleteId = null)}
-                                                class="pressable touch-target rounded-lg px-3 py-1.5 text-sm font-semibold border border-border text-muted-foreground transition-colors duration-150 pointer:hover:bg-muted pointer:hover:text-foreground"
-                                            >취소</button>
-                                        {:else}
-                                            <button
-                                                onclick={() => editNotice(notice)}
-                                                class="pressable touch-target rounded-lg px-3 py-1.5 text-sm font-semibold border border-border text-foreground transition-colors duration-150 pointer:hover:bg-muted"
-                                            >수정</button>
-                                            <button
-                                                onclick={() => (confirmingDeleteId = String(notice._id))}
-                                                class="pressable touch-target rounded-lg px-3 py-1.5 text-sm font-semibold border border-border text-destructive transition-colors duration-150 pointer:hover:bg-destructive/10"
-                                            >삭제</button>
-                                        {/if}
-                                    </div>
+                                    <ConfirmDeleteActions
+                                        confirming={confirmingDeleteId === String(notice._id)}
+                                        onEdit={() => editNotice(notice)}
+                                        onAskDelete={() => (confirmingDeleteId = String(notice._id))}
+                                        onConfirmDelete={() => handleDelete(notice)}
+                                        onCancel={() => (confirmingDeleteId = null)}
+                                    />
                                 </div>
                             </div>
                             {/if}
+                            </div>
                         {/each}
                     </div>
 				</div>
-            {/each}
             {:else}
                 <div class="text-center py-16 text-sm text-muted-foreground">등록된 공지가 없습니다</div>
-            {/if}
+            {/each}
 
 			<!-- Past Notices by Month (lazy) -->
 			{#if overview.data?.pastMonths && overview.data.pastMonths.length > 0}
-                <div class="mt-6 pt-6 border-t border-border">
+                <div class="mt-6 pt-6 border-t border-border" in:slide={listSlide} out:slide={slideYOut}>
                     <h2 class="text-base sm:text-lg font-semibold mb-3 text-muted-foreground">지난 공지</h2>
                     {#each overview.data.pastMonths as m (m.monthKey)}
-                        <details class="mb-1.5 sm:mb-2 bg-card border border-border rounded-3xl overflow-hidden" open={openMonthKey === m.monthKey}>
+                        <div
+                            class="mb-1.5 sm:mb-2"
+                            animate:flip={flipMove}
+                            in:slide={listSlide}
+                            out:slide={slideYOut}
+                        >
+                        <details
+                            class="bg-card border border-border rounded-3xl overflow-hidden"
+                            open={openMonthKey === m.monthKey}
+                        >
                             <summary
                                 class="touch-target flex items-center gap-2 px-3 sm:px-4 py-2.5 sm:py-3 cursor-pointer list-none transition-colors duration-150 pointer:hover:bg-muted text-muted-foreground font-semibold text-sm sm:text-base [&::-webkit-details-marker]:hidden"
                                 onclick={(e) => {
@@ -454,38 +482,29 @@ const lastUpdatedTs = $derived.by(() => {
                                     openMonthKey = openMonthKey === m.monthKey ? null : m.monthKey;
                                 }}
                             >
-                                <svg
-                                viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2"
-                                class="w-4 h-4 flex-shrink-0 text-muted-foreground transition-[rotate] duration-200 ease-out-expo {openMonthKey === m.monthKey ? 'rotate-90' : ''}"
-                                aria-hidden="true"
-                            >
-                                <path stroke-linecap="round" stroke-linejoin="round" d="M7.5 4.5l5 5.5-5 5.5"/>
-                            </svg>
+                                <DisclosureCaret open={openMonthKey === m.monthKey} />
                                 {m.monthName} ({m.total}개)
                             </summary>
-
                             {#if openMonthKey === m.monthKey}
-                                <div transition:slide={{ duration: 300, easing: expoOut }}>
-                                {#key m.monthKey}
-                                    <AdminPastMonthDetails
-                                        monthKey={m.monthKey}
-                                        {editorTarget}
-                                        editor={noticeEditor}
-                                        onEdit={(id: string) => {
-                                            const all: any[] = (overview.data?.currentGroups || []).flatMap((g: any) => g.notices || []);
-                                            const found = all.find((n: any) => String(n?._id) === id);
-                                            if (found) {
-                                                editNotice(found);
-                                            } else {
-                                                editNotice(id);
-                                            }
-                                        }}
-                                        onDelete={(id: string) => handleDelete({ _id: id } as any)}
-                                    />
-                                {/key}
-                                </div>
+                                <AdminPastMonthDetails
+                                    monthKey={m.monthKey}
+                                    {dismissedIds}
+                                    {editorTarget}
+                                    editor={noticeEditor}
+                                    onEdit={(id: string) => {
+                                        const all: any[] = (overview.data?.currentGroups || []).flatMap((g: any) => g.notices || []);
+                                        const found = all.find((n: any) => String(n?._id) === id);
+                                        if (found) {
+                                            editNotice(found);
+                                        } else {
+                                            editNotice(id);
+                                        }
+                                    }}
+                                    onDelete={(id: string) => handleDelete({ _id: id } as any)}
+                                />
                             {/if}
                         </details>
+                        </div>
                     {/each}
                 </div>
             {/if}

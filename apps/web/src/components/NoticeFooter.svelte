@@ -1,5 +1,6 @@
 <script lang="ts">
 import { fly } from 'svelte/transition';
+import { flyHelper } from '$lib/transitions';
 import { generateCopyText } from '../lib/utils.js';
 import PillButton from './PillButton.svelte';
 
@@ -56,7 +57,7 @@ async function copyToClipboard() {
 		<!-- Fixed width so confirming the copy doesn't resize the pill. -->
 		<span class="relative inline-flex h-4 min-w-[6.5rem] items-center justify-center">
 			{#key label}
-				<span class="absolute inset-0 flex items-center justify-center whitespace-nowrap" in:fly={{ y: 3, duration: 150 }}>
+				<span class="absolute inset-0 flex items-center justify-center whitespace-nowrap" in:fly={flyHelper}>
 					{label}
 				</span>
 			{/key}

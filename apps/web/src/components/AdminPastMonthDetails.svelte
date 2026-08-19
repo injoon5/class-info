@@ -3,6 +3,13 @@ import { useQuery } from 'convex-svelte';
 import { api } from "@class-info/backend/convex/_generated/api";
 import { getTypeColor } from '../lib/utils.js';
 import type { Snippet } from 'svelte';
+import { SvelteSet } from 'svelte/reactivity';
+import { fade, slide } from 'svelte/transition';
+import { flip } from 'svelte/animate';
+import { fadeFast, flipMove, slideNone, slideY, slideYOut } from '$lib/transitions';
+import ConfirmDeleteActions from './ConfirmDeleteActions.svelte';
+import LoadingState from './LoadingState.svelte';
+import FluidHeight from './FluidHeight.svelte';
 
 // `editorTarget` and `editor` come from the admin page so a past notice is
 // edited in its own row too, not somewhere else on the page.
@@ -11,35 +18,72 @@ const {
     onEdit,
     onDelete,
     editorTarget = null,
-    editor
+    editor,
+    dismissedIds = new SvelteSet<string>()
 }: {
     monthKey: string;
     onEdit: (id: string) => void;
     onDelete: (id: string) => void;
     editorTarget?: string | null;
     editor?: Snippet;
+    dismissedIds?: Set<string>;
 } = $props();
 
 // Cheap destructive action: confirmed in the row, not in a modal.
 let confirmingDeleteId = $state<string | null>(null);
 
 const groups = useQuery(api.notices.pastByMonth, { monthKey });
+// First ready paint is silent so FluidHeight can tween spinner → full list
+// instead of measuring mid-slide. Later row/group intros still slide.
+let listLive = $state(false);
+$effect(() => {
+	if (groups.isLoading || groups.error) {
+		listLive = false;
+		return;
+	}
+	const frame = requestAnimationFrame(() => {
+		listLive = true;
+	});
+	return () => cancelAnimationFrame(frame);
+});
+const listSlide = $derived(listLive ? slideY : slideNone);
+
+const visibleGroups = $derived(
+    (groups.data ?? [])
+        .map((g) => ({
+            ...g,
+            notices: (g.notices ?? []).filter((n) => !dismissedIds.has(String(n._id)))
+        }))
+        .filter((g) => g.notices.length > 0)
+);
 
 </script>
 
 <div class="px-3 pb-3 pt-1">
+    <FluidHeight key={groups.isLoading ? 'loading' : groups.error ? 'error' : 'ready'}>
     {#if groups.isLoading}
-        <div class="text-sm text-muted-foreground">불러오는 중…</div>
+        <LoadingState compact />
     {:else if groups.error}
-        <div class="text-sm text-destructive">오류가 발생했습니다.</div>
+        <div class="text-sm text-destructive py-3 text-center">오류가 발생했습니다.</div>
     {:else}
-        {#each groups.data as group (group.date)}
-            <div class="mb-3 last:mb-0">
+        <div in:fade={fadeFast}>
+        {#each visibleGroups as group (group.date)}
+            <div
+                class="mb-3 last:mb-0"
+                animate:flip={flipMove}
+                in:slide={listSlide}
+                out:slide={slideYOut}
+            >
                 <h3 class="text-sm font-semibold mb-2 text-muted-foreground border-l-2 border-border pl-2">
                     {group.displayDate}
                 </h3>
                 <div class="grid gap-2">
                     {#each group.notices as notice (notice._id)}
+                        <div
+                            animate:flip={flipMove}
+                            in:slide={listSlide}
+                            out:slide={slideYOut}
+                        >
                         {#if editor && editorTarget === String(notice._id)}
                             {@render editor()}
                         {:else}
@@ -60,35 +104,26 @@ const groups = useQuery(api.notices.pastByMonth, { monthKey });
                                         </h4>
                                     </div>
                                 </div>
-                                <div class="flex gap-1.5">
-                                    {#if confirmingDeleteId === String(notice._id)}
-                                        <button
-                                            onclick={() => { onDelete(String(notice._id)); confirmingDeleteId = null; }}
-                                            class="pressable touch-target rounded-lg px-2.5 py-1 text-xs font-semibold border border-destructive bg-destructive/10 text-destructive transition-colors duration-150 pointer:hover:bg-destructive/20"
-                                        >삭제</button>
-                                        <button
-                                            onclick={() => (confirmingDeleteId = null)}
-                                            class="pressable touch-target rounded-lg px-2.5 py-1 text-xs font-semibold border border-border text-muted-foreground transition-colors duration-150 pointer:hover:bg-muted pointer:hover:text-foreground"
-                                        >취소</button>
-                                    {:else}
-                                        <button
-                                            onclick={() => onEdit(String(notice._id))}
-                                            class="pressable touch-target rounded-lg px-2.5 py-1 text-xs font-semibold border border-border text-foreground transition-colors duration-150 pointer:hover:bg-muted"
-                                        >수정</button>
-                                        <button
-                                            onclick={() => (confirmingDeleteId = String(notice._id))}
-                                            class="pressable touch-target rounded-lg px-2.5 py-1 text-xs font-semibold border border-border text-destructive transition-colors duration-150 pointer:hover:bg-destructive/10"
-                                        >삭제</button>
-                                    {/if}
-                                </div>
+                                <ConfirmDeleteActions
+                                    size="sm"
+                                    confirming={confirmingDeleteId === String(notice._id)}
+                                    onEdit={() => onEdit(String(notice._id))}
+                                    onAskDelete={() => (confirmingDeleteId = String(notice._id))}
+                                    onConfirmDelete={() => {
+                                        onDelete(String(notice._id));
+                                        confirmingDeleteId = null;
+                                    }}
+                                    onCancel={() => (confirmingDeleteId = null)}
+                                />
                             </div>
                         </div>
                         {/if}
+                        </div>
                     {/each}
                 </div>
             </div>
         {/each}
+        </div>
     {/if}
+    </FluidHeight>
 </div>
-
-
