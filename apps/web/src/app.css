@@ -207,21 +207,21 @@ select:focus-visible {
 		@apply scale-90;
 	}
 
-	/* Placeholder bones for content-shaped loading. Opacity-only so it stays
-	   on the compositor; 1.1s reads faster than a typical 2s pulse. */
-	.skeleton {
-		background-color: color-mix(in oklab, var(--foreground) 8%, var(--muted));
-		animation: skeleton-pulse 1.1s ease-in-out infinite;
+	/* Hairline arc. 0.65s linear reads faster than the default 1s spin
+	   without looking hurried. Stroke is 1.5px at every size so it matches
+	   the rest of the chrome instead of scaling into a doughnut. */
+	.spinner-mark {
+		animation: spinner-rotate 0.65s linear infinite;
+	}
+	.spinner-lead {
+		stroke-width: 1.5px;
+		stroke-dasharray: 30 70;
 	}
 }
 
-@keyframes skeleton-pulse {
-	0%,
-	100% {
-		opacity: 1;
-	}
-	50% {
-		opacity: 0.4;
+@keyframes spinner-rotate {
+	to {
+		transform: rotate(1turn);
 	}
 }
 
@@ -240,6 +240,14 @@ select:focus-visible {
 	.pressable-xl:active,
 	.pressable-icon:active {
 		transform: none;
+	}
+	/* A frozen 1/4-arc looks broken. Sit as a quiet ring instead. */
+	.spinner-mark {
+		animation: none !important;
+	}
+	.spinner-lead {
+		stroke-dasharray: 100 0;
+		opacity: 0.28;
 	}
 }
 

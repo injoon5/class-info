@@ -6,7 +6,6 @@
 	import { onMount } from 'svelte';
 	import { configure } from 'onedollarstats';
 	import LoadingState from '$lib/components/ui/LoadingState.svelte';
-	import { thisMondayYyyymmdd } from '$lib/date';
 
 	const { children } = $props();
 	setupConvex(getConvexUrl());
@@ -18,27 +17,21 @@
 		{ href: '/calendar', label: '일정', match: (p: string) => p.startsWith('/calendar') }
 	];
 
-	const pendingKind = $derived.by(() => {
+	const pendingNav = $derived.by(() => {
 		const to = navigating.to?.url.pathname;
 		const from = navigating.from?.url.pathname;
-		if (!to || to === from) return null;
-		if (to.startsWith('/timetable')) return 'timetable' as const;
-		if (to.startsWith('/meals')) return 'meals' as const;
-		if (to.startsWith('/calendar')) return 'calendar' as const;
-		if (to.startsWith('/notices') || to.startsWith('/notice/')) return 'notices' as const;
-		return 'spinner' as const;
+		return Boolean(to && to !== from);
 	});
 
-	// Keep the current page for a beat so a preloaded nav doesn't flash bones.
-	let pendingSkeleton = $state<typeof pendingKind>(null);
+	// Keep the current page for a beat so a preloaded nav doesn't flash a spinner.
+	let showPending = $state(false);
 	$effect(() => {
-		const kind = pendingKind;
-		if (!kind) {
-			pendingSkeleton = null;
+		if (!pendingNav) {
+			showPending = false;
 			return;
 		}
 		const t = setTimeout(() => {
-			pendingSkeleton = kind;
+			showPending = true;
 		}, 80);
 		return () => clearTimeout(t);
 	});
@@ -77,28 +70,11 @@
 	</header>
 
 	<main id="main">
-		{#if pendingSkeleton === 'timetable'}
-			<div class="max-w-4xl mx-auto px-4 pt-4 pb-1 sm:pt-5">
-				<LoadingState variant="timetable" />
-			</div>
-		{:else if pendingSkeleton === 'meals'}
-			<div class="max-w-4xl mx-auto px-4 pt-4 pb-2 sm:pt-5">
-				<LoadingState variant="meals" weekStart={thisMondayYyyymmdd()} />
-			</div>
-		{:else if pendingSkeleton === 'calendar'}
-			<div class="max-w-4xl mx-auto px-4 pt-4 pb-4">
-				<LoadingState variant="calendar" />
-			</div>
-		{:else if pendingSkeleton === 'notices'}
-			<div class="max-w-4xl mx-auto px-4 pt-5 pb-4 sm:pt-6">
-				<LoadingState variant="notices" />
-			</div>
-		{:else if pendingSkeleton === 'spinner'}
-			<LoadingState />
+		{#if showPending}
+			<LoadingState fill />
 		{:else}
 			{@render children()}
 		{/if}
 	</main>
 
     <div aria-live="polite" aria-atomic="true" class="sr-only" id="aria-live-region"></div>
-	

@@ -5,6 +5,7 @@ import type { Id } from "@class-info/backend/convex/_generated/dataModel";
 import { fly } from 'svelte/transition';
 import { flyHelper } from '$lib/transitions';
 import PillButton from '$lib/components/ui/PillButton.svelte';
+import Spinner from '$lib/components/ui/Spinner.svelte';
 import { formatFileSize } from '$lib/format';
 
 const {
@@ -185,7 +186,7 @@ function handleDrop(e: DragEvent) {
 
     {#if isUploading}
       <div class="flex items-center justify-center gap-2.5 text-sm text-muted-foreground" role="status" aria-live="polite">
-        <span class="w-4 h-4 rounded-full border-2 border-border border-t-foreground animate-spin" aria-hidden="true"></span>
+        <Spinner size="md" />
         <span>파일 업로드 중…</span>
       </div>
     {:else}

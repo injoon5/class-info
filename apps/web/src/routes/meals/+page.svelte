@@ -89,7 +89,7 @@ function openMealDrawer(day: MealDay) {
 <div class="max-w-4xl mx-auto px-4 pt-4 pb-2 sm:pt-5">
   <h1 class="sr-only">급식</h1>
   {#if mealsQuery.isLoading}
-    <LoadingState variant="meals" weekStart={data.weekStart} />
+    <LoadingState />
   {:else if mealsQuery.error}
     <ErrorState error={mealsQuery.error} />
   {:else if !mealsQuery.data || availableMealTypes.length === 0}
