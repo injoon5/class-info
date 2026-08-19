@@ -3,43 +3,78 @@ import { internalMutation, mutation, query, type QueryCtx } from "./_generated/s
 import type { Doc, Id } from "./_generated/dataModel";
 import { requireAdmin } from "./auth";
 import { deleteFilesByIds } from "./files";
-import { getNowKst, getTodayKst, toIsoDate, weekdayKr } from "./dates";
+import {
+  addDaysIso,
+  assertIsoDate,
+  parseIsoDate,
+  weekdayKrUtc,
+} from "./dates";
+import {
+  dayGroup,
+  monthSummary,
+  noticeClockArgs,
+  noticeDoc,
+  noticeType,
+  fileDoc,
+  type DayGroup,
+  type MinimalNotice,
+  type MonthSummary,
+} from "./validators";
+
+const TITLE_MAX = 200;
+const SUBJECT_MAX = 80;
+const DESCRIPTION_MAX = 100_000;
+const SLUG_MAX = 48;
+const SLUG_RE = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 
 const noticeFields = {
   title: v.string(),
   subject: v.string(),
-  type: v.union(v.literal("수행평가"), v.literal("숙제"), v.literal("준비물"), v.literal("기타")),
+  type: noticeType,
   description: v.string(),
   dueDate: v.string(),
   files: v.optional(v.array(v.id("files"))),
   slug: v.optional(v.string()),
 };
 
-// ── Date helpers ──────────────────────────────────────────────────────────────
-
-function kstCutoffDateString(): string {
-  // Notices roll over to "past" at 16:00 KST. Returns YYYY-MM-DD to match the
-  // stored dueDate format.
-  const now = getNowKst();
-  const moveToTomorrow = now.getHours() >= 16;
-  const d = new Date(now.getFullYear(), now.getMonth(), now.getDate() + (moveToTomorrow ? 1 : 0));
-  return toIsoDate(d);
+function assertLength(value: string, max: number, field: string): void {
+  if (value.length === 0) throw new Error(`${field} is required`);
+  if (value.length > max) throw new Error(`${field} is too long`);
 }
 
-const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
-function assertValidDueDate(dueDate: string): void {
-  if (!ISO_DATE.test(dueDate) || Number.isNaN(new Date(dueDate).getTime())) {
-    throw new Error("Invalid dueDate; expected a valid YYYY-MM-DD string");
+function normalizeSlug(slug: string | undefined): string | undefined {
+  if (slug === undefined) return undefined;
+  const trimmed = slug.trim().toLowerCase();
+  return trimmed.length > 0 ? trimmed : "";
+}
+
+function assertSlugShape(slug: string): void {
+  if (slug.length > SLUG_MAX || !SLUG_RE.test(slug)) {
+    throw new Error("Invalid slug; use lowercase letters, numbers, and hyphens");
   }
+}
+
+function assertNoticeWrite(fields: {
+  title: string;
+  subject: string;
+  description: string;
+  dueDate: string;
+}): void {
+  assertLength(fields.title.trim(), TITLE_MAX, "title");
+  assertLength(fields.subject.trim(), SUBJECT_MAX, "subject");
+  if (fields.description.length > DESCRIPTION_MAX) {
+    throw new Error("description is too long");
+  }
+  assertIsoDate(fields.dueDate, "dueDate");
 }
 
 // ── Slugs ─────────────────────────────────────────────────────────────────────
 
 function generateRandomSlug(): string {
-  let slug = '';
-  for (let i = 0; i < 5; i++) {
-    slug += String.fromCharCode(97 + Math.floor(Math.random() * 26));
-  }
+  const bytes = new Uint8Array(5);
+  crypto.getRandomValues(bytes);
+  let slug = "";
+  for (const b of bytes) slug += String.fromCharCode(97 + (b % 26));
   return slug;
 }
 
@@ -60,25 +95,26 @@ async function createUniqueSlug(ctx: QueryCtx, excludeId?: Id<"notices">): Promi
   while (await isSlugTaken(ctx, slug, excludeId)) {
     suffix += 1;
     const tail = suffix.toString(36);
-    slug = `${base}-${tail}`.slice(0, 48);
+    slug = `${base}-${tail}`.slice(0, SLUG_MAX);
   }
   return slug;
 }
 
-// ── Notice → minimal projection ────────────────────────────────────────────────
+async function resolveNewSlug(
+  ctx: QueryCtx,
+  requested: string | undefined,
+  excludeId?: Id<"notices">
+): Promise<string> {
+  const normalized = normalizeSlug(requested);
+  if (!normalized) return await createUniqueSlug(ctx, excludeId);
+  assertSlugShape(normalized);
+  if (await isSlugTaken(ctx, normalized, excludeId)) {
+    throw new Error("Slug already in use");
+  }
+  return normalized;
+}
 
-type MinimalNotice = {
-  _id: Id<"notices">;
-  title: string;
-  subject: string;
-  type: string;
-  dueDate: string;
-  updatedAt?: number;
-  createdAt?: number;
-  hasFiles: boolean;
-  summary: string;
-  slug?: string;
-};
+// ── Notice → minimal projection ────────────────────────────────────────────────
 
 function getUrlBasename(url: string): string {
   const withoutQuery = url.split("?")[0].split("#")[0];
@@ -106,74 +142,95 @@ function toMinimalNotice(n: Doc<"notices">): MinimalNotice {
     updatedAt: n.updatedAt,
     createdAt: n.createdAt,
     hasFiles: Array.isArray(n.files) && n.files.length > 0,
-    summary: typeof n.description === 'string' ? summarizeDescription(n.description) : '',
-    slug: typeof n.slug === 'string' ? n.slug : undefined,
+    summary: typeof n.description === "string" ? summarizeDescription(n.description) : "",
+    slug: typeof n.slug === "string" ? n.slug : undefined,
   };
 }
 
 // ── Grouping (shared by currentGroups / pastByMonth / overview) ─────────────────
 
-type DayGroup = { date: string; displayDate: string; isToday: boolean; notices: MinimalNotice[] };
-
-function toDisplayDate(due: Date, today: Date): { displayDate: string; isToday: boolean } {
-  const isToday = due.toDateString() === today.toDateString();
-  if (isToday) return { displayDate: '오늘', isToday: true };
-  const tomorrow = new Date(today.getFullYear(), today.getMonth(), today.getDate() + 1);
-  if (due.toDateString() === tomorrow.toDateString()) return { displayDate: '내일', isToday: false };
-  return { displayDate: `${due.getMonth() + 1}/${due.getDate()} (${weekdayKr(due)})`, isToday: false };
+function toDisplayDate(dueDate: string, today: string): { displayDate: string; isToday: boolean } {
+  if (dueDate === today) return { displayDate: "오늘", isToday: true };
+  if (dueDate === addDaysIso(today, 1)) return { displayDate: "내일", isToday: false };
+  const parsed = parseIsoDate(dueDate);
+  if (!parsed) return { displayDate: dueDate, isToday: false };
+  return {
+    displayDate: `${parsed.m}/${parsed.d} (${weekdayKrUtc(parsed.y, parsed.m, parsed.d)})`,
+    isToday: false,
+  };
 }
 
-function groupByDay(rows: Doc<"notices">[], today: Date): DayGroup[] {
+function groupByDay(rows: Doc<"notices">[], today: string): DayGroup[] {
   const groups = new Map<string, DayGroup>();
   for (const n of rows) {
-    const due = new Date(n.dueDate);
-    const key = due.toDateString();
+    const key = n.dueDate;
     if (!groups.has(key)) {
-      const { displayDate, isToday } = toDisplayDate(due, today);
+      const { displayDate, isToday } = toDisplayDate(n.dueDate, today);
       groups.set(key, { date: key, displayDate, isToday, notices: [] });
     }
     groups.get(key)!.notices.push(toMinimalNotice(n));
   }
-  return Array.from(groups.values()).sort(
-    (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()
-  );
+  return Array.from(groups.values()).sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0));
 }
-
-type MonthSummary = { monthKey: string; monthName: string; total: number };
 
 function summarizeMonths(rows: Doc<"notices">[]): MonthSummary[] {
   const monthMap = new Map<string, MonthSummary>();
   for (const n of rows) {
-    const d = new Date(n.dueDate);
-    const key = `${d.getFullYear()}-${d.getMonth()}`;
+    const parsed = parseIsoDate(n.dueDate);
+    if (!parsed) continue;
+    // monthKey stays 0-indexed to match existing clients (`2026-7` = August).
+    const key = `${parsed.y}-${parsed.m - 1}`;
     if (!monthMap.has(key)) {
-      monthMap.set(key, { monthKey: key, monthName: `${d.getFullYear()}년 ${d.getMonth() + 1}월`, total: 0 });
+      monthMap.set(key, {
+        monthKey: key,
+        monthName: `${parsed.y}년 ${parsed.m}월`,
+        total: 0,
+      });
     }
     monthMap.get(key)!.total += 1;
   }
   return Array.from(monthMap.values()).sort((a, b) => {
-    const [ay, am] = a.monthKey.split('-').map(Number);
-    const [by, bm] = b.monthKey.split('-').map(Number);
-    return by - ay || bm - am; // most recent first
+    const [ay, am] = a.monthKey.split("-").map(Number);
+    const [by, bm] = b.monthKey.split("-").map(Number);
+    return (by ?? 0) - (ay ?? 0) || (bm ?? 0) - (am ?? 0);
   });
+}
+
+function parseMonthKey(monthKey: string): { year: number; monthIndex: number } | null {
+  const parts = monthKey.split("-");
+  if (parts.length !== 2) return null;
+  const year = Number(parts[0]);
+  const monthIndex = Number(parts[1]);
+  if (!Number.isInteger(year) || !Number.isInteger(monthIndex)) return null;
+  if (monthIndex < 0 || monthIndex > 11) return null;
+  return { year, monthIndex };
+}
+
+function assertClock(cutoff: string, today: string): void {
+  assertIsoDate(cutoff, "cutoff");
+  assertIsoDate(today, "today");
 }
 
 // ── Queries ─────────────────────────────────────────────────────────────────────
 
 export const currentGroups = query({
-  handler: async (ctx) => {
-    const cutoff = kstCutoffDateString();
+  args: noticeClockArgs,
+  returns: v.array(dayGroup),
+  handler: async (ctx, { cutoff, today }) => {
+    assertClock(cutoff, today);
     const rows = await ctx.db
       .query("notices")
       .withIndex("by_due_date", (q) => q.gte("dueDate", cutoff))
       .collect();
-    return groupByDay(rows, getTodayKst());
+    return groupByDay(rows, today);
   },
 });
 
 export const pastMonths = query({
-  handler: async (ctx) => {
-    const cutoff = kstCutoffDateString();
+  args: { cutoff: v.string() },
+  returns: v.array(monthSummary),
+  handler: async (ctx, { cutoff }) => {
+    assertIsoDate(cutoff, "cutoff");
     const rows = await ctx.db
       .query("notices")
       .withIndex("by_due_date", (q) => q.lt("dueDate", cutoff))
@@ -183,28 +240,34 @@ export const pastMonths = query({
 });
 
 export const pastByMonth = query({
-  args: { monthKey: v.string() },
-  handler: async (ctx, { monthKey }) => {
-    const [yearStr, monthStr] = monthKey.split('-');
-    const year = Number(yearStr);
-    const month = Number(monthStr);
-    if (Number.isNaN(year) || Number.isNaN(month)) return [];
-    const monthStart = toIsoDate(new Date(year, month, 1));
-    const nextMonthStart = toIsoDate(new Date(year, month + 1, 1));
-    const cutoff = kstCutoffDateString();
-    const upper = nextMonthStart < cutoff ? nextMonthStart : cutoff;
+  args: { monthKey: v.string(), cutoff: v.string(), today: v.string() },
+  returns: v.array(dayGroup),
+  handler: async (ctx, { monthKey, cutoff, today }) => {
+    assertClock(cutoff, today);
+    const parsed = parseMonthKey(monthKey);
+    if (!parsed) return [];
+    const monthStart = `${parsed.year}-${String(parsed.monthIndex + 1).padStart(2, "0")}-01`;
+    const next = parsed.monthIndex === 11
+      ? `${parsed.year + 1}-01-01`
+      : `${parsed.year}-${String(parsed.monthIndex + 2).padStart(2, "0")}-01`;
+    const upper = next < cutoff ? next : cutoff;
+    if (monthStart >= upper) return [];
     const rows = await ctx.db
       .query("notices")
       .withIndex("by_due_date", (q) => q.gte("dueDate", monthStart).lt("dueDate", upper))
       .collect();
-    return groupByDay(rows, getTodayKst());
+    return groupByDay(rows, today);
   },
 });
 
 export const overview = query({
-  handler: async (ctx) => {
-    const cutoff = kstCutoffDateString();
-    const today = getTodayKst();
+  args: noticeClockArgs,
+  returns: v.object({
+    currentGroups: v.array(dayGroup),
+    pastMonths: v.array(monthSummary),
+  }),
+  handler: async (ctx, { cutoff, today }) => {
+    assertClock(cutoff, today);
     const [currentRows, pastRows] = await Promise.all([
       ctx.db.query("notices").withIndex("by_due_date", (q) => q.gte("dueDate", cutoff)).collect(),
       ctx.db.query("notices").withIndex("by_due_date", (q) => q.lt("dueDate", cutoff)).collect(),
@@ -218,8 +281,11 @@ export const overview = query({
 
 export const detail = query({
   args: { id: v.string() },
+  returns: v.object({
+    notice: v.union(noticeDoc, v.null()),
+    files: v.array(fileDoc),
+  }),
   handler: async (ctx, { id }) => {
-    // Try as slug first, then as a notice id.
     let notice = await ctx.db
       .query("notices")
       .withIndex("by_slug", (q) => q.eq("slug", id))
@@ -243,6 +309,7 @@ export const detail = query({
 
 export const getById = query({
   args: { id: v.id("notices") },
+  returns: v.union(noticeDoc, v.null()),
   handler: async (ctx, args) => {
     return await ctx.db.get(args.id);
   },
@@ -252,59 +319,69 @@ export const getById = query({
 
 export const create = mutation({
   args: { sessionToken: v.string(), ...noticeFields },
+  returns: v.id("notices"),
   handler: async (ctx, args) => {
     await requireAdmin(ctx, args.sessionToken);
     const { sessionToken: _t, ...fields } = args;
-    assertValidDueDate(fields.dueDate);
+    const title = fields.title.trim();
+    const subject = fields.subject.trim();
+    assertNoticeWrite({ ...fields, title, subject });
     const now = Date.now();
-    const slug = fields.slug && fields.slug.length > 0 ? fields.slug : await createUniqueSlug(ctx);
-    return await ctx.db.insert("notices", { ...fields, slug, createdAt: now, updatedAt: now });
+    const slug = await resolveNewSlug(ctx, fields.slug);
+    return await ctx.db.insert("notices", { ...fields, title, subject, slug, createdAt: now, updatedAt: now });
   },
 });
 
 export const update = mutation({
   args: { sessionToken: v.string(), id: v.id("notices"), ...noticeFields },
+  returns: v.null(),
   handler: async (ctx, args) => {
     await requireAdmin(ctx, args.sessionToken);
+    const existing = await ctx.db.get(args.id);
+    if (!existing) throw new Error("Notice not found");
     const { sessionToken: _t, id, slug, ...updates } = args;
-    assertValidDueDate(updates.dueDate);
-    let finalSlug = slug;
-    if (slug === undefined) {
-      // keep existing slug
-    } else if (!slug || (await isSlugTaken(ctx, slug, id))) {
-      finalSlug = await createUniqueSlug(ctx, id);
+    const title = updates.title.trim();
+    const subject = updates.subject.trim();
+    assertNoticeWrite({ ...updates, title, subject });
+    const patch: Partial<Doc<"notices">> = { ...updates, title, subject, updatedAt: Date.now() };
+    if (slug !== undefined) {
+      patch.slug = await resolveNewSlug(ctx, slug, id);
     }
-    await ctx.db.patch(id, {
-      ...updates,
-      ...(finalSlug !== undefined ? { slug: finalSlug } : {}),
-      updatedAt: Date.now(),
-    });
+    await ctx.db.patch(id, patch);
+    return null;
   },
 });
 
 export const remove = mutation({
   args: { sessionToken: v.string(), id: v.id("notices") },
+  returns: v.null(),
   handler: async (ctx, args) => {
     await requireAdmin(ctx, args.sessionToken);
     const notice = await ctx.db.get(args.id);
-    if (!notice) return;
+    if (!notice) return null;
     // Cascade: remove attached file records + their R2 objects so nothing leaks.
     if (Array.isArray(notice.files) && notice.files.length > 0) {
       await deleteFilesByIds(ctx, notice.files);
     }
     await ctx.db.delete(args.id);
+    return null;
   },
 });
 
 // Backfill slugs for existing notices that don't have one.
 // Internal-only: run via the Convex dashboard, never exposed to clients.
 export const backfillMissingSlugs = internalMutation({
+  args: {},
+  returns: v.object({
+    updated: v.number(),
+    results: v.array(v.object({ id: v.string(), slug: v.string() })),
+  }),
   handler: async (ctx) => {
     const all = await ctx.db.query("notices").collect();
     let updated = 0;
     const results: { id: string; slug: string }[] = [];
     for (const n of all) {
-      const hasValidSlug = typeof n.slug === 'string' && n.slug.trim().length > 0;
+      const hasValidSlug = typeof n.slug === "string" && n.slug.trim().length > 0;
       if (!hasValidSlug) {
         const slug = await createUniqueSlug(ctx);
         await ctx.db.patch(n._id, { slug, updatedAt: Date.now() });

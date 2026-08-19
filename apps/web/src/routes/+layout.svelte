@@ -1,13 +1,13 @@
 <script lang="ts">
 	import '../app.css';
-    import { PUBLIC_CONVEX_URL } from '$env/static/public';
+	import { getConvexUrl } from '$lib/convex';
 	import { setupConvex } from 'convex-svelte';
 	import { page } from '$app/state';
 	import { onMount } from 'svelte';
 	import { configure } from 'onedollarstats';
 
 	const { children } = $props();
-	setupConvex(PUBLIC_CONVEX_URL);
+	setupConvex(getConvexUrl());
 
 	const navItems = [
 		{ href: '/notices', label: '공지', match: (p: string) => p.startsWith('/notices') || p.startsWith('/notice/') },

@@ -34,7 +34,7 @@ $effect(() => { selectedMealType; blur.pulse(); });
 
 const mealsQuery = useQuery(
   api.meals.getTwoWeeks,
-  () => ({}),
+  () => ({ weekStart: data.weekStart }),
   () => ({ initialData: data.twoWeeks, keepPreviousData: true })
 );
 
@@ -100,7 +100,7 @@ function openMealDrawer(day: any) {
   {:else if mealsQuery.error}
     <ErrorState error={mealsQuery.error} />
   {:else if !mealsQuery.data || availableMealTypes.length === 0}
-    <EmptyState />
+    <EmptyState message="급식 정보가 없어요" />
   {:else}
     {#if hasDinner}
       <div class="mb-3">

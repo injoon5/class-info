@@ -13,10 +13,14 @@ import type { PageData } from './$types.js';
 const { data }: { data: PageData } = $props();
 let openMonthKey = $state<string | null>(null);
 
-const overview = useQuery(api.notices.overview, {}, () => ({
-    initialData: data,
-    keepPreviousData: true,
-}));
+const overview = useQuery(
+    api.notices.overview,
+    () => ({ cutoff: data.cutoff, today: data.today }),
+    () => ({
+        initialData: { currentGroups: data.currentGroups, pastMonths: data.pastMonths },
+        keepPreviousData: true,
+    })
+);
 </script>
 
 <svelte:head>
@@ -68,14 +72,14 @@ const overview = useQuery(api.notices.overview, {}, () => ({
                             {month.monthName} ({month.total}개)
                         </summary>
                         {#if openMonthKey === month.monthKey}
-                            <PastMonthDetails monthKey={month.monthKey} />
+                            <PastMonthDetails monthKey={month.monthKey} cutoff={data.cutoff} today={data.today} />
                         {/if}
                     </details>
                 {/each}
             </div>
         {/if}
         {#if (!overview.data?.currentGroups || overview.data.currentGroups.length === 0) && (!overview.data?.pastMonths || overview.data.pastMonths.length === 0)}
-            <EmptyState />
+            <EmptyState message="등록된 공지가 없어요" />
         {/if}
     {/if}
     <NoticeFooter notices={overview.data?.currentGroups || []} />

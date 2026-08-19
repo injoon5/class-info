@@ -2,6 +2,9 @@ import { internalAction, internalMutation, mutation, query } from "./_generated/
 import { v } from "convex/values";
 import { internal } from "./_generated/api";
 import { requireAdmin } from "./auth";
+import { assertYyyymmdd, getNowKst, parseYyyymmdd } from "./dates";
+import { projectSchedule } from "./project";
+import { customEventColor, publicEvent } from "./validators";
 
 type ExternalScheduleEvent = {
   AA_YMD: string; // YYYYMMDD
@@ -9,6 +12,9 @@ type ExternalScheduleEvent = {
   SBTR_DD_SC_NM: string;
   SD_SCHUL_CODE: string;
 };
+
+const TITLE_MAX = 100;
+const YEAR_RE = /^\d{4}$/;
 
 export const upsertManySchoolEvents = internalMutation({
   args: {
@@ -23,13 +29,14 @@ export const upsertManySchoolEvents = internalMutation({
     startdate: v.string(), // YYYYMMDD — range to clear before re-inserting
     enddate: v.string(),
   },
+  returns: v.null(),
   handler: async (ctx, { events, startdate, enddate }) => {
     // Never wipe the range on an empty payload — a transient upstream failure
     // (INFO-200 / network) would otherwise delete every school event in the
     // window with nothing to re-insert.
     if (events.length === 0) {
       console.log(`[schedule.upsertManySchoolEvents] range=${startdate}–${enddate} skipped (no events)`);
-      return;
+      return null;
     }
 
     const existing = await ctx.db
@@ -56,11 +63,13 @@ export const upsertManySchoolEvents = internalMutation({
       });
     }
     console.log(`[schedule.upsertManySchoolEvents] range=${startdate}–${enddate} deleted=${toDelete.length} inserted=${events.length}`);
+    return null;
   },
 });
 
 export const fetchAndSaveSchoolSchedule = internalAction({
   args: { startdate: v.string(), enddate: v.string(), schoolcode: v.string() },
+  returns: v.null(),
   handler: async (ctx, { startdate, enddate, schoolcode }) => {
     const url = `https://api.timefor.school/schedule?startdate=${encodeURIComponent(startdate)}&enddate=${encodeURIComponent(enddate)}&schoolcode=${encodeURIComponent(schoolcode)}`;
 
@@ -71,7 +80,7 @@ export const fetchAndSaveSchoolSchedule = internalAction({
 
     const data = await res.json();
     if (!Array.isArray(data)) {
-      return;
+      return null;
     }
 
     const events = (data as ExternalScheduleEvent[])
@@ -85,6 +94,7 @@ export const fetchAndSaveSchoolSchedule = internalAction({
 
     console.log(`[schedule.fetchAndSaveSchoolSchedule] range=${startdate}–${enddate} events=${events.length}`);
     await ctx.runMutation(internal.schedule.upsertManySchoolEvents, { events, startdate, enddate });
+    return null;
   },
 });
 
@@ -130,10 +140,11 @@ function splitInto3MonthChunks(startdate: string, enddate: string) {
 // Fetches last December through next February — the window shown to users.
 export const fetchScheduleWindow = internalAction({
   args: { schoolcode: v.string() },
+  returns: v.null(),
   handler: async (ctx, { schoolcode }) => {
-    const now = new Date();
-    const y = now.getUTCFullYear();
-    const m = now.getUTCMonth() + 1; // 1-12
+    const now = getNowKst();
+    const y = now.getFullYear();
+    const m = now.getMonth() + 1; // 1-12
     const startdate = `${y - 1}1201`;
     const nextFebYear = m <= 2 ? y : y + 1;
     const isLeap = (nextFebYear % 4 === 0 && nextFebYear % 100 !== 0) || nextFebYear % 400 === 0;
@@ -147,19 +158,23 @@ export const fetchScheduleWindow = internalAction({
         schoolcode,
       });
     }
+    return null;
   },
 });
 
 function eventsByYear(source: "school" | "custom") {
   return query({
     args: { year: v.string() },
+    returns: v.array(publicEvent),
     handler: async (ctx, { year }) => {
-      return await ctx.db
+      if (!YEAR_RE.test(year)) return [];
+      const rows = await ctx.db
         .query("schedules")
         .withIndex("by_source_date", (q) =>
           q.eq("source", source).gte("date", `${year}0101`).lte("date", `${year}1231`)
         )
         .collect();
+      return rows.map(projectSchedule).filter((e): e is NonNullable<typeof e> => e !== null);
     },
   });
 }
@@ -167,18 +182,38 @@ function eventsByYear(source: "school" | "custom") {
 export const getSchoolEventsByYear = eventsByYear("school");
 export const getCustomEventsByYear = eventsByYear("custom");
 
+export const getEventsInRange = query({
+  args: { start: v.string(), end: v.string() },
+  returns: v.array(publicEvent),
+  handler: async (ctx, { start, end }) => {
+    if (!parseYyyymmdd(start) || !parseYyyymmdd(end) || start > end) return [];
+    const rows = await ctx.db
+      .query("schedules")
+      .withIndex("by_date", (q) => q.gte("date", start).lte("date", end))
+      .collect();
+    return rows.map(projectSchedule).filter((e): e is NonNullable<typeof e> => e !== null);
+  },
+});
+
 export const createCustomEvent = mutation({
   args: {
     sessionToken: v.string(),
     date: v.string(),
     title: v.string(),
-    color: v.string(),
+    color: customEventColor,
   },
-  handler: async (ctx, { sessionToken, ...args }) => {
+  returns: v.id("schedules"),
+  handler: async (ctx, { sessionToken, date, title, color }) => {
     await requireAdmin(ctx, sessionToken);
+    assertYyyymmdd(date, "date");
+    const trimmed = title.trim();
+    if (!trimmed) throw new Error("title is required");
+    if (trimmed.length > TITLE_MAX) throw new Error("title is too long");
     const now = Date.now();
     return await ctx.db.insert("schedules", {
-      ...args,
+      date,
+      title: trimmed,
+      color,
       source: "custom",
       createdAt: now,
       updatedAt: now,
@@ -188,11 +223,13 @@ export const createCustomEvent = mutation({
 
 export const deleteCustomEvent = mutation({
   args: { sessionToken: v.string(), id: v.id("schedules") },
+  returns: v.null(),
   handler: async (ctx, { sessionToken, id }) => {
     await requireAdmin(ctx, sessionToken);
     const existing = await ctx.db.get(id);
     // Only allow deleting user-created events, never synced school events.
-    if (!existing || existing.source !== "custom") return;
+    if (!existing || existing.source !== "custom") return null;
     await ctx.db.delete(id);
+    return null;
   },
 });

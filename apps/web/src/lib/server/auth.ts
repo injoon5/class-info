@@ -1,7 +1,6 @@
 import type { Cookies } from '@sveltejs/kit';
-import { ConvexHttpClient } from 'convex/browser';
-import { PUBLIC_CONVEX_URL } from '$env/static/public';
 import { api } from '@class-info/backend/convex/_generated/api';
+import { convexHttp } from '$lib/convex';
 
 export const SESSION_COOKIE = 'admin_session';
 export const SESSION_MAX_AGE = 60 * 60 * 24; // 24h, matches the Convex session TTL
@@ -21,8 +20,7 @@ export async function getAdminSession(
   if (!token) return { isAuthenticated: false, sessionToken: null };
 
   try {
-    const client = new ConvexHttpClient(PUBLIC_CONVEX_URL!);
-    const valid = await client.query(api.settings.verifySession, { token });
+    const valid = await convexHttp().query(api.settings.verifySession, { token });
     if (valid) return { isAuthenticated: true, sessionToken: token };
   } catch {
     // Network/backend hiccup — treat as unauthenticated but keep the cookie so

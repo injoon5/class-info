@@ -1,7 +1,9 @@
 import { internalAction, internalMutation, query } from "./_generated/server";
 import { v } from "convex/values";
 import { internal } from "./_generated/api";
-import { getWeekRangeKst, toYyyymmdd } from "./dates";
+import { addDaysYyyymmdd, getWeekRangeKst, parseYyyymmdd, toYyyymmdd } from "./dates";
+import { projectMeal } from "./project";
+import { mealWeek } from "./validators";
 
 type ExternalMeal = {
   ATPT_OFCDC_SC_CODE: string;
@@ -36,8 +38,9 @@ export const upsertMany = internalMutation({
       })
     ),
   },
+  returns: v.null(),
   handler: async (ctx, { meals }) => {
-    if (meals.length === 0) return;
+    if (meals.length === 0) return null;
 
     // One indexed range read over the batch's date span, then match in memory,
     // instead of a separate query per meal.
@@ -50,18 +53,20 @@ export const upsertMany = internalMutation({
       .collect();
     const existingByKey = new Map(existingRows.map((r) => [`${r.date} ${r.mealType}`, r]));
 
+    const now = Date.now();
     let updated = 0, inserted = 0;
     for (const meal of meals) {
       const existing = existingByKey.get(`${meal.date} ${meal.mealType}`);
       if (existing) {
-        await ctx.db.patch(existing._id, { ...meal, editedAt: Date.now() });
+        await ctx.db.patch(existing._id, { ...meal, editedAt: now });
         updated++;
       } else {
-        await ctx.db.insert("meals", { ...meal, editedAt: Date.now() });
+        await ctx.db.insert("meals", { ...meal, editedAt: now });
         inserted++;
       }
     }
     console.log(`[meals.upsertMany] updated=${updated} inserted=${inserted}`);
+    return null;
   },
 });
 
@@ -71,6 +76,7 @@ export const fetchAndSave = internalAction({
     enddate: v.string(), // YYYYMMDD
     schoolcode: v.string(),
   },
+  returns: v.null(),
   handler: async (ctx, { startdate, enddate, schoolcode }) => {
     const url = `https://api.timefor.school/lunch?startdate=${encodeURIComponent(startdate)}&enddate=${encodeURIComponent(enddate)}&schoolcode=${encodeURIComponent(schoolcode)}`;
 
@@ -81,7 +87,7 @@ export const fetchAndSave = internalAction({
     const data = await res.json();
 
     // Ignore INFO-200 "해당하는 데이터가 없습니다." error response
-    if (!Array.isArray(data)) return;
+    if (!Array.isArray(data)) return null;
 
     const meals = (data as ExternalMeal[])
       .filter((d) => d.MMEAL_SC_NM && d.DDISH_NM)
@@ -101,12 +107,14 @@ export const fetchAndSave = internalAction({
     if (meals.length > 0) {
       await ctx.runMutation(internal.meals.upsertMany, { meals });
     }
+    return null;
   },
 });
 
 // Fetch a single KST week (offsetWeeks: 0 = this week, 1 = next week).
 export const fetchWeek = internalAction({
   args: { schoolcode: v.string(), offsetWeeks: v.number() },
+  returns: v.null(),
   handler: async (ctx, { schoolcode, offsetWeeks }) => {
     const { start, end } = getWeekRangeKst(offsetWeeks);
     await ctx.runAction(internal.meals.fetchAndSave, {
@@ -114,35 +122,59 @@ export const fetchWeek = internalAction({
       enddate: toYyyymmdd(end),
       schoolcode,
     });
+    return null;
   },
 });
 
 export const getTwoWeeks = query({
-  args: {},
-  handler: async (ctx) => {
-    const buildWeek = async (offset: number) => {
-      const { start, end } = getWeekRangeKst(offset);
-      const startdate = toYyyymmdd(start);
-      const enddate = toYyyymmdd(end);
-      const rows = await ctx.db
-        .query("meals")
-        .withIndex("by_date_type", (q) => q.gte("date", startdate).lte("date", enddate))
-        .collect();
+  // weekStart is optional so a Convex deploy that lands before the frontend
+  // doesn't 500 old clients that called this with {}.
+  args: { weekStart: v.optional(v.string()) },
+  returns: v.object({
+    thisWeek: mealWeek,
+    nextWeek: mealWeek,
+    availableMealTypes: v.array(v.string()),
+  }),
+  handler: async (ctx, { weekStart: weekStartArg }) => {
+    const weekStart =
+      weekStartArg && parseYyyymmdd(weekStartArg)
+        ? weekStartArg
+        : toYyyymmdd(getWeekRangeKst(0).start);
+    const thisEnd = addDaysYyyymmdd(weekStart, 4);
+    const nextStart = addDaysYyyymmdd(weekStart, 7);
+    const nextEnd = addDaysYyyymmdd(weekStart, 11);
 
-      const days: { date: string; lunch: typeof rows[number] | null; dinner: typeof rows[number] | null }[] = [];
-      const d = new Date(start);
-      while (d <= end) {
-        const yyyymmdd = toYyyymmdd(d);
-        const lunch = rows.find((m) => m.date === yyyymmdd && m.mealType === "중식") ?? null;
-        const dinner = rows.find((m) => m.date === yyyymmdd && m.mealType === "석식") ?? null;
-        days.push({ date: yyyymmdd, lunch, dinner });
-        d.setDate(d.getDate() + 1);
+    const rows = await ctx.db
+      .query("meals")
+      .withIndex("by_date_type", (q) => q.gte("date", weekStart).lte("date", nextEnd))
+      .collect();
+
+    const byDateType = new Map<string, NonNullable<ReturnType<typeof projectMeal>>>();
+    for (const m of rows) {
+      const pub = projectMeal(m);
+      if (pub) byDateType.set(`${pub.date}:${pub.mealType}`, pub);
+    }
+
+    const buildWeek = (start: string, end: string) => {
+      const days: {
+        date: string;
+        lunch: NonNullable<ReturnType<typeof projectMeal>> | null;
+        dinner: NonNullable<ReturnType<typeof projectMeal>> | null;
+      }[] = [];
+      let cursor = start;
+      while (cursor <= end) {
+        days.push({
+          date: cursor,
+          lunch: byDateType.get(`${cursor}:중식`) ?? null,
+          dinner: byDateType.get(`${cursor}:석식`) ?? null,
+        });
+        cursor = addDaysYyyymmdd(cursor, 1);
       }
-      return { startdate, enddate, days };
+      return { startdate: start, enddate: end, days };
     };
 
-    const thisWeek = await buildWeek(0);
-    const nextWeek = await buildWeek(1);
+    const thisWeek = buildWeek(weekStart, thisEnd);
+    const nextWeek = buildWeek(nextStart, nextEnd);
 
     const allDays = [...thisWeek.days, ...nextWeek.days];
     const availableMealTypes: string[] = [];

@@ -1,4 +1,4 @@
-import { WEEKDAYS_KR } from './date.js';
+import { parseIsoDate, WEEKDAYS_KR } from './date.js';
 
 export function getTypeColor(type: string) {
 	switch (type) {
@@ -33,9 +33,9 @@ export function generateCopyText(groups: any[]): string {
 	for (const group of groups) {
 		const performanceNotices = (group.notices as any[]).filter((n: any) => n.type === '수행평가');
 		if (performanceNotices.length > 0) {
-			const date = new Date(performanceNotices[0].dueDate);
-			const weekday = WEEKDAYS_KR[date.getDay()];
-			const dateStr = group.isToday ? '오늘' : `${date.getMonth() + 1}/${date.getDate()}(${weekday})`;
+			const parsed = parseIsoDate(performanceNotices[0].dueDate);
+			const weekday = parsed ? WEEKDAYS_KR[new Date(parsed.y, parsed.m - 1, parsed.d).getDay()] : '';
+			const dateStr = group.isToday ? '오늘' : parsed ? `${parsed.m}/${parsed.d}(${weekday})` : group.displayDate;
 			const noticeTexts = performanceNotices.map((n: any) => `${n.subject} ${n.title}`);
 			text += `${dateStr} ${noticeTexts.join(', ')}\n`;
 		}
@@ -44,15 +44,17 @@ export function generateCopyText(groups: any[]): string {
 }
 
 export function formatDate(dateString: string) {
-	const date = new Date(dateString);
-	const weekday = WEEKDAYS_KR[date.getDay()];
-	return `${date.getFullYear()}년 ${date.getMonth() + 1}월 ${date.getDate()}일 (${weekday})`;
+	const parsed = parseIsoDate(dateString);
+	if (!parsed) return dateString;
+	const weekday = WEEKDAYS_KR[new Date(parsed.y, parsed.m - 1, parsed.d).getDay()];
+	return `${parsed.y}년 ${parsed.m}월 ${parsed.d}일 (${weekday})`;
 }
 
 export function formatKoreanDueDate(dateString: string): string {
-	const date = new Date(dateString);
-	const weekday = WEEKDAYS_KR[date.getDay()];
-	return `${date.getMonth() + 1}월 ${date.getDate()}일(${weekday})까지`;
+	const parsed = parseIsoDate(dateString);
+	if (!parsed) return dateString;
+	const weekday = WEEKDAYS_KR[new Date(parsed.y, parsed.m - 1, parsed.d).getDay()];
+	return `${parsed.m}월 ${parsed.d}일(${weekday})까지`;
 }
 
 // A 12 KB attachment reporting itself as "0.01 MB" tells the reader nothing.

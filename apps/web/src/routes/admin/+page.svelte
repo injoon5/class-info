@@ -50,10 +50,14 @@ let pin = $state('');
 const noticeTypes = ['수행평가', '숙제', '준비물', '기타'] as const;
 
 // Server now provides grouped current notices; fetch past months on demand
-const overview = useQuery(api.notices.overview, {}, () => ({
-	initialData: data.overview,
-	keepPreviousData: true
-}));
+const overview = useQuery(
+	api.notices.overview,
+	() => ({ cutoff: data.cutoff, today: data.today }),
+	() => ({
+		initialData: data.overview,
+		keepPreviousData: true
+	})
+);
 let openMonthKey = $state<string | null>(null);
 
 // Expected problems with the editor sit with the editor's actions; failures
@@ -488,6 +492,8 @@ const lastUpdatedTs = $derived.by(() => {
                             {#if openMonthKey === m.monthKey}
                                 <AdminPastMonthDetails
                                     monthKey={m.monthKey}
+                                    cutoff={data.cutoff}
+                                    today={data.today}
                                     {dismissedIds}
                                     {editorTarget}
                                     editor={noticeEditor}

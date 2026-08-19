@@ -8,10 +8,14 @@ import type { PageData } from './$types.js';
 
 const { data }: { data: PageData } = $props();
 
-const noticesQuery = useQuery(api.notices.overview, {}, () => ({
-	initialData: data.noticesOverview,
-	keepPreviousData: true,
-}));
+const noticesQuery = useQuery(
+	api.notices.currentGroups,
+	() => ({ cutoff: data.cutoff, today: data.today }),
+	() => ({
+		initialData: data.currentGroups,
+		keepPreviousData: true,
+	})
+);
 
 // ── Date helpers ──────────────────────────────────────────────────────────────
 function getMondayTime(d: Date): number {
@@ -30,7 +34,7 @@ const todayWeekday = WEEKDAYS_KR[kst.getDay()];
 
 // ── School-day logic ──────────────────────────────────────────────────────────
 function isHoliday(dateStr: string): boolean {
-	return (data.schoolEvents ?? []).some((e: any) =>
+	return (data.events ?? []).some((e: any) =>
 		e.date === dateStr &&
 		(e.eventType === '공휴일' || e.eventType === '휴업일' || e.eventType === '재량휴업일')
 	);
@@ -87,7 +91,7 @@ const cardDayLabel = (() => {
 const in7days = yyyymmdd(new Date(kst.getTime() + 7 * 24 * 60 * 60 * 1000));
 
 const allEvents = $derived(
-	[...(data.schoolEvents ?? []), ...(data.customEvents ?? [])]
+	[...(data.events ?? [])]
 		.filter((e: any) => e.title !== '토요휴업일')
 		.sort((a: any, b: any) => a.date.localeCompare(b.date))
 );
@@ -101,7 +105,7 @@ const upcomingEvents = $derived(
 // ── Notices ───────────────────────────────────────────────────────────────────
 const PREVIEW_NOTICE_LIMIT = 4;
 
-const currentGroups = $derived(noticesQuery.data?.currentGroups ?? []);
+const currentGroups = $derived(noticesQuery.data ?? []);
 const hasNotices = $derived(currentGroups.length > 0);
 
 // Take whole groups until the budget runs out, trimming the last group rather

@@ -2,27 +2,17 @@ import { internalAction, internalMutation, query } from "./_generated/server";
 import { v } from "convex/values";
 import { internal } from "./_generated/api";
 import type { Id } from "./_generated/dataModel";
+import { projectTimetable } from "./project";
+import { timetableDoc, timetableSlot } from "./validators";
 
 export const upsert = internalMutation({
   args: {
     week: v.number(),
     day_time: v.array(v.string()),
-    timetable: v.array(
-      v.array(
-        v.object({
-          period: v.number(),
-          subject: v.string(),
-          teacher: v.string(),
-          replaced: v.boolean(),
-          original: v.union(
-            v.null(),
-            v.object({ period: v.number(), subject: v.string(), teacher: v.string() })
-          ),
-        })
-      )
-    ),
+    timetable: v.array(v.array(timetableSlot)),
     update_date: v.string(),
   },
+  returns: v.id("timetables"),
   handler: async (
     ctx,
     { week, day_time, timetable, update_date }
@@ -32,13 +22,14 @@ export const upsert = internalMutation({
       .withIndex("by_week", (q) => q.eq("week", week))
       .first();
 
+    const now = Date.now();
     if (existing) {
-      await ctx.db.patch(existing._id, { day_time, timetable, update_date, week, editedAt: Date.now() });
+      await ctx.db.patch(existing._id, { day_time, timetable, update_date, week, editedAt: now });
       console.log(`[timetable.upsert] updated week=${week}`);
       return existing._id;
     }
 
-    const id = await ctx.db.insert("timetables", { day_time, timetable, update_date, week, editedAt: Date.now() });
+    const id = await ctx.db.insert("timetables", { day_time, timetable, update_date, week, editedAt: now });
     console.log(`[timetable.upsert] inserted week=${week}`);
     return id;
   },
@@ -51,6 +42,7 @@ export const fetchAndSave = internalAction({
     week: v.number(),
     schoolcode: v.string(),
   },
+  returns: v.id("timetables"),
   handler: async (
     ctx,
     { grade, classno, week, schoolcode }
@@ -96,13 +88,13 @@ export const fetchAndSave = internalAction({
 });
 
 export const getByWeek = query({
-  args: { week: v.number() },
+  args: { week: v.union(v.literal(0), v.literal(1)) },
+  returns: v.union(timetableDoc, v.null()),
   handler: async (ctx, { week }) => {
-    return await ctx.db
+    const row = await ctx.db
       .query("timetables")
       .withIndex("by_week", (q) => q.eq("week", week))
       .first();
+    return row ? projectTimetable(row) : null;
   },
 });
-
-

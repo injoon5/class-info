@@ -50,9 +50,9 @@ $effect(() => { selectedWeek; blur.pulse(); });
 
 const timetableQuery = useQuery(
 	api.timetable.getByWeek,
-	() => ({ week: selectedWeek }),
+	() => ({ week: selectedWeek === 1 ? (1 as const) : (0 as const) }),
 	() => ({
-		initialData: selectedWeek === 0 ? data.timetable : undefined,
+		initialData: selectedWeek === 1 ? data.nextWeek : data.timetable,
 		keepPreviousData: true
 	})
 );
@@ -127,7 +127,7 @@ function getPeriodLabel(period: number): string {
 	{:else if timetableQuery.error}
 		<ErrorState error={timetableQuery.error} />
 	{:else if !timetableQuery.data}
-		<EmptyState />
+		<EmptyState message="시간표가 없어요" />
 	{:else}
 		<HScroll blurred={blur.blurred}>
 				<table class="w-full min-w-[18rem] table-fixed border border-border border-collapse overflow-hidden rounded-xl mx-auto">

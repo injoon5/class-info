@@ -15,6 +15,8 @@ import FluidHeight from './FluidHeight.svelte';
 // edited in its own row too, not somewhere else on the page.
 const {
     monthKey,
+    cutoff,
+    today,
     onEdit,
     onDelete,
     editorTarget = null,
@@ -22,6 +24,8 @@ const {
     dismissedIds = new SvelteSet<string>()
 }: {
     monthKey: string;
+    cutoff: string;
+    today: string;
     onEdit: (id: string) => void;
     onDelete: (id: string) => void;
     editorTarget?: string | null;
@@ -32,7 +36,10 @@ const {
 // Cheap destructive action: confirmed in the row, not in a modal.
 let confirmingDeleteId = $state<string | null>(null);
 
-const groups = useQuery(api.notices.pastByMonth, { monthKey });
+const groups = useQuery(
+    api.notices.pastByMonth,
+    () => ({ monthKey, cutoff, today })
+);
 // First ready paint is silent so FluidHeight can tween spinner → full list
 // instead of measuring mid-slide. Later row/group intros still slide.
 let listLive = $state(false);

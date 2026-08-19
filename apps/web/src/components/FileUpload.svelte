@@ -49,9 +49,9 @@ $effect(() => {
 async function loadFiles(ids: any[]) {
   const token = ++loadToken;
   try {
-    const results = await Promise.all(
-      ids.map((fileId) => client.query(api.files.getFile, { fileId: fileId as Id<'files'> }))
-    );
+    const results = await client.query(api.files.getFiles, {
+      fileIds: ids as Id<'files'>[],
+    });
     if (token !== loadToken) return; // a newer load superseded this one
     uploadedFiles = results.filter((f) => f !== null) as UploadedFile[];
   } catch {
