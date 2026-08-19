@@ -1,5 +1,6 @@
 <script lang="ts">
 import type { Snippet } from 'svelte';
+import MorphLabel from './MorphLabel.svelte';
 
 // The pill that recurs across the app. Each variant declares its own hover and
 // active fills, so a caller never has to re-derive them — and a new pill can't
@@ -20,6 +21,7 @@ const {
 	size = 'md',
 	emphasized = false,
 	pending = false,
+	morph = false,
 	class: className = '',
 	children
 }: {
@@ -34,6 +36,8 @@ const {
 	emphasized?: boolean;
 	/** Shows a spinner in place of nothing; keep `text` as the pending label. */
 	pending?: boolean;
+	/** Animate the button's width when `text` changes instead of snapping. */
+	morph?: boolean;
 	class?: string;
 	children?: Snippet;
 } = $props();
@@ -63,7 +67,7 @@ const base = $derived(
 
 {#if href}
 	<a {href} class={base} aria-disabled={disabled || undefined}>
-		{#if children}{@render children()}{:else}{text}{/if}
+		{#if children}{@render children()}{:else if morph && text}<MorphLabel {text} />{:else}{text}{/if}
 	</a>
 {:else}
 	<button {type} {onclick} {disabled} class={base}>
@@ -73,6 +77,6 @@ const base = $derived(
 				aria-hidden="true"
 			></span>
 		{/if}
-		{#if children}{@render children()}{:else}{text}{/if}
+		{#if children}{@render children()}{:else if morph && text}<MorphLabel {text} />{:else}{text}{/if}
 	</button>
 {/if}

@@ -210,8 +210,8 @@ function openMealDrawer(day: any) {
           <div class="grid grid-cols-3 gap-x-4 gap-y-1.5">
             {#each nutrientRows as [name, value]}
               <div class="flex items-baseline justify-between gap-1 border-b border-border pb-1.5">
-                <span class="text-sm text-muted-foreground truncate">{name}</span>
-                <span class="text-sm text-foreground tabular-nums flex-shrink-0">{value}</span>
+                <span class="text-xs text-muted-foreground truncate">{name}</span>
+                <span class="text-xs text-foreground tabular-nums flex-shrink-0">{value}</span>
               </div>
             {/each}
           </div>

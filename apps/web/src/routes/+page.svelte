@@ -178,7 +178,7 @@ function isToday(dateStr: string): boolean {
 					<span class="inline-flex items-baseline gap-1.5">
 						<span class="font-semibold text-foreground">{event.title}</span>
 						{#if eventTypeLabel(event)}
-							<span class="text-xs sm:text-sm font-semibold {eventTypeCss(event)}">{eventTypeLabel(event)}</span>
+							<span class="text-sm font-semibold {eventTypeCss(event)}">{eventTypeLabel(event)}</span>
 						{/if}
 					</span>
 				{/each}
@@ -192,8 +192,8 @@ function isToday(dateStr: string): boolean {
 		<!-- Timetable -->
 		<section class="sm:col-span-1">
 			<div class="flex items-baseline justify-between mb-2.5">
-				<h2 class="text-sm font-semibold text-muted-foreground">{cardDayLabel}시간표</h2>
-				<a href="/timetable" aria-label="시간표 모두 보기" class="text-xs font-semibold text-muted-foreground transition-colors duration-150 pointer:hover:text-foreground">모두 보기 <span aria-hidden="true">→</span></a>
+				<h2 class="font-semibold text-muted-foreground">{cardDayLabel}시간표</h2>
+				<a href="/timetable" aria-label="시간표 모두 보기" class="text-sm font-semibold text-muted-foreground transition-colors duration-150 pointer:hover:text-foreground">모두 보기 <span aria-hidden="true">→</span></a>
 			</div>
 			<div class="bg-card border border-border rounded-2xl p-4">
 				{#if displaySchedule.length === 0}
@@ -207,7 +207,7 @@ function isToday(dateStr: string): boolean {
 								<span class="text-sm tabular-nums text-muted-foreground shrink-0 w-4 text-center">{slot.period}</span>
 								<span class="text-list font-semibold leading-snug truncate min-w-0 flex-1 {slot.replaced ? 'text-amber-700 dark:text-amber-400' : 'text-foreground'}">{slot.subject}</span>
 								{#if slot.teacher}
-									<span class="text-xs text-muted-foreground shrink-0">{slot.teacher}</span>
+									<span class="text-sm text-muted-foreground shrink-0">{slot.teacher}</span>
 								{/if}
 							</li>
 						{/each}
@@ -219,15 +219,15 @@ function isToday(dateStr: string): boolean {
 		<!-- Meal -->
 		<section class="sm:col-span-2">
 			<div class="flex items-baseline justify-between mb-2.5">
-				<h2 class="text-sm font-semibold text-muted-foreground">{cardDayLabel}급식</h2>
-				<a href="/meals" aria-label="급식 모두 보기" class="text-xs font-semibold text-muted-foreground transition-colors duration-150 pointer:hover:text-foreground">모두 보기 <span aria-hidden="true">→</span></a>
+				<h2 class="font-semibold text-muted-foreground">{cardDayLabel}급식</h2>
+				<a href="/meals" aria-label="급식 모두 보기" class="text-sm font-semibold text-muted-foreground transition-colors duration-150 pointer:hover:text-foreground">모두 보기 <span aria-hidden="true">→</span></a>
 			</div>
 			<div class="bg-card border border-border rounded-2xl p-4">
 				<!-- gap-0 + symmetric padding keeps the divider on the card's exact center at every width -->
 				<div class="grid {displayDinner ? 'grid-cols-2' : 'grid-cols-1'}">
 					<!-- Lunch -->
 					<div class={displayDinner ? 'pr-4 sm:pr-6' : ''}>
-						<p class="text-xs font-semibold text-muted-foreground mb-2">중식</p>
+						<p class="text-sm font-semibold text-muted-foreground mb-2">중식</p>
 						{#if !displayLunch}
 							<p class="text-sm text-muted-foreground">급식 정보가 없어요</p>
 						{:else}
@@ -237,21 +237,21 @@ function isToday(dateStr: string): boolean {
 								{/each}
 							</ul>
 							{#if displayLunch.calories}
-								<p class="mt-2.5 text-xs text-muted-foreground tabular-nums">{displayLunch.calories}</p>
+								<p class="mt-2.5 text-sm text-muted-foreground tabular-nums">{displayLunch.calories}</p>
 							{/if}
 						{/if}
 					</div>
 					<!-- Dinner -->
 					{#if displayDinner}
 						<div class="border-l border-border pl-4 sm:pl-6">
-							<p class="text-xs font-semibold text-muted-foreground mb-2">석식</p>
+							<p class="text-sm font-semibold text-muted-foreground mb-2">석식</p>
 							<ul class="space-y-1.5">
 								{#each displayDinner.dishes as dish}
 									<li class="text-list text-foreground leading-snug truncate max-w-full overflow-hidden whitespace-nowrap">{dish}</li>
 								{/each}
 							</ul>
 							{#if displayDinner.calories}
-								<p class="mt-2.5 text-xs text-muted-foreground tabular-nums">{displayDinner.calories}</p>
+								<p class="mt-2.5 text-sm text-muted-foreground tabular-nums">{displayDinner.calories}</p>
 							{/if}
 						</div>
 					{/if}
@@ -267,8 +267,8 @@ function isToday(dateStr: string): boolean {
 		<!-- Notices -->
 		<section>
 			<div class="flex items-baseline justify-between mb-2.5">
-				<h2 class="text-sm font-semibold text-muted-foreground">공지</h2>
-				<a href="/notices" aria-label="공지 모두 보기" class="text-xs font-semibold text-muted-foreground transition-colors duration-150 pointer:hover:text-foreground">모두 보기 <span aria-hidden="true">→</span></a>
+				<h2 class="font-semibold text-muted-foreground">공지</h2>
+				<a href="/notices" aria-label="공지 모두 보기" class="text-sm font-semibold text-muted-foreground transition-colors duration-150 pointer:hover:text-foreground">모두 보기 <span aria-hidden="true">→</span></a>
 			</div>
 
 			{#if noticesQuery.isLoading && !noticesQuery.data}
@@ -283,7 +283,7 @@ function isToday(dateStr: string): boolean {
 				<div class="space-y-4">
 					{#each noticePreview as group (group.date)}
 						<div>
-							<p class="text-xs font-semibold text-muted-foreground mb-2">
+							<p class="text-sm font-semibold text-muted-foreground mb-2">
 								{group.displayDate}
 							</p>
 							<div class="grid gap-1.5">
@@ -309,8 +309,8 @@ function isToday(dateStr: string): boolean {
 		<!-- Events -->
 		<section>
 			<div class="flex items-baseline justify-between mb-2.5">
-				<h2 class="text-sm font-semibold text-muted-foreground">일정</h2>
-				<a href="/calendar" aria-label="일정 모두 보기" class="text-xs font-semibold text-muted-foreground transition-colors duration-150 pointer:hover:text-foreground">모두 보기 <span aria-hidden="true">→</span></a>
+				<h2 class="font-semibold text-muted-foreground">일정</h2>
+				<a href="/calendar" aria-label="일정 모두 보기" class="text-sm font-semibold text-muted-foreground transition-colors duration-150 pointer:hover:text-foreground">모두 보기 <span aria-hidden="true">→</span></a>
 			</div>
 			{#if upcomingEvents.length === 0}
 				<div class="bg-card border border-border rounded-2xl px-4 py-8 text-center">
@@ -322,7 +322,7 @@ function isToday(dateStr: string): boolean {
 						<div class="flex items-center gap-2.5 px-4 py-3">
 							<span class="w-2 h-2 rounded-full shrink-0 {eventDotClass(event)}" aria-hidden="true"></span>
 							<span class="text-list text-foreground font-semibold flex-1 min-w-0 truncate">{event.title}</span>
-							<span class="text-xs tabular-nums shrink-0 text-right {isToday(event.date) ? 'font-semibold text-foreground' : 'text-muted-foreground'}">
+							<span class="text-sm tabular-nums shrink-0 text-right {isToday(event.date) ? 'font-semibold text-foreground' : 'text-muted-foreground'}">
 								{isToday(event.date) ? '오늘' : formatEventDate(event.date)}
 							</span>
 						</div>

@@ -9,6 +9,8 @@ import { formatAbsolute, formatRelative } from '$lib/date';
 import LoadingState from '../../components/LoadingState.svelte';
 import PillButton from '../../components/PillButton.svelte';
 import { autosize } from '$lib/actions/autosize';
+import { fade, slide } from 'svelte/transition';
+import { expoOut } from 'svelte/easing';
 import type { PageData, ActionData } from './$types';
 
 const { data, form }: { data: PageData; form: ActionData } = $props();
@@ -184,7 +186,12 @@ const lastUpdatedTs = $derived.by(() => {
 </svelte:head>
 
 {#snippet noticeEditor()}
-		<div class="bg-card border border-border rounded-2xl p-4 sm:p-5 mb-6">
+	<div transition:slide={{ duration: 300, easing: expoOut }}>
+		<div
+			class="bg-card border border-border rounded-2xl p-4 sm:p-5 mb-6"
+			in:fade={{ duration: 200, delay: 80 }}
+			out:fade={{ duration: 120 }}
+		>
 			<h2 class="text-lg font-semibold mb-4 text-foreground">
 				{isEditing ? '공지 수정' : '새 공지 추가'}
 			</h2>
@@ -217,11 +224,24 @@ const lastUpdatedTs = $derived.by(() => {
 
 					<div>
 						<label for="notice-type" class="block text-sm font-semibold mb-1.5 text-muted-foreground">종류 *</label>
-						<select id="notice-type" bind:value={noticeForm.type} class="w-full h-11 px-3 rounded-xl bg-muted text-base text-foreground">
-							{#each noticeTypes as type}
-								<option value={type}>{type}</option>
-							{/each}
-						</select>
+						<div class="relative">
+							<select
+								id="notice-type"
+								bind:value={noticeForm.type}
+								class="w-full h-11 pl-3.5 pr-10 rounded-xl bg-muted text-base text-foreground appearance-none"
+							>
+								{#each noticeTypes as type}
+									<option value={type}>{type}</option>
+								{/each}
+							</select>
+							<svg
+								viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2"
+								class="pointer-events-none absolute right-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground"
+								aria-hidden="true"
+							>
+								<path stroke-linecap="round" stroke-linejoin="round" d="M5 7.5l5 5 5-5"/>
+							</svg>
+						</div>
 					</div>
 				</div>
 
@@ -262,11 +282,12 @@ const lastUpdatedTs = $derived.by(() => {
 				{/if}
 
 				<div class="flex gap-2">
-					<PillButton type="submit" text={isEditing ? '수정' : '추가'} class="px-5 py-2.5" />
+					<PillButton type="submit" morph text={isEditing ? '수정' : '추가'} class="px-5 py-2.5" />
 					<PillButton type="button" text="취소" variant="secondary" onclick={resetForm} class="px-5 py-2.5" />
 				</div>
 			</form>
 		</div>
+	</div>
 {/snippet}
 
 {#if !data.isAuthenticated}
@@ -317,6 +338,7 @@ const lastUpdatedTs = $derived.by(() => {
 			<h1 class="text-xl font-bold text-foreground">공지 관리</h1>
 			<div class="flex items-center gap-2">
 				<PillButton
+					morph
 					text={editorTarget === 'new' ? '취소' : '새 공지 추가'}
 					onclick={startNewNotice}
 					emphasized={!overview.isLoading && allGroupedNotices.length === 0}

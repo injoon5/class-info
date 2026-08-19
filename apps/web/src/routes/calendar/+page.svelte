@@ -7,7 +7,7 @@ import HScroll from '../../components/HScroll.svelte';
 import { getNowInKst, toYyyymmdd } from '$lib/date';
 import { focusOnElement } from '$lib/actions/focus';
 import PillButton from '../../components/PillButton.svelte';
-import { fade, fly, scale } from 'svelte/transition';
+import { fade, fly, slide } from 'svelte/transition';
 import { expoOut } from 'svelte/easing';
 import type { PageData } from './$types.js';
 
@@ -411,11 +411,8 @@ const dayNames = ['일','월','화','수','목','금','토'];
     </div>
   {:else}
     <!-- The composer grows out of the button's place and shrinks back on cancel. -->
-    <div
-      class="space-y-5"
-      in:scale={{ start: 0.3, duration: 300, easing: expoOut }}
-      out:scale={{ start: 0.3, duration: 300, easing: expoOut }}
-    >
+    <div transition:slide={{ duration: 300, easing: expoOut }}>
+    <div class="space-y-5 pt-1" in:fade={{ duration: 200, delay: 80 }} out:fade={{ duration: 120 }}>
       <!-- Title and colour are one thing — what the event is — so they sit
            tight together, with the action band set apart from them. -->
       <div class="space-y-3.5">
@@ -433,7 +430,7 @@ const dayNames = ['일','월','화','수','목','금','토'];
         />
 
         <div class="flex items-center gap-3">
-          <span class="shrink-0 text-xs text-muted-foreground">색상</span>
+          <span class="shrink-0 text-sm text-muted-foreground">색상</span>
           <!-- A check marks the choice. A ring would have read as focus, which
                is the one signal this row must not borrow. -->
           <div class="flex gap-2.5 touch:gap-4" role="radiogroup" aria-label="일정 색상">
@@ -459,6 +456,7 @@ const dayNames = ['일','월','화','수','목','금','토'];
 
       <div class="flex gap-2">
         <PillButton
+          morph
           text={isSaving ? '저장 중…' : '저장'}
           pending={isSaving}
           onclick={handleAddEvent}
@@ -471,6 +469,7 @@ const dayNames = ['일','월','화','수','목','금','토'];
           onclick={() => { popupAddMode = false; newEventTitle = ''; saveError = null; }}
         />
       </div>
+    </div>
     </div>
   {/if}
 {/snippet}
@@ -492,7 +491,7 @@ const dayNames = ['일','월','화','수','목','금','토'];
         </h2>
         <span class="text-base text-muted-foreground leading-tight">{selectedDateInfo.weekday}요일</span>
         {#if selectedDateInfo.isToday}
-          <span class="text-xs font-semibold px-2 py-0.5 rounded-full bg-primary text-primary-foreground leading-tight">오늘</span>
+          <span class="text-base font-semibold px-2.5 py-1 rounded-full bg-primary text-primary-foreground leading-tight">오늘</span>
         {/if}
       </div>
     {/if}
@@ -506,9 +505,9 @@ const dayNames = ['일','월','화','수','목','금','토'];
           <path stroke-linecap="round" stroke-linejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75m-18 0v-7.5A2.25 2.25 0 015.25 9h13.5A2.25 2.25 0 0121 11.25v7.5"/>
         </svg>
       </div>
-      <p class="text-sm font-semibold text-muted-foreground">일정이 없어요</p>
+      <p class="text-base font-semibold text-muted-foreground">일정이 없어요</p>
       {#if isAuthenticated}
-        <p class="text-xs text-muted-foreground/70 mt-1">아래 버튼으로 일정을 추가해 보세요</p>
+        <p class="text-sm text-muted-foreground/70 mt-1">아래 버튼으로 일정을 추가해 보세요</p>
       {/if}
     </div>
   {:else}
@@ -518,8 +517,8 @@ const dayNames = ['일','월','화','수','목','금','토'];
         <li class="flex rounded-xl overflow-hidden">
           <div class="w-1.5 flex-shrink-0 {style.color}"></div>
           <div class="flex-1 px-3 py-2.5 {style.bg}">
-            <p class="text-xs font-semibold {style.labelColor} mb-0.5">{style.label}</p>
-            <p class="text-sm font-semibold text-foreground leading-snug">{event.title}</p>
+            <p class="text-sm font-semibold {style.labelColor} mb-0.5">{style.label}</p>
+            <p class="text-base font-semibold text-foreground leading-snug">{event.title}</p>
           </div>
         </li>
       {/each}
@@ -529,8 +528,8 @@ const dayNames = ['일','월','화','수','목','금','토'];
           <div class="w-1.5 flex-shrink-0 {style.color}"></div>
           <div class="flex-1 flex items-center justify-between gap-2 px-3 py-2.5 {style.bg}">
             <div class="min-w-0">
-              <p class="text-xs font-semibold {style.labelColor} mb-0.5">학급 일정</p>
-              <p class="text-sm font-semibold text-foreground leading-snug">{event.title}</p>
+              <p class="text-sm font-semibold {style.labelColor} mb-0.5">학급 일정</p>
+              <p class="text-base font-semibold text-foreground leading-snug">{event.title}</p>
             </div>
             {#if isAuthenticated}
               <button
