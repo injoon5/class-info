@@ -128,7 +128,7 @@ function getPeriodLabel(period: number): string {
 	{:else if timetableQuery.error}
 		<ErrorState error={timetableQuery.error} />
 	{:else if !timetableQuery.data}
-		<EmptyState />
+		<EmptyState message="시간표가 없어요" />
 	{:else}
 		<HScroll blurred={blur.blurred}>
 				<table class="w-full min-w-[18rem] table-fixed border border-border border-collapse overflow-hidden rounded-xl mx-auto">

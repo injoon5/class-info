@@ -90,7 +90,7 @@ const overview = useQuery(
             </div>
         {/if}
         {#if (!overview.data?.currentGroups || overview.data.currentGroups.length === 0) && (!overview.data?.pastMonths || overview.data.pastMonths.length === 0)}
-            <EmptyState />
+            <EmptyState message="등록된 공지가 없어요" />
         {/if}
     {/if}
     <NoticeFooter notices={overview.data?.currentGroups || []} />
