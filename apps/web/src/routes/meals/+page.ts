@@ -9,11 +9,7 @@ export const load = (async () => {
 		.query(api.meals.getTwoWeeks, { weekStart })
 		.catch((err) => {
 			console.error('meals.getTwoWeeks', err);
-			return {
-				thisWeek: { startdate: weekStart, enddate: weekStart, days: [] },
-				nextWeek: { startdate: weekStart, enddate: weekStart, days: [] },
-				availableMealTypes: [] as string[]
-			};
+			return undefined;
 		});
 	return { weekStart, twoWeeks };
 }) satisfies PageLoad;

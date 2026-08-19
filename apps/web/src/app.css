@@ -181,6 +181,23 @@ select:focus-visible {
 	.pressable-icon:active {
 		@apply scale-90;
 	}
+
+	/* Placeholder bones for content-shaped loading. Opacity-only so it stays
+	   on the compositor; 1.1s reads faster than a typical 2s pulse. */
+	.skeleton {
+		background-color: color-mix(in oklab, var(--foreground) 8%, var(--muted));
+		animation: skeleton-pulse 1.1s ease-in-out infinite;
+	}
+}
+
+@keyframes skeleton-pulse {
+	0%,
+	100% {
+		opacity: 1;
+	}
+	50% {
+		opacity: 0.4;
+	}
 }
 
 @media (prefers-reduced-motion: reduce) {

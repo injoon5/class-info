@@ -12,11 +12,11 @@ export const load = (async ({ cookies }) => {
 	const [schoolEvents, customEvents] = await Promise.all([
 		client.query(api.schedule.getSchoolEventsByYear, { year: String(year) }).catch((err) => {
 			console.error('calendar getSchoolEventsByYear', err);
-			return [];
+			return undefined;
 		}),
 		client.query(api.schedule.getCustomEventsByYear, { year: String(year) }).catch((err) => {
 			console.error('calendar getCustomEventsByYear', err);
-			return [];
+			return undefined;
 		})
 	]);
 

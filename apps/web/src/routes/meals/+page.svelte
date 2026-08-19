@@ -35,7 +35,10 @@ $effect(() => { selectedMealType; blur.pulse(); });
 const mealsQuery = useQuery(
   api.meals.getTwoWeeks,
   () => ({ weekStart: data.weekStart }),
-  () => ({ initialData: data.twoWeeks, keepPreviousData: true })
+  () => ({
+    ...(data.twoWeeks ? { initialData: data.twoWeeks } : {}),
+    keepPreviousData: true
+  })
 );
 
 const availableMealTypes = $derived(mealsQuery.data?.availableMealTypes ?? []);
@@ -96,7 +99,7 @@ function openMealDrawer(day: any) {
 <div class="max-w-4xl mx-auto px-4 pt-4 pb-2 sm:pt-5">
   <h1 class="sr-only">급식</h1>
   {#if mealsQuery.isLoading}
-    <LoadingState />
+    <LoadingState variant="meals" weekStart={data.weekStart} />
   {:else if mealsQuery.error}
     <ErrorState error={mealsQuery.error} />
   {:else if !mealsQuery.data || availableMealTypes.length === 0}
@@ -139,7 +142,8 @@ function openMealDrawer(day: any) {
                     {/each}
                   </ul>
                 {:else}
-                  <p class="mt-2.5 text-sm text-muted-foreground">급식 정보가 없어요</p>
+                  <p class="mt-2.5 text-sm text-muted-foreground/50" aria-hidden="true">—</p>
+                  <span class="sr-only">급식 없음</span>
                 {/if}
               </div>
               <div class="mt-2 min-h-[1.25rem] flex items-end">
