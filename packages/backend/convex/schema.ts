@@ -59,7 +59,9 @@ export default defineSchema({
     token: v.string(),
     createdAt: v.number(),
     expiresAt: v.number(),
-  }).index("by_token", ["token"]),
+  })
+    .index("by_token", ["token"])
+    .index("by_expires_at", ["expiresAt"]),
   
   meals: defineTable({
     // YYYYMMDD string for the meal date (local KST date)

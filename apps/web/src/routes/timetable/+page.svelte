@@ -51,9 +51,9 @@ $effect(() => { selectedWeek; blur.pulse(); });
 
 const timetableQuery = useQuery(
 	api.timetable.getByWeek,
-	() => ({ week: selectedWeek }),
+	() => ({ week: selectedWeek === 1 ? (1 as const) : (0 as const) }),
 	() => ({
-		initialData: selectedWeek === 0 ? data.timetable : undefined,
+		initialData: selectedWeek === 1 ? data.nextWeek : data.timetable,
 		keepPreviousData: true
 	})
 );

@@ -1,31 +1,20 @@
-import { ConvexHttpClient } from 'convex/browser';
 import type { PageServerLoad } from './$types.js';
-import { PUBLIC_CONVEX_URL } from '$env/static/public';
-import { api } from "@class-info/backend/convex/_generated/api";
+import { api } from '@class-info/backend/convex/_generated/api';
 import { getAdminSession } from '$lib/server/auth';
-
-function getNowInKst(): Date {
-  const now = new Date();
-  const utc = now.getTime() + now.getTimezoneOffset() * 60_000;
-  return new Date(utc + 9 * 60 * 60_000);
-}
+import { convexHttp } from '$lib/convex';
+import { getNowInKst } from '$lib/date';
 
 export const load = (async ({ cookies }) => {
-  const kstNow = getNowInKst();
-  const year = kstNow.getFullYear();
+	const kstNow = getNowInKst();
+	const year = kstNow.getFullYear();
+	const client = convexHttp();
 
-  const client = new ConvexHttpClient(PUBLIC_CONVEX_URL!);
+	const [schoolEvents, customEvents] = await Promise.all([
+		client.query(api.schedule.getSchoolEventsByYear, { year: String(year) }),
+		client.query(api.schedule.getCustomEventsByYear, { year: String(year) })
+	]);
 
-  let schoolEvents: any[] = [];
-  let customEvents: any[] = [];
-  try {
-    [schoolEvents, customEvents] = await Promise.all([
-      client.query(api.schedule.getSchoolEventsByYear, { year: String(year) }),
-      client.query(api.schedule.getCustomEventsByYear, { year: String(year) }),
-    ]);
-  } catch {}
+	const { isAuthenticated, sessionToken } = await getAdminSession(cookies);
 
-  const { isAuthenticated, sessionToken } = await getAdminSession(cookies);
-
-  return { schoolEvents, customEvents, isAuthenticated, sessionToken, year };
+	return { schoolEvents, customEvents, isAuthenticated, sessionToken, year };
 }) satisfies PageServerLoad;

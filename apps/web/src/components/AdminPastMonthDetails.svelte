@@ -8,12 +8,16 @@ import type { Snippet } from 'svelte';
 // edited in its own row too, not somewhere else on the page.
 const {
     monthKey,
+    cutoff,
+    today,
     onEdit,
     onDelete,
     editorTarget = null,
     editor
 }: {
     monthKey: string;
+    cutoff: string;
+    today: string;
     onEdit: (id: string) => void;
     onDelete: (id: string) => void;
     editorTarget?: string | null;
@@ -23,7 +27,10 @@ const {
 // Cheap destructive action: confirmed in the row, not in a modal.
 let confirmingDeleteId = $state<string | null>(null);
 
-const groups = useQuery(api.notices.pastByMonth, { monthKey });
+const groups = useQuery(
+    api.notices.pastByMonth,
+    () => ({ monthKey, cutoff, today })
+);
 
 </script>
 
@@ -33,7 +40,7 @@ const groups = useQuery(api.notices.pastByMonth, { monthKey });
     {:else if groups.error}
         <div class="text-sm text-destructive">오류가 발생했습니다.</div>
     {:else}
-        {#each groups.data as group (group.date)}
+        {#each groups.data ?? [] as group (group.date)}
             <div class="mb-3 last:mb-0">
                 <h3 class="text-sm font-semibold mb-2 text-muted-foreground border-l-2 border-border pl-2">
                     {group.displayDate}

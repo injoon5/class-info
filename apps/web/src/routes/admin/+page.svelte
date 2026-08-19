@@ -44,10 +44,14 @@ const noticeTypes = ['수행평가', '숙제', '준비물', '기타'] as const;
 // Server now provides grouped current notices; fetch past months on demand
 import AdminPastMonthDetails from '../../components/AdminPastMonthDetails.svelte';
 import { useQuery } from 'convex-svelte';
-const overview = useQuery(api.notices.overview, {}, () => ({
-	initialData: data.overview,
-	keepPreviousData: true
-}));
+const overview = useQuery(
+	api.notices.overview,
+	() => ({ cutoff: data.cutoff, today: data.today }),
+	() => ({
+		initialData: data.overview,
+		keepPreviousData: true
+	})
+);
 let openMonthKey = $state<string | null>(null);
 
 // Expected problems with the editor sit with the editor's actions; failures
@@ -469,6 +473,8 @@ const lastUpdatedTs = $derived.by(() => {
                                 {#key m.monthKey}
                                     <AdminPastMonthDetails
                                         monthKey={m.monthKey}
+                                        cutoff={data.cutoff}
+                                        today={data.today}
                                         {editorTarget}
                                         editor={noticeEditor}
                                         onEdit={(id: string) => {

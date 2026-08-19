@@ -34,7 +34,7 @@ $effect(() => { selectedMealType; blur.pulse(); });
 
 const mealsQuery = useQuery(
   api.meals.getTwoWeeks,
-  () => ({}),
+  () => ({ weekStart: data.weekStart }),
   () => ({ initialData: data.twoWeeks, keepPreviousData: true })
 );
 

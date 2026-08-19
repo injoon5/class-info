@@ -140,7 +140,9 @@ const CUSTOM_COLORS = [
   { id: 'orange', bgClass: 'bg-orange-400' },
   { id: 'pink',   bgClass: 'bg-pink-400' },
   { id: 'teal',   bgClass: 'bg-teal-500' },
-];
+] as const;
+
+type CustomEventColor = (typeof CUSTOM_COLORS)[number]['id'];
 
 type CellEvent = { id: string; title: string; chipClass: string; dotClass: string };
 
@@ -181,7 +183,7 @@ const CUSTOM_POPUP_STYLE: Record<string, { color: string; bg: string; labelColor
 const isAuthenticated = data.isAuthenticated as boolean;
 const sessionToken = $derived((data.sessionToken as string | null) ?? '');
 let newEventTitle = $state('');
-let newEventColor = $state('blue');
+let newEventColor = $state<CustomEventColor>('blue');
 let isSaving = $state(false);
 let saveError = $state<string | null>(null);
 

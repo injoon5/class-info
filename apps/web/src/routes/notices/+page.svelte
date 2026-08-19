@@ -14,10 +14,14 @@ import type { PageData } from './$types.js';
 const { data }: { data: PageData } = $props();
 let openMonthKey = $state<string | null>(null);
 
-const overview = useQuery(api.notices.overview, {}, () => ({
-    initialData: data,
-    keepPreviousData: true,
-}));
+const overview = useQuery(
+    api.notices.overview,
+    () => ({ cutoff: data.cutoff, today: data.today }),
+    () => ({
+        initialData: { currentGroups: data.currentGroups, pastMonths: data.pastMonths },
+        keepPreviousData: true,
+    })
+);
 </script>
 
 <svelte:head>
@@ -77,7 +81,7 @@ const overview = useQuery(api.notices.overview, {}, () => ({
                         {#if openMonthKey === month.monthKey}
                             <div transition:slide={{ duration: 300, easing: expoOut }}>
                                 {#key month.monthKey}
-                                    <PastMonthDetails monthKey={month.monthKey} />
+                                    <PastMonthDetails monthKey={month.monthKey} cutoff={data.cutoff} today={data.today} />
                                 {/key}
                             </div>
                         {/if}

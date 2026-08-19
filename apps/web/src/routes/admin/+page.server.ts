@@ -1,27 +1,26 @@
 import type { PageServerLoad, Actions } from './$types';
 import { redirect } from '@sveltejs/kit';
-import { ConvexHttpClient } from 'convex/browser';
-import { PUBLIC_CONVEX_URL } from '$env/static/public';
 import { api } from '@class-info/backend/convex/_generated/api';
 import { getAdminSession, SESSION_COOKIE, SESSION_MAX_AGE } from '$lib/server/auth';
-
-async function loadOverview() {
-	try {
-		const client = new ConvexHttpClient(PUBLIC_CONVEX_URL!);
-		return await client.query(api.notices.overview, {});
-	} catch {
-		return undefined;
-	}
-}
+import { convexHttp } from '$lib/convex';
+import { noticeClock } from '$lib/date';
 
 export const load: PageServerLoad = async ({ cookies }) => {
 	const { isAuthenticated, sessionToken } = await getAdminSession(cookies);
+	const clock = noticeClock();
 
 	// Only the authenticated panel renders the list, so don't pay for it on the
 	// PIN screen. A failure here is not fatal — the client query still runs.
-	const overview = isAuthenticated ? await loadOverview() : undefined;
+	let overview = undefined;
+	if (isAuthenticated) {
+		try {
+			overview = await convexHttp().query(api.notices.overview, clock);
+		} catch {
+			overview = undefined;
+		}
+	}
 
-	return { isAuthenticated, sessionToken, overview };
+	return { isAuthenticated, sessionToken, overview, ...clock };
 };
 
 export const actions: Actions = {
@@ -30,8 +29,7 @@ export const actions: Actions = {
 		const pin = data.get('pin') as string;
 
 		try {
-			const client = new ConvexHttpClient(PUBLIC_CONVEX_URL!);
-			const result = await client.mutation(api.settings.login, { pin });
+			const result = await convexHttp().mutation(api.settings.login, { pin });
 			if (result.ok) {
 				cookies.set(SESSION_COOKIE, result.token, {
 					path: '/',
@@ -53,8 +51,7 @@ export const actions: Actions = {
 		const token = cookies.get(SESSION_COOKIE);
 		if (token) {
 			try {
-				const client = new ConvexHttpClient(PUBLIC_CONVEX_URL!);
-				await client.mutation(api.settings.logout, { token });
+				await convexHttp().mutation(api.settings.logout, { token });
 			} catch {
 				// best-effort server-side revocation
 			}
