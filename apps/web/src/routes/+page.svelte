@@ -99,29 +99,8 @@ const upcomingEvents = $derived(
 );
 
 // ── Notices ───────────────────────────────────────────────────────────────────
-const PREVIEW_NOTICE_LIMIT = 4;
-
 const currentGroups = $derived(noticesQuery.data?.currentGroups ?? []);
-
-// Take whole groups until the notice budget runs out, trimming the last group
-// rather than dropping it — the earliest deadlines are the ones worth showing.
-const noticePreview = $derived.by(() => {
-	const preview: any[] = [];
-	let budget = PREVIEW_NOTICE_LIMIT;
-	for (const group of currentGroups as any[]) {
-		if (budget <= 0) break;
-		const notices = (group.notices ?? []).slice(0, budget);
-		if (notices.length === 0) continue;
-		preview.push({ ...group, notices });
-		budget -= notices.length;
-	}
-	return preview;
-});
-
-const hasNotices = $derived(noticePreview.length > 0);
-const shownNoticeCount = $derived(noticePreview.reduce((sum, g: any) => sum + (g.notices?.length ?? 0), 0));
-const totalNoticeCount = $derived(currentGroups.reduce((sum, g: any) => sum + (g.notices?.length ?? 0), 0));
-const remainingNoticeCount = $derived(totalNoticeCount - shownNoticeCount);
+const hasNotices = $derived(currentGroups.length > 0);
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 function formatEventDate(dateStr: string): string {
@@ -281,7 +260,7 @@ function isToday(dateStr: string): boolean {
 				</div>
 			{:else}
 				<div class="space-y-4">
-					{#each noticePreview as group (group.date)}
+					{#each currentGroups as group (group.date)}
 						<div>
 							<p class="text-sm font-semibold text-muted-foreground mb-2">
 								{group.displayDate}
@@ -293,15 +272,6 @@ function isToday(dateStr: string): boolean {
 							</div>
 						</div>
 					{/each}
-
-					{#if remainingNoticeCount > 0}
-						<a
-							href="/notices"
-							class="block text-center text-sm text-muted-foreground transition-colors duration-150 pointer:hover:text-foreground py-1"
-						>
-							+ {remainingNoticeCount}개 더 보기
-						</a>
-					{/if}
 				</div>
 			{/if}
 		</section>
