@@ -10,8 +10,14 @@ export const load = (async ({ cookies }) => {
 	const client = convexHttp();
 
 	const [schoolEvents, customEvents] = await Promise.all([
-		client.query(api.schedule.getSchoolEventsByYear, { year: String(year) }),
-		client.query(api.schedule.getCustomEventsByYear, { year: String(year) })
+		client.query(api.schedule.getSchoolEventsByYear, { year: String(year) }).catch((err) => {
+			console.error('calendar getSchoolEventsByYear', err);
+			return [];
+		}),
+		client.query(api.schedule.getCustomEventsByYear, { year: String(year) }).catch((err) => {
+			console.error('calendar getCustomEventsByYear', err);
+			return [];
+		})
 	]);
 
 	const { isAuthenticated, sessionToken } = await getAdminSession(cookies);

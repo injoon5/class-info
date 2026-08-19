@@ -2,6 +2,7 @@ import { internalAction, internalMutation, query } from "./_generated/server";
 import { v } from "convex/values";
 import { internal } from "./_generated/api";
 import { addDaysYyyymmdd, assertYyyymmdd, getWeekRangeKst, toYyyymmdd } from "./dates";
+import { projectMeal } from "./project";
 import { mealWeek } from "./validators";
 
 type ExternalMeal = {
@@ -126,14 +127,17 @@ export const fetchWeek = internalAction({
 });
 
 export const getTwoWeeks = query({
-  args: { weekStart: v.string() },
+  // weekStart is optional so a Convex deploy that lands before the frontend
+  // doesn't 500 old clients that called this with {}.
+  args: { weekStart: v.optional(v.string()) },
   returns: v.object({
     thisWeek: mealWeek,
     nextWeek: mealWeek,
     availableMealTypes: v.array(v.string()),
   }),
-  handler: async (ctx, { weekStart }) => {
-    assertYyyymmdd(weekStart, "weekStart");
+  handler: async (ctx, { weekStart: weekStartArg }) => {
+    if (weekStartArg !== undefined) assertYyyymmdd(weekStartArg, "weekStart");
+    const weekStart = weekStartArg ?? toYyyymmdd(getWeekRangeKst(0).start);
     const thisEnd = addDaysYyyymmdd(weekStart, 4);
     const nextStart = addDaysYyyymmdd(weekStart, 7);
     const nextEnd = addDaysYyyymmdd(weekStart, 11);
@@ -143,10 +147,14 @@ export const getTwoWeeks = query({
       .withIndex("by_date_type", (q) => q.gte("date", weekStart).lte("date", nextEnd))
       .collect();
 
-    const byDateType = new Map(rows.map((m) => [`${m.date}:${m.mealType}`, m]));
+    const byDateType = new Map(rows.map((m) => [`${m.date}:${m.mealType}`, projectMeal(m)]));
 
     const buildWeek = (start: string, end: string) => {
-      const days: { date: string; lunch: typeof rows[number] | null; dinner: typeof rows[number] | null }[] = [];
+      const days: {
+        date: string;
+        lunch: ReturnType<typeof projectMeal> | null;
+        dinner: ReturnType<typeof projectMeal> | null;
+      }[] = [];
       let cursor = start;
       while (cursor <= end) {
         days.push({

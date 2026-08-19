@@ -3,6 +3,7 @@ import { v } from "convex/values";
 import { internal } from "./_generated/api";
 import { requireAdmin } from "./auth";
 import { assertYyyymmdd, getNowKst } from "./dates";
+import { projectSchedule } from "./project";
 import { customEventColor, scheduleDoc } from "./validators";
 
 type ExternalScheduleEvent = {
@@ -167,12 +168,13 @@ function eventsByYear(source: "school" | "custom") {
     returns: v.array(scheduleDoc),
     handler: async (ctx, { year }) => {
       if (!YEAR_RE.test(year)) return [];
-      return await ctx.db
+      const rows = await ctx.db
         .query("schedules")
         .withIndex("by_source_date", (q) =>
           q.eq("source", source).gte("date", `${year}0101`).lte("date", `${year}1231`)
         )
         .collect();
+      return rows.map(projectSchedule).filter((e): e is NonNullable<typeof e> => e !== null);
     },
   });
 }
@@ -187,10 +189,11 @@ export const getEventsInRange = query({
     assertYyyymmdd(start, "start");
     assertYyyymmdd(end, "end");
     if (start > end) return [];
-    return await ctx.db
+    const rows = await ctx.db
       .query("schedules")
       .withIndex("by_date", (q) => q.gte("date", start).lte("date", end))
       .collect();
+    return rows.map(projectSchedule).filter((e): e is NonNullable<typeof e> => e !== null);
   },
 });
 

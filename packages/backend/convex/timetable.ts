@@ -2,6 +2,7 @@ import { internalAction, internalMutation, query } from "./_generated/server";
 import { v } from "convex/values";
 import { internal } from "./_generated/api";
 import type { Id } from "./_generated/dataModel";
+import { projectTimetable } from "./project";
 import { timetableDoc, timetableSlot } from "./validators";
 
 export const upsert = internalMutation({
@@ -90,9 +91,10 @@ export const getByWeek = query({
   args: { week: v.union(v.literal(0), v.literal(1)) },
   returns: v.union(timetableDoc, v.null()),
   handler: async (ctx, { week }) => {
-    return await ctx.db
+    const row = await ctx.db
       .query("timetables")
       .withIndex("by_week", (q) => q.eq("week", week))
       .first();
+    return row ? projectTimetable(row) : null;
   },
 });
