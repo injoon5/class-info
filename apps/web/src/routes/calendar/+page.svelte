@@ -448,7 +448,7 @@ const dayNames = ['일','월','화','수','목','금','토'];
         {selectedDateInfo.year}년
       </p>
       <div class="flex items-baseline gap-2 flex-wrap">
-        <h2 id="day-popup-title" class="text-2xl font-bold tracking-tight leading-tight text-foreground">
+        <h2 id="day-popup-title" class="text-2xl font-bold leading-tight text-foreground">
           {monthNames[selectedDateInfo.month - 1]} {selectedDateInfo.day}일
         </h2>
         <span class="text-base text-muted-foreground leading-tight">{selectedDateInfo.weekday}요일</span>
