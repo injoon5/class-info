@@ -14,6 +14,8 @@ import {
 import type { PublicEvent } from '@class-info/backend/convex/validators';
 import { focusOnElement } from '$lib/actions/focus';
 import PillButton from '$lib/components/ui/PillButton.svelte';
+import { fade, slide } from 'svelte/transition';
+import { fadeFast, fadeIn, fadeOut, slideY } from '$lib/transitions';
 import type { PageData } from './$types.js';
 
 const { data }: { data: PageData } = $props();
@@ -350,15 +352,21 @@ const dayNames = ['일','월','화','수','목','금','토'];
     <p class="mb-3 text-sm font-semibold text-destructive" role="alert">{saveError}</p>
   {/if}
 
+  <div class="grid">
   {#if !popupAddMode}
-    <PillButton variant="secondary" class="w-full" onclick={() => { popupAddMode = true; saveError = null; }}>
-      <svg viewBox="0 0 20 20" fill="currentColor" class="w-4 h-4 flex-shrink-0" aria-hidden="true">
-        <path fill-rule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clip-rule="evenodd"/>
-      </svg>
-      일정 추가
-    </PillButton>
+    <div class="col-start-1 row-start-1" out:fade={fadeFast}>
+      <PillButton variant="secondary" class="w-full" onclick={() => { popupAddMode = true; saveError = null; }}>
+        <svg viewBox="0 0 20 20" fill="currentColor" class="w-4 h-4 flex-shrink-0" aria-hidden="true">
+          <path fill-rule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clip-rule="evenodd"/>
+        </svg>
+        일정 추가
+      </PillButton>
+    </div>
   {:else}
-    <div class="space-y-5 pt-1">
+    <!-- Height only — no fly. A transform on this node plus the keyboard
+         is what froze the sheet on iOS. -->
+    <div class="col-start-1 row-start-1" transition:slide={slideY}>
+    <div class="space-y-5 pt-1" in:fade={fadeIn} out:fade={fadeOut}>
       <div class="space-y-3.5">
         <input
           type="text"
@@ -369,7 +377,11 @@ const dayNames = ['일','월','화','수','목','금','토'];
           class="w-full h-11 px-3.5 rounded-lg bg-muted text-base text-foreground placeholder:text-muted-foreground"
           onkeydown={(e) => {
             if (e.key === 'Enter' && !e.isComposing) handleAddEvent();
-            if (e.key === 'Escape') { popupAddMode = false; newEventTitle = ''; }
+            if (e.key === 'Escape') {
+              if (document.activeElement instanceof HTMLElement) document.activeElement.blur();
+              popupAddMode = false;
+              newEventTitle = '';
+            }
           }}
         />
 
@@ -378,7 +390,7 @@ const dayNames = ['일','월','화','수','목','금','토'];
           <!-- A check marks the choice. A ring would have read as focus, which
                is the one signal this row must not borrow. -->
           <div class="flex gap-2.5 touch:gap-4" role="radiogroup" aria-label="일정 색상">
-            {#each CUSTOM_EVENT_COLORS as id}
+            {#each CUSTOM_EVENT_COLORS as id (id)}
               <button
                 type="button"
                 onclick={() => (newEventColor = id)}
@@ -419,7 +431,9 @@ const dayNames = ['일','월','화','수','목','금','토'];
         />
       </div>
     </div>
+    </div>
   {/if}
+  </div>
 {/snippet}
 
 <!-- Day detail drawer -->
