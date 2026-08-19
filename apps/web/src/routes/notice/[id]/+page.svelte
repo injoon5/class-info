@@ -59,10 +59,9 @@ $effect(() => {
 
 <div class="min-h-screen">
 	<div class="max-w-4xl mx-auto px-4 pt-4 pb-2">
-		<!-- Header -->
 		<a
 			href="/notices"
-			class="touch-target inline-flex items-center mb-1 text-sm text-muted-foreground pointer:hover:text-foreground transition-colors duration-150 pressable"
+			class="touch-target pressable mb-2.5 inline-flex w-fit items-center rounded-full border border-border bg-card py-1.5 pl-2.5 pr-3 text-sm leading-tight text-muted-foreground transition-colors duration-150 pointer:hover:bg-muted pointer:hover:text-foreground"
 		>
 			← 뒤로
 		</a>
@@ -78,8 +77,10 @@ $effect(() => {
 			<div class="mb-4 bg-card border border-border rounded-3xl p-4 sm:p-6">
 				<div class="mb-4">
 					<div class="flex items-center gap-2 sm:gap-3 mb-1.5 sm:mb-2">
-						<span class="px-2 py-1 text-sm font-semibold rounded-md {getTypeColor(detail.data.notice.type)}">
-							{detail.data.notice.type}
+						<span class="inline-flex rounded-[9px] border border-border p-[3px]">
+							<span class="rounded-md px-2 py-1 text-sm font-semibold {getTypeColor(detail.data.notice.type)}">
+								{detail.data.notice.type}
+							</span>
 						</span>
 						<span class="text-base sm:text-lg text-muted-foreground">
 							{detail.data.notice.subject}
