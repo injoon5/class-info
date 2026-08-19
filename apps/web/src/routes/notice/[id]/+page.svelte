@@ -62,7 +62,7 @@ $effect(() => {
 		<!-- Header -->
 		<a
 			href="/notices"
-			class="inline-flex items-center gap-1 sm:mb-3 mb-2 py-1 sm:py-2 text-sm text-muted-foreground pointer:hover:text-foreground transition-colors pressable"
+			class="touch-target inline-flex items-center mb-1 text-sm text-muted-foreground pointer:hover:text-foreground transition-colors duration-150 pressable"
 		>
 			← 뒤로
 		</a>
@@ -75,7 +75,7 @@ $effect(() => {
 		{:else if !detail.data?.notice}
 			<div class="text-center py-16 text-sm text-muted-foreground">공지를 찾을 수 없어요</div>
 		{:else}
-			<div class="mb-4 mt-2 sm:mt-3 bg-card border border-border rounded-3xl p-4 sm:p-6">
+			<div class="mb-4 bg-card border border-border rounded-3xl p-4 sm:p-6">
 				<div class="mb-4">
 					<div class="flex items-center gap-2 sm:gap-3 mb-1.5 sm:mb-2">
 						<span class="px-2 py-1 text-sm font-semibold rounded-md {getTypeColor(detail.data.notice.type)}">
