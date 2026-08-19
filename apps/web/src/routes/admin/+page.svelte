@@ -12,9 +12,10 @@ import ConfirmDeleteActions from '../../components/ConfirmDeleteActions.svelte';
 import AdminPastMonthDetails from '../../components/AdminPastMonthDetails.svelte';
 import DisclosureCaret from '../../components/DisclosureCaret.svelte';
 import { autosize } from '$lib/actions/autosize';
+import { onMount } from 'svelte';
 import { fade, slide } from 'svelte/transition';
 import { flip } from 'svelte/animate';
-import { fadeIn, fadeOut, flipMove, slideY } from '$lib/transitions';
+import { fadeIn, fadeOut, flipMove, slideNone, slideY } from '$lib/transitions';
 import { useQuery } from 'convex-svelte';
 import type { PageData, ActionData } from './$types';
 
@@ -157,6 +158,13 @@ async function handleDelete(notice: any) {
 
 // Grouped notices from overview
 const allGroupedNotices = $derived(overview.data?.currentGroups || []);
+
+// First paint is silent so a page of date groups doesn't all slide in.
+let live = $state(false);
+onMount(() => {
+	live = true;
+});
+const listSlide = $derived(live ? slideY : slideNone);
 
 // Most recent notice timestamp, or null when there are none (avoids Math.max()
 // returning -Infinity → "Invalid Date").
@@ -372,13 +380,13 @@ const lastUpdatedTs = $derived.by(() => {
 				<PillButton text="다시 시도" onclick={() => window.location.reload()} class="mt-3" />
 			</div>
         {:else}
-			<!-- Current and Future Notices -->
-            {#if allGroupedNotices && allGroupedNotices.length > 0}
+			<!-- Current and Future Notices. Else on the each so the last date
+			     group can outro instead of a length check tearing it down. -->
             {#each allGroupedNotices as group (group.date)}
 				<div
 					class="mb-6"
 					animate:flip={flipMove}
-					out:slide={slideY}
+					transition:slide={listSlide}
 				>
 					<h2 class="text-base font-semibold mb-3 text-foreground border-l-[3px] border-foreground pl-3">
 						{group.displayDate}
@@ -386,7 +394,7 @@ const lastUpdatedTs = $derived.by(() => {
 
                     <div class="grid gap-2">
                         {#each group.notices as notice (notice._id)}
-                            <div animate:flip={flipMove} out:slide={slideY}>
+                            <div animate:flip={flipMove} transition:slide={listSlide}>
                             {#if editorTarget === String(notice._id)}
                                 {@render noticeEditor()}
                             {:else}
@@ -431,17 +439,24 @@ const lastUpdatedTs = $derived.by(() => {
                         {/each}
                     </div>
 				</div>
-            {/each}
             {:else}
                 <div class="text-center py-16 text-sm text-muted-foreground">등록된 공지가 없습니다</div>
-            {/if}
+            {/each}
 
 			<!-- Past Notices by Month (lazy) -->
 			{#if overview.data?.pastMonths && overview.data.pastMonths.length > 0}
-                <div class="mt-6 pt-6 border-t border-border">
+                <div class="mt-6 pt-6 border-t border-border" transition:slide={listSlide}>
                     <h2 class="text-base sm:text-lg font-semibold mb-3 text-muted-foreground">지난 공지</h2>
                     {#each overview.data.pastMonths as m (m.monthKey)}
-                        <details class="mb-1.5 sm:mb-2 bg-card border border-border rounded-3xl overflow-hidden" open={openMonthKey === m.monthKey}>
+                        <div
+                            class="mb-1.5 sm:mb-2"
+                            animate:flip={flipMove}
+                            transition:slide={listSlide}
+                        >
+                        <details
+                            class="bg-card border border-border rounded-3xl overflow-hidden"
+                            open={openMonthKey === m.monthKey}
+                        >
                             <summary
                                 class="touch-target flex items-center gap-2 px-3 sm:px-4 py-2.5 sm:py-3 cursor-pointer list-none transition-colors duration-150 pointer:hover:bg-muted text-muted-foreground font-semibold text-sm sm:text-base [&::-webkit-details-marker]:hidden"
                                 onclick={(e) => {
@@ -475,6 +490,7 @@ const lastUpdatedTs = $derived.by(() => {
                                 </div>
                             {/if}
                         </details>
+                        </div>
                     {/each}
                 </div>
             {/if}

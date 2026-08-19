@@ -45,7 +45,7 @@ const groups = useQuery(api.notices.pastByMonth, { monthKey });
             <div
                 class="mb-3 last:mb-0"
                 animate:flip={flipMove}
-                out:slide={slideY}
+                transition:slide={slideY}
             >
                 <h3 class="text-sm font-semibold mb-2 text-muted-foreground border-l-2 border-border pl-2">
                     {group.displayDate}
@@ -54,7 +54,7 @@ const groups = useQuery(api.notices.pastByMonth, { monthKey });
                     {#each group.notices as notice (notice._id)}
                         <div
                             animate:flip={flipMove}
-                            out:slide={slideY}
+                            transition:slide={slideY}
                         >
                         {#if editor && editorTarget === String(notice._id)}
                             {@render editor()}
