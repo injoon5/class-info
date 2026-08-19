@@ -53,8 +53,30 @@ let openMonthKey = $state<string | null>(null);
 let formError = $state<string | null>(null);
 let panelError = $state<string | null>(null);
 
+const EMPTY_NOTICE = {
+	title: '',
+	subject: '',
+	type: '숙제' as '수행평가' | '숙제' | '준비물' | '기타',
+	description: '',
+	dueDate: '',
+	files: [] as any[]
+};
+
+// Toggling the header button must open an empty editor, not inherit whatever
+// notice happened to be open.
+function startNewNotice() {
+	if (editorTarget === 'new') {
+		resetForm();
+		return;
+	}
+	noticeForm = { ...EMPTY_NOTICE };
+	formError = null;
+	confirmingDeleteId = null;
+	editorTarget = 'new';
+}
+
 function resetForm() {
-	noticeForm = { title: '', subject: '', type: '숙제', description: '', dueDate: '', files: [] };
+	noticeForm = { ...EMPTY_NOTICE };
 	editorTarget = null;
 	formError = null;
 }
@@ -296,7 +318,7 @@ const lastUpdatedTs = $derived.by(() => {
 			<div class="flex items-center gap-2">
 				<PillButton
 					text={editorTarget === 'new' ? '취소' : '새 공지 추가'}
-					onclick={() => (editorTarget = editorTarget === 'new' ? null : 'new')}
+					onclick={startNewNotice}
 					emphasized={!overview.isLoading && allGroupedNotices.length === 0}
 				/>
 
@@ -402,7 +424,7 @@ const lastUpdatedTs = $derived.by(() => {
                 <div class="mt-6 pt-6 border-t border-border">
                     <h2 class="text-base sm:text-lg font-semibold mb-3 text-muted-foreground">지난 공지</h2>
                     {#each overview.data.pastMonths as m (m.monthKey)}
-                        <details class="mb-1.5 sm:mb-2 bg-card border border-border rounded-xl overflow-hidden" open={openMonthKey === m.monthKey}>
+                        <details class="mb-1.5 sm:mb-2 bg-card border border-border rounded-2xl overflow-hidden" open={openMonthKey === m.monthKey}>
                             <summary
                                 class="touch-target flex items-center gap-2 px-3 sm:px-4 py-2.5 sm:py-3 cursor-pointer list-none transition-colors duration-150 pointer:hover:bg-muted text-muted-foreground font-semibold text-sm sm:text-base tabular-nums [&::-webkit-details-marker]:hidden"
                                 onclick={(e) => {

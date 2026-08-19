@@ -20,7 +20,7 @@ function select(v: Value) {
 <div class="flex justify-center">
 	<div class="relative flex w-full rounded-xl bg-muted p-1 h-10 sm:h-11 text-sm sm:text-base">
 		<div
-			class="absolute top-1 h-8 sm:h-9 w-[calc(50%-0.25rem)] rounded-lg bg-card shadow-sm ring-1 ring-border transition-transform duration-300 ease-out z-0"
+			class="absolute top-1 h-8 sm:h-9 w-[calc(50%-0.25rem)] rounded-lg bg-elevated shadow-sm dark:shadow-none transition-transform duration-300 ease-out z-0"
 			style="transform: translateX({activeIndex * 100}%);"
 			aria-hidden="true"
 		></div>

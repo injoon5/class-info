@@ -25,6 +25,7 @@
 	--primary-foreground: oklch(0.99 0 0);
 	--destructive: oklch(0.58 0.21 27);
 	--ring: oklch(0.55 0 0);
+	--elevated: oklch(1 0 0);
 }
 
 .dark {
@@ -39,6 +40,8 @@
 	--primary-foreground: oklch(0.2 0 0);
 	--destructive: oklch(0.65 0.19 25);
 	--ring: oklch(0.6 0 0);
+	/* Lighter than --muted (0.27) so it reads as lifted, not recessed. */
+	--elevated: oklch(0.325 0 0);
 }
 
 @theme inline {
@@ -69,6 +72,7 @@
 	--color-primary-foreground: var(--primary-foreground);
 	--color-destructive: var(--destructive);
 	--color-ring: var(--ring);
+	--color-elevated: var(--elevated);
 }
 
 html {
@@ -124,6 +128,14 @@ html {
 :focus-visible {
 	outline: 2px solid var(--ring);
 	outline-offset: 2px;
+}
+/* A filled field already draws its own edge. Offsetting the ring leaves a gap
+   of page colour between the two, which reads as a second border rather than
+   as focus — so on fields the ring sits flush against the fill. */
+input:focus-visible,
+textarea:focus-visible,
+select:focus-visible {
+	outline-offset: 0;
 }
 
 @layer utilities {

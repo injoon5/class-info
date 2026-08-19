@@ -412,13 +412,13 @@ const dayNames = ['일','월','화','수','목','금','토'];
   {:else}
     <!-- The composer grows out of the button's place and shrinks back on cancel. -->
     <div
-      class="space-y-4"
+      class="space-y-5"
       in:scale={{ start: 0.3, duration: 300, easing: expoOut }}
       out:scale={{ start: 0.3, duration: 300, easing: expoOut }}
     >
       <!-- Title and colour are one thing — what the event is — so they sit
            tight together, with the action band set apart from them. -->
-      <div class="space-y-2.5">
+      <div class="space-y-3.5">
         <input
           type="text"
           bind:value={newEventTitle}

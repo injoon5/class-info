@@ -40,6 +40,14 @@ function getMaxPeriods(): number {
 
 // "1교시(08:40~09:30)" → "08:40". The end time is the next period's start,
 // so it earns nothing in the app's narrowest column.
+// Korean counts by code point here, not UTF-16 unit.
+function subjectSizeClass(subject: string): string {
+	const n = [...subject].length;
+	if (n <= 3) return 'text-list sm:text-xl';
+	if (n === 4) return 'text-sm sm:text-xl';
+	return 'text-xs sm:text-xl';
+}
+
 function getPeriodLabel(period: number): string {
 	const times = timetableQuery.data?.day_time || [];
 	const label = times[period - 1];
@@ -109,10 +117,10 @@ function getPeriodLabel(period: number): string {
 								<td class="border border-border py-3 sm:py-6 text-center {day[i]?.replaced ? 'bg-amber-100/70 dark:bg-amber-900/20' : 'bg-card'}">
 									{#if day[i]}
 										<div
-											class="px-1 truncate text-list sm:text-xl font-semibold {day[i].replaced ? 'text-amber-700 dark:text-amber-300' : 'text-foreground'}"
+											class="truncate {subjectSizeClass(day[i].subject)} font-semibold {day[i].replaced ? 'text-amber-700 dark:text-amber-300' : 'text-foreground'}"
 											title={day[i].subject}
 										>{day[i].subject}</div>
-										<div class="px-1 truncate text-sm sm:text-base mt-0.5 text-muted-foreground">{day[i].teacher}</div>
+										<div class="truncate text-sm sm:text-base mt-0.5 text-muted-foreground">{day[i].teacher}</div>
 									{:else}
 										<span class="text-muted-foreground/50 text-base sm:text-lg" aria-hidden="true">-</span>
 										<span class="sr-only">수업 없음</span>
