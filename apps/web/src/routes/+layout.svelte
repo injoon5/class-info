@@ -30,16 +30,43 @@
 	});
 
 	// Keep the current page for a beat so a preloaded nav doesn't flash bones.
+	const SKELETON_DELAY_MS = 80;
+	// …and once bones are up, keep them up. A 200ms navigation used to render
+	// content → bones → content, and a frame of bones between two frames of
+	// the real page costs more than the wait it saved.
+	const SKELETON_MIN_MS = 320;
+
 	let pendingSkeleton = $state<typeof pendingKind>(null);
+	// Plain locals: the effect below decides what to do based on what is on
+	// screen, and reading the state it also writes would make it depend on
+	// itself.
+	let shownKind: typeof pendingKind = null;
+	let shownAt = 0;
+
 	$effect(() => {
 		const kind = pendingKind;
-		if (!kind) {
+
+		if (kind) {
+			const t = setTimeout(() => {
+				shownKind = kind;
+				shownAt = Date.now();
+				pendingSkeleton = kind;
+			}, SKELETON_DELAY_MS);
+			return () => clearTimeout(t);
+		}
+
+		if (!shownKind) return;
+
+		const remaining = SKELETON_MIN_MS - (Date.now() - shownAt);
+		if (remaining <= 0) {
+			shownKind = null;
 			pendingSkeleton = null;
 			return;
 		}
 		const t = setTimeout(() => {
-			pendingSkeleton = kind;
-		}, 80);
+			shownKind = null;
+			pendingSkeleton = null;
+		}, remaining);
 		return () => clearTimeout(t);
 	});
 
@@ -48,6 +75,31 @@
 			collectorUrl: 'https://collector.onedollarstats.com/events',
 			autocollect: true,
 		});
+	});
+
+	// Press feedback scales the control down, and Chrome applies `:active` on
+	// touchstart — before it knows whether the finger is pressing or starting
+	// a scroll. Flag the scroll so app.css can stand the transform down.
+	// Capturing, so nested scrollers (tables, the drawer body) count too.
+	onMount(() => {
+		const root = document.documentElement;
+		let timer: ReturnType<typeof setTimeout> | null = null;
+
+		const onScroll = () => {
+			root.dataset.scrolling = '';
+			if (timer) clearTimeout(timer);
+			timer = setTimeout(() => {
+				delete root.dataset.scrolling;
+				timer = null;
+			}, 120);
+		};
+
+		window.addEventListener('scroll', onScroll, { passive: true, capture: true });
+		return () => {
+			window.removeEventListener('scroll', onScroll, { capture: true });
+			if (timer) clearTimeout(timer);
+			delete root.dataset.scrolling;
+		};
 	});
 </script>
     <a href="#main" class="sr-only focus:not-sr-only focus:fixed focus:z-[1000] focus:top-2 focus:left-2 focus:bg-primary focus:text-primary-foreground focus:px-3 focus:py-2 focus:rounded-lg">본문으로 건너뛰기</a>

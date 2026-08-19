@@ -12,7 +12,11 @@ let {
 	onchange
 }: { options: [Option, Option]; value: Value; onchange?: (v: Value) => void } = $props();
 
-const activeIndex = $derived(options.findIndex((o) => o.value === value));
+// A value that matches no option (a meal type that stopped being served while
+// it was selected) leaves `findIndex` at -1, which sent the thumb sliding a
+// full width off the left edge of the track. Hold the first segment until the
+// owner reconciles the value.
+const activeIndex = $derived(Math.max(0, options.findIndex((o) => o.value === value)));
 const thumbX = Tween.of(() => activeIndex * 100, tweenMove);
 
 function select(v: Value) {

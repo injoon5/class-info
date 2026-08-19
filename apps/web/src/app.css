@@ -225,6 +225,27 @@ select:focus-visible {
 	}
 }
 
+/* Chrome applies `:active` the moment a finger lands and only drops it once
+   it has decided the touch was a scroll, so a card shrinks and springs back
+   as the list starts moving under it. The layout script flags an in-flight
+   scroll; press feedback sits it out. */
+[data-scrolling] .pressable:active,
+[data-scrolling] .pressable-lg:active,
+[data-scrolling] .pressable-xl:active,
+[data-scrolling] .pressable-icon:active {
+	transform: none;
+}
+
+/* A spinner stopped mid-rotation reads as a broken graphic, not as waiting —
+   and a ring turning in place moves nothing the reader is tracking. It keeps
+   going, slower. Its own keyframes, so it cannot break if Tailwind renames
+   the utility's. */
+@keyframes patient-spin {
+	to {
+		transform: rotate(360deg);
+	}
+}
+
 @media (prefers-reduced-motion: reduce) {
 	*, *::before, *::after {
 		animation-duration: 0.001ms !important;
@@ -240,6 +261,9 @@ select:focus-visible {
 	.pressable-xl:active,
 	.pressable-icon:active {
 		transform: none;
+	}
+	.animate-spin {
+		animation: patient-spin 1.6s linear infinite !important;
 	}
 }
 

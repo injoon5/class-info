@@ -1,7 +1,7 @@
 <script lang="ts">
 import type { Snippet } from 'svelte';
 import { Tween } from 'svelte/motion';
-import { tweenFade, tweenPanel, tweenPanelClose } from '$lib/transitions';
+import { PANEL_CLOSE_MS, reducedMotion, tweenFade, tweenPanel, tweenPanelClose } from '$lib/transitions';
 
 interface Props {
   open: boolean;
@@ -13,7 +13,11 @@ interface Props {
 
 const { open, onclose, header, children, footer }: Props = $props();
 
-const CLOSE_MS = 180;
+// Unmount one frame's grace after the close tween lands. Derived from the
+// tween itself so retiming the dismiss can't leave the teardown behind — and
+// collapsed under reduced motion, where the tween is instant and a fixed wait
+// would just hold a finished sheet on screen.
+const closeDelay = () => (reducedMotion() ? 0 : PANEL_CLOSE_MS + 30);
 
 // ── Animation state ─────────────────────────────────────────────────────────
 
@@ -56,6 +60,14 @@ $effect(() => {
 // ancestor. Drop the transform once the sheet is parked.
 const sheetSettled = $derived(
   !isDragging && isVisible && Math.abs(panelY.current) < 0.5
+);
+
+// `backdrop-filter` re-samples the whole page behind the scrim on every frame
+// its opacity changes, which is the most expensive thing either animation
+// does on a phone. The tint alone carries the fade; the blur waits for the
+// scrim to land and then eases in on its own.
+const scrimSettled = $derived(
+  !isDragging && isVisible && scrimOpacity.current > 0.99
 );
 
 const panelStyle = $derived(
@@ -109,13 +121,17 @@ async function close() {
   if (panelEl) panelEl.style.transform = '';
   if (backdropEl) backdropEl.style.opacity = '';
   (document.activeElement instanceof HTMLElement ? document.activeElement : null)?.blur();
+  // Re-measure: the panel grows after it opens (nutrient tables, the calendar
+  // add form sliding out), and closing by a height captured at open time left
+  // the bottom of the sheet still on screen when it unmounted.
+  if (panelEl) panelHeight = panelEl.offsetHeight;
   if (isMobile) panelY.set(panelHeight, tweenPanelClose);
   else {
     panelScale.set(0.95, tweenPanelClose);
     panelOpacity.set(0, tweenFade);
   }
   scrimOpacity.set(0, tweenPanelClose);
-  await new Promise<void>(r => setTimeout(r, CLOSE_MS + 30));
+  await new Promise<void>(r => setTimeout(r, closeDelay()));
   mounted = false;
   isClosing = false;
   onclose();
@@ -213,6 +229,10 @@ let lastPointerY = 0;
 let lastPointerTime = 0;
 let pointerVelocity = 0;
 
+// A pointer that hasn't moved in this long is standing still, whatever the
+// last sample said.
+const VELOCITY_STALE_MS = 60;
+
 // After the content reaches its top, a fast flick still has momentum in it.
 // Dragging within that window is almost always the tail of the scroll rather
 // than an attempt to dismiss, so the sheet ignores it.
@@ -267,6 +287,19 @@ function moveDrag(y: number) {
   lastPointerY = y;
   lastPointerTime = now;
 
+  // An upward gesture is handed to the scroller, so the content can scroll out
+  // from under an in-flight drag. Rebase to where the finger is now: coming
+  // back down should start the sheet from rest, not jump it by the whole
+  // excursion the scroller already consumed.
+  if (contentEl && contentEl.scrollTop > 0) {
+    pointerStartY = y;
+    if (dragY !== 0) {
+      dragY = 0;
+      scheduleDragPaint();
+    }
+    return;
+  }
+
   const raw = y - pointerStartY;
   dragY = raw >= 0 ? raw : contentCanScroll() ? 0 : rubberBand(raw);
   scheduleDragPaint();
@@ -275,7 +308,13 @@ function moveDrag(y: number) {
 function endDrag() {
   if (!isDragging) return;
   if (dragFrame) { cancelAnimationFrame(dragFrame); dragFrame = 0; }
-  const dismiss = dragY > panelHeight * 0.4 || pointerVelocity > 0.5;
+  // Velocity only updates while the pointer moves. Flicking down and then
+  // holding still before letting go left the flick's velocity standing, and
+  // the sheet dismissed out from under a finger that had deliberately
+  // stopped — so a pointer that has been at rest is at rest.
+  const velocity =
+    performance.now() - lastPointerTime > VELOCITY_STALE_MS ? 0 : pointerVelocity;
+  const dismiss = dragY > panelHeight * 0.4 || velocity > 0.5;
   const y = dragY;
   dragY = 0;
   pointerVelocity = 0;
@@ -423,7 +462,9 @@ function onPanelKeydown(e: KeyboardEvent) {
   <!-- Backdrop -->
   <div
     bind:this={backdropEl}
-    class="fixed inset-0 bg-black/40 dark:bg-black/60 z-50 backdrop-blur-sm"
+    class="fixed inset-0 bg-black/40 dark:bg-black/60 z-50
+           transition-[backdrop-filter] duration-150 ease-out
+           {scrimSettled ? 'backdrop-blur-sm' : 'will-change-[opacity]'}"
     style={isDragging ? '' : `opacity: ${scrimOpacity.current}`}
     role="presentation"
     onclick={close}
