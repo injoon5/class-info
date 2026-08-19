@@ -173,7 +173,7 @@ function openMealDrawer(day: any) {
           {selectedMeal.dateInfo.month}월 {selectedMeal.dateInfo.day}일
         </h2>
         <span class="text-base text-muted-foreground leading-tight">{selectedMeal.dateInfo.weekday}요일</span>
-        <span class="text-sm font-semibold px-2 py-0.5 rounded-full bg-muted text-muted-foreground leading-none">
+        <span class="text-base font-semibold px-2.5 py-1 rounded-full bg-primary text-primary-foreground leading-tight">
           {selectedMeal.meal.mealType}
         </span>
       </div>

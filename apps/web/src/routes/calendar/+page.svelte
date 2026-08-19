@@ -492,7 +492,7 @@ const dayNames = ['일','월','화','수','목','금','토'];
         </h2>
         <span class="text-base text-muted-foreground leading-tight">{selectedDateInfo.weekday}요일</span>
         {#if selectedDateInfo.isToday}
-          <span class="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-primary text-primary-foreground leading-none">오늘</span>
+          <span class="text-xs font-semibold px-2 py-0.5 rounded-full bg-primary text-primary-foreground leading-tight">오늘</span>
         {/if}
       </div>
     {/if}
