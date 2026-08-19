@@ -165,7 +165,7 @@ function openMealDrawer(day: any) {
 >
   {#snippet header()}
     {#if selectedMeal}
-      <p class="text-xs font-semibold text-muted-foreground mb-1 tracking-wide tabular-nums">
+      <p class="text-xs font-semibold text-muted-foreground mb-1 tabular-nums">
         {selectedMeal.dateInfo.year}년
       </p>
       <div class="flex items-baseline gap-2 flex-wrap">
@@ -184,9 +184,9 @@ function openMealDrawer(day: any) {
   {#if selectedMeal}
     <ul class="space-y-2">
       {#each selectedMeal.meal.dishes as dish}
-        <li class="flex items-start gap-2.5 py-2 border-b border-border last:border-0">
+        <li class="flex items-start gap-2.5 py-1">
           <span class="mt-1.5 w-1.5 h-1.5 rounded-full bg-muted-foreground/50 flex-shrink-0"></span>
-          <span class="text-sm text-foreground leading-snug">{dish}</span>
+          <span class="text-base text-foreground leading-snug">{dish}</span>
         </li>
       {/each}
     </ul>
@@ -198,7 +198,7 @@ function openMealDrawer(day: any) {
             return idx !== -1 ? [s.slice(0, idx).trim(), s.slice(idx + 3).trim()] : [s, ''];
           })
         : []}
-      <div class="mt-4 pt-4 border-t border-border">
+      <div class="mt-4 pt-4 -mx-4 px-4 border-t border-border">
         {#if selectedMeal.meal.calories}
           <div class="flex items-center gap-2 mb-3">
             <span class="text-xs font-semibold text-muted-foreground">열량</span>

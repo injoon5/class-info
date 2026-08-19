@@ -19,12 +19,17 @@ let mounted = $state(false);
 let isVisible = $state(false);
 let isClosing = false; // non-reactive guard
 
-let dragY = $state(0);
+// Not reactive: written to the DOM directly while dragging. Vaul's lesson was
+// about CSS variables forcing a recalc on every child; the same instinct
+// applies to re-deriving a style string 60 times a second.
+let dragY = 0;
 let isDragging = $state(false);
 let panelHeight = $state(800);
 
 let panelEl = $state<HTMLElement | undefined>();
 let contentEl = $state<HTMLElement | undefined>();
+let backdropEl = $state<HTMLElement | undefined>();
+let wrapperEl = $state<HTMLElement | undefined>();
 
 // Detect mobile for animation type (slide vs scale+fade)
 let isMobile = $state(true);
@@ -41,17 +46,33 @@ $effect(() => {
   if (panelEl) panelHeight = panelEl.offsetHeight;
 });
 
-// Backdrop opacity: dims as panel is dragged down
-const backdropOpacity = $derived(
-  isVisible ? Math.max(0, 1 - Math.max(0, dragY) / panelHeight) : 0
-);
+// Resting styles only — the drag positions are written imperatively below, and
+// Svelte takes the panel back over the moment the drag ends.
+const backdropOpacity = $derived(isVisible ? 1 : 0);
 
-// Panel style: slide on mobile, scale+fade on desktop (both support translateY drag)
 const panelStyle = $derived(
   isMobile
-    ? `transform: translateY(${isDragging ? dragY : isVisible ? 0 : panelHeight}px); transition: transform ${isDragging ? 0 : TRANSITION_MS}ms cubic-bezier(0.32, 0.72, 0, 1);`
-    : `transform: translateY(${isDragging ? dragY : 0}px) scale(${isVisible ? 1 : 0.95}); opacity: ${isVisible ? 1 : 0}; transition: transform ${isDragging ? 0 : TRANSITION_MS}ms cubic-bezier(0.32, 0.72, 0, 1), opacity ${isDragging ? 0 : Math.round(TRANSITION_MS * 0.65)}ms;`
+    ? `transform: translateY(${isVisible ? 0 : panelHeight}px); transition: transform ${isDragging ? 0 : TRANSITION_MS}ms cubic-bezier(0.32, 0.72, 0, 1);`
+    : `transform: translateY(0px) scale(${isVisible ? 1 : 0.95}); opacity: ${isVisible ? 1 : 0}; transition: transform ${isDragging ? 0 : TRANSITION_MS}ms cubic-bezier(0.32, 0.72, 0, 1), opacity ${isDragging ? 0 : Math.round(TRANSITION_MS * 0.65)}ms;`
 );
+
+// One write per frame, coalesced onto the animation frame.
+let dragFrame = 0;
+function paintDrag() {
+  dragFrame = 0;
+  if (!isDragging) return;
+  if (panelEl) {
+    panelEl.style.transform = isMobile
+      ? `translateY(${dragY}px)`
+      : `translateY(${dragY}px) scale(1)`;
+  }
+  if (backdropEl) {
+    backdropEl.style.opacity = String(Math.max(0, 1 - Math.max(0, dragY) / panelHeight));
+  }
+}
+function scheduleDragPaint() {
+  if (!dragFrame) dragFrame = requestAnimationFrame(paintDrag);
+}
 
 // ── Open / close ─────────────────────────────────────────────────────────────
 
@@ -91,6 +112,41 @@ $effect(() => {
   if (isVisible && panelEl) panelEl.focus();
 });
 
+$effect(() => {
+  const vv = window.visualViewport;
+  if (!vv || !mounted) return;
+
+  const update = () => {
+    if (!wrapperEl) return;
+    // What the keyboard covers at the bottom of the layout viewport.
+    const covered = Math.max(0, window.innerHeight - vv.height - vv.offsetTop);
+    if (covered > 0) {
+      wrapperEl.style.height = `${vv.height + vv.offsetTop}px`;
+      wrapperEl.style.paddingBottom = `${covered}px`;
+      // svh does not account for the keyboard, so cap the panel to what is
+      // actually left above it.
+      if (panelEl) panelEl.style.maxHeight = `${Math.max(160, vv.height - 24)}px`;
+    } else {
+      wrapperEl.style.height = '';
+      wrapperEl.style.paddingBottom = '';
+      if (panelEl) panelEl.style.maxHeight = '';
+    }
+  };
+
+  update();
+  vv.addEventListener('resize', update);
+  vv.addEventListener('scroll', update);
+  return () => {
+    vv.removeEventListener('resize', update);
+    vv.removeEventListener('scroll', update);
+    if (wrapperEl) {
+      wrapperEl.style.height = '';
+      wrapperEl.style.paddingBottom = '';
+    }
+    if (panelEl) panelEl.style.maxHeight = '';
+  };
+});
+
 // ── Shared drag state ────────────────────────────────────────────────────────
 
 let pointerStartY = 0;
@@ -98,36 +154,69 @@ let lastPointerY = 0;
 let lastPointerTime = 0;
 let pointerVelocity = 0;
 
+// After the content reaches its top, a fast flick still has momentum in it.
+// Dragging within that window is almost always the tail of the scroll rather
+// than an attempt to dismiss, so the sheet ignores it.
+const SCROLL_SETTLE_MS = 100;
+let reachedTopAt = 0;
+
+function onContentScroll() {
+  if (contentEl && contentEl.scrollTop <= 0) reachedTopAt = Date.now();
+}
+
+// Overdrag gives, then gives less — things in the world slow down before they
+// stop. Only when the content cannot scroll: where it can, an upward gesture
+// belongs to the scroller, not to the sheet.
+const OVERDRAG_LIMIT = 120;
+const OVERDRAG_C = 0.55;
+function rubberBand(delta: number): number {
+  const x = -delta;
+  return -(x * OVERDRAG_LIMIT * OVERDRAG_C) / (OVERDRAG_LIMIT + OVERDRAG_C * x);
+}
+
+function contentCanScroll() {
+  return !!contentEl && contentEl.scrollHeight > contentEl.clientHeight + 1;
+}
+
 function startDrag(y: number) {
   if (isClosing || !isVisible) return false;
+  if (isDragging) return false;
   if (contentEl && contentEl.scrollTop > 0) return false;
+  if (Date.now() - reachedTopAt < SCROLL_SETTLE_MS) return false;
   if (panelEl) panelHeight = panelEl.offsetHeight;
   pointerStartY = y;
   lastPointerY = y;
-  lastPointerTime = Date.now();
+  lastPointerTime = performance.now();
   pointerVelocity = 0;
+  dragY = 0;
   isDragging = true;
   return true;
 }
 
 function moveDrag(y: number) {
   if (!isDragging) return;
-  const now = Date.now();
+  const now = performance.now();
   const dt = now - lastPointerTime;
   if (dt > 0) pointerVelocity = (y - lastPointerY) / dt;
   lastPointerY = y;
   lastPointerTime = now;
-  dragY = Math.max(0, y - pointerStartY);
+
+  const raw = y - pointerStartY;
+  dragY = raw >= 0 ? raw : contentCanScroll() ? 0 : rubberBand(raw);
+  scheduleDragPaint();
 }
 
 function endDrag() {
   if (!isDragging) return;
+  if (dragFrame) { cancelAnimationFrame(dragFrame); dragFrame = 0; }
   const dismiss = dragY > panelHeight * 0.4 || pointerVelocity > 0.5;
+  isDragging = false;
+  dragY = 0;
   if (dismiss) {
     close();
-  } else {
-    isDragging = false;
-    dragY = 0;
+  } else if (backdropEl) {
+    // Hand the elements back to Svelte's resting styles.
+    backdropEl.style.opacity = '';
   }
   pointerVelocity = 0;
 }
@@ -150,12 +239,16 @@ $effect(() => {
 });
 
 function onTouchStart(e: TouchEvent) {
+  if (e.touches.length > 1) return;
   startDrag(e.touches[0].clientY);
 }
 
 function onTouchMove(e: TouchEvent) {
+  if (e.touches.length > 1) return;
   moveDrag(e.touches[0].clientY);
-  if (dragY > 0) e.preventDefault();
+  // Downward drag and rubber-banded overdrag both belong to the sheet; a plain
+  // upward gesture is left to the scroller.
+  if (dragY !== 0) e.preventDefault();
 }
 
 function onTouchEnd() {
@@ -228,6 +321,7 @@ function onPanelKeydown(e: KeyboardEvent) {
 {#if mounted}
   <!-- Backdrop -->
   <div
+    bind:this={backdropEl}
     class="fixed inset-0 bg-black/40 dark:bg-black/60 z-50 backdrop-blur-sm"
     style="opacity: {backdropOpacity}; transition: opacity {isDragging ? 0 : TRANSITION_MS}ms;"
     role="presentation"
@@ -235,7 +329,10 @@ function onPanelKeydown(e: KeyboardEvent) {
   ></div>
 
   <!-- Wrapper -->
-  <div class="fixed inset-0 z-50 pointer-events-none flex flex-col justify-end sm:items-center sm:justify-center sm:p-4">
+  <div
+    bind:this={wrapperEl}
+    class="fixed inset-0 z-50 pointer-events-none flex flex-col justify-end sm:items-center sm:justify-center sm:p-4"
+  >
     <div
       bind:this={panelEl}
       role="dialog"
@@ -276,6 +373,7 @@ function onPanelKeydown(e: KeyboardEvent) {
       <!-- Scrollable body -->
       <div
         bind:this={contentEl}
+        onscroll={onContentScroll}
         class="flex-1 overflow-y-auto overscroll-contain px-4 py-4 min-h-0"
       >
         {@render children()}

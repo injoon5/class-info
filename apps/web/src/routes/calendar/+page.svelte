@@ -436,18 +436,18 @@ const dayNames = ['일','월','화','수','목','금','토'];
           <span class="shrink-0 text-xs text-muted-foreground">색상</span>
           <!-- A check marks the choice. A ring would have read as focus, which
                is the one signal this row must not borrow. -->
-          <div class="flex gap-2 touch:gap-5" role="radiogroup" aria-label="일정 색상">
+          <div class="flex gap-2.5 touch:gap-4" role="radiogroup" aria-label="일정 색상">
             {#each CUSTOM_COLORS as color}
               <button
                 type="button"
                 onclick={() => (newEventColor = color.id)}
-                class="pressable touch-target w-6 h-6 rounded-full flex items-center justify-center {color.bgClass}"
+                class="pressable touch-target w-7 h-7 rounded-full flex items-center justify-center {color.bgClass}"
                 role="radio"
                 aria-checked={newEventColor === color.id}
                 aria-label={color.id}
               >
                 {#if newEventColor === color.id}
-                  <svg viewBox="0 0 20 20" fill="none" stroke="white" stroke-width="3" class="w-3.5 h-3.5" aria-hidden="true">
+                  <svg viewBox="0 0 20 20" fill="none" stroke="white" stroke-width="3" class="w-4 h-4" aria-hidden="true">
                     <path stroke-linecap="round" stroke-linejoin="round" d="M5 10.5l3.5 3.5L15 7"/>
                   </svg>
                 {/if}
@@ -483,7 +483,7 @@ const dayNames = ['일','월','화','수','목','금','토'];
 >
   {#snippet header()}
     {#if selectedDateInfo}
-      <p class="text-xs font-semibold text-muted-foreground mb-1 tracking-wide tabular-nums">
+      <p class="text-xs font-semibold text-muted-foreground mb-1 tabular-nums">
         {selectedDateInfo.year}년
       </p>
       <div class="flex items-baseline gap-2 flex-wrap">
