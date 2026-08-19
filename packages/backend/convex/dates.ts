@@ -21,9 +21,23 @@ export function getNowKst(): Date {
   return new Date(utc + KST_OFFSET_MS);
 }
 
+// Home timetable/meals and notice "past" both flip at this KST hour.
+export const DAY_ROLLOVER_HOUR_KST = 16;
+
+export function calendarDate(date: Date): Date {
+  return new Date(date.getFullYear(), date.getMonth(), date.getDate());
+}
+
+export function addCalendarDays(date: Date, days: number): Date {
+  return new Date(date.getFullYear(), date.getMonth(), date.getDate() + days);
+}
+
 export function getTodayKst(): Date {
-  const now = getNowKst();
-  return new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  return calendarDate(getNowKst());
+}
+
+export function isAtOrAfterDayRollover(now: Date = getNowKst()): boolean {
+  return now.getHours() >= DAY_ROLLOVER_HOUR_KST;
 }
 
 export function weekdayKr(date: Date): string {
@@ -105,12 +119,35 @@ export function addDaysIso(iso: string, days: number): string {
   return toIsoDateUtc(dt.getUTCFullYear(), dt.getUTCMonth() + 1, dt.getUTCDate());
 }
 
-// Notices roll over to "past" at 16:00 KST. Returns YYYY-MM-DD to match the
-// stored dueDate format.
+// Notices roll over to "past" at DAY_ROLLOVER_HOUR_KST. Returns YYYY-MM-DD
+// to match the stored dueDate format.
 export function kstCutoffDateString(now: Date = getNowKst()): string {
-  const moveToTomorrow = now.getHours() >= 16;
-  const d = new Date(now.getFullYear(), now.getMonth(), now.getDate() + (moveToTomorrow ? 1 : 0));
-  return toIsoDate(d);
+  return toIsoDate(addCalendarDays(now, isAtOrAfterDayRollover(now) ? 1 : 0));
+}
+
+const SCHOOL_DAY_LOOKAHEAD = 14;
+
+export function nextSchoolDay(
+  from: Date,
+  isSchoolDay: (d: Date) => boolean,
+  lookahead = SCHOOL_DAY_LOOKAHEAD,
+): Date {
+  for (let i = 1; i <= lookahead; i++) {
+    const d = addCalendarDays(from, i);
+    if (isSchoolDay(d)) return d;
+  }
+  return addCalendarDays(from, lookahead);
+}
+
+// The school day home should show: today until the rollover hour, otherwise
+// the next weekday that isn't a holiday. Friday after the hour → Monday.
+export function resolveSchoolDisplayDay(
+  now: Date,
+  isSchoolDay: (d: Date) => boolean,
+): Date {
+  const today = calendarDate(now);
+  if (!isAtOrAfterDayRollover(now) && isSchoolDay(today)) return today;
+  return nextSchoolDay(today, isSchoolDay);
 }
 
 // Monday–Friday of the KST week `offsetWeeks` away from today (times normalized

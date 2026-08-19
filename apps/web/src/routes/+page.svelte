@@ -2,7 +2,7 @@
 import { useQuery } from 'convex-svelte';
 import { api } from "@class-info/backend/convex/_generated/api";
 import NoticeCard from '$lib/components/notices/NoticeCard.svelte';
-import { getNowInKst, yyyymmdd, WEEKDAYS_KR } from '$lib/date';
+import { addCalendarDays, getNowInKst, resolveSchoolDisplayDay, yyyymmdd, WEEKDAYS_KR } from '$lib/date';
 import { eventChrome } from '$lib/eventChrome';
 import type { DayGroup, MinimalNotice } from '$lib/notices';
 import type { PublicEvent } from '@class-info/backend/convex/validators';
@@ -28,18 +28,10 @@ function getMondayTime(d: Date): number {
 	return copy.getTime();
 }
 
-const kst = getNowInKst();
-const todayYyyymmdd = yyyymmdd(kst);
-const todayMonth = kst.getMonth() + 1;
-const todayDate = kst.getDate();
-const todayWeekday = WEEKDAYS_KR[kst.getDay()];
+const HOLIDAY_TYPES = new Set(['공휴일', '휴업일', '재량휴업일']);
 
-// ── School-day logic ──────────────────────────────────────────────────────────
 function isHoliday(dateStr: string): boolean {
-	return (data.events ?? []).some((e) =>
-		e.date === dateStr &&
-		(e.eventType === '공휴일' || e.eventType === '휴업일' || e.eventType === '재량휴업일')
-	);
+	return (data.events ?? []).some((e) => e.date === dateStr && HOLIDAY_TYPES.has(e.eventType ?? ''));
 }
 
 function isSchoolDay(d: Date): boolean {
@@ -47,19 +39,15 @@ function isSchoolDay(d: Date): boolean {
 	return day >= 1 && day <= 5 && !isHoliday(yyyymmdd(d));
 }
 
-function findNextSchoolDay(): Date {
-	const d = new Date(kst);
-	for (let i = 0; i < 14; i++) {
-		d.setDate(d.getDate() + 1);
-		if (isSchoolDay(d)) return new Date(d);
-	}
-	return d;
-}
-
-// The day whose timetable + meal we display
-const displayDay = isSchoolDay(kst) ? kst : findNextSchoolDay();
+const kst = getNowInKst();
+const todayYyyymmdd = yyyymmdd(kst);
+const displayDay = resolveSchoolDisplayDay(kst, isSchoolDay);
 const displayDayStr = yyyymmdd(displayDay);
 const displayDayIndex = displayDay.getDay() - 1; // 0=Mon…4=Fri
+const isTomorrow = displayDayStr === yyyymmdd(addCalendarDays(kst, 1));
+const displayMonth = displayDay.getMonth() + 1;
+const displayDate = displayDay.getDate();
+const displayWeekday = WEEKDAYS_KR[displayDay.getDay()] ?? '';
 
 // Which week's timetable to use. We only hold this-week and next-week data, so
 // map by whole-week offset; anything further out has no timetable to show.
@@ -78,19 +66,8 @@ const displayMealDay = allMealDays.find((d) => d.date === displayDayStr) ?? null
 const displayLunch = displayMealDay?.lunch ?? null;
 const displayDinner = displayMealDay?.dinner ?? null;
 
-// Card title prefix: "" | "내일 " | "5월 3일 "
-const tomorrowStr = yyyymmdd(new Date(kst.getTime() + 24 * 60 * 60 * 1000));
-const displayWeekday = WEEKDAYS_KR[displayDay.getDay()];
-const cardDayLabel = (() => {
-	if (displayDayStr === todayYyyymmdd) return '';
-	if (displayDayStr === tomorrowStr) return `내일 (${displayWeekday}) `;
-	const m = Number(displayDayStr.slice(4, 6));
-	const d = Number(displayDayStr.slice(6, 8));
-	return `${m}월 ${d}일 (${displayWeekday}) `;
-})();
-
 // ── Events ────────────────────────────────────────────────────────────────────
-const in7days = yyyymmdd(new Date(kst.getTime() + 7 * 24 * 60 * 60 * 1000));
+const in7days = yyyymmdd(addCalendarDays(kst, 7));
 
 const allEvents = $derived(
 	[...(data.events ?? [])]
@@ -98,7 +75,7 @@ const allEvents = $derived(
 		.sort((a, b) => a.date.localeCompare(b.date))
 );
 
-const todayEvents = $derived(allEvents.filter((e) => e.date === todayYyyymmdd));
+const displayDayEvents = $derived(allEvents.filter((e) => e.date === displayDayStr));
 
 const upcomingEvents = $derived(
 	allEvents.filter((e) => e.date >= todayYyyymmdd && e.date <= in7days)
@@ -175,13 +152,16 @@ function isToday(dateStr: string): boolean {
 
 	<!-- ── Date hero ───────────────────────────────────────────────────────── -->
 	<header class="flex flex-wrap items-baseline justify-between gap-x-6 gap-y-1.5 mb-6 sm:mb-8">
-		<h1 class="flex items-baseline gap-2">
-			<span class="text-2xl sm:text-3xl font-bold tracking-tight text-foreground">{todayMonth}월 {todayDate}일</span>
-			<span class="text-base sm:text-lg text-muted-foreground">{todayWeekday}요일</span>
+		<h1 class="flex flex-wrap items-baseline gap-x-2.5 sm:gap-x-3">
+			{#if isTomorrow}
+				<span class="text-2xl sm:text-3xl font-bold tracking-tight text-amber-700 dark:text-amber-400 whitespace-nowrap">내일</span>
+			{/if}
+			<span class="text-2xl sm:text-3xl font-bold tracking-tight text-foreground whitespace-nowrap">{displayMonth}월 {displayDate}일</span>
+			<span class="text-base sm:text-lg text-muted-foreground whitespace-nowrap">{displayWeekday}요일</span>
 		</h1>
-		{#if todayEvents.length > 0}
+		{#if displayDayEvents.length > 0}
 			<div class="flex flex-wrap items-baseline gap-x-4 gap-y-1 text-base sm:text-lg">
-				{#each todayEvents as event}
+				{#each displayDayEvents as event (event._id)}
 					<span class="inline-flex items-baseline gap-1.5">
 						<span class="font-semibold text-foreground">{event.title}</span>
 						{#if eventTypeLabel(event)}
@@ -199,7 +179,7 @@ function isToday(dateStr: string): boolean {
 		<!-- Timetable -->
 		<section class="sm:col-span-1">
 			<div class="flex items-baseline justify-between mb-2.5">
-				<h2 class="font-semibold text-muted-foreground">{cardDayLabel}시간표</h2>
+				<h2 class="font-semibold text-muted-foreground">시간표</h2>
 				<a href="/timetable" aria-label="시간표 모두 보기" class="text-sm font-semibold text-muted-foreground transition-colors duration-150 pointer:hover:text-foreground">모두 보기 <span aria-hidden="true">→</span></a>
 			</div>
 			<div class="bg-card border border-border rounded-2xl p-4">
@@ -226,7 +206,7 @@ function isToday(dateStr: string): boolean {
 		<!-- Meal -->
 		<section class="sm:col-span-2">
 			<div class="flex items-baseline justify-between mb-2.5">
-				<h2 class="font-semibold text-muted-foreground">{cardDayLabel}급식</h2>
+				<h2 class="font-semibold text-muted-foreground">급식</h2>
 				<a href="/meals" aria-label="급식 모두 보기" class="text-sm font-semibold text-muted-foreground transition-colors duration-150 pointer:hover:text-foreground">모두 보기 <span aria-hidden="true">→</span></a>
 			</div>
 			<div class="bg-card border border-border rounded-2xl p-4">
