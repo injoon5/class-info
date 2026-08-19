@@ -18,31 +18,8 @@ let selectedWeek = $state(0); // 0: this week, 1: next week
 // Relative time is resolved after mount so SSR and hydration agree on the markup.
 let now = $state<number | null>(null);
 
-// The heading that goes on the printout. Kept because whoever prints the
-// timetable prints it again next week, and retyping it every time is the kind
-// of small tax that stops people using the feature.
-const DEFAULT_PRINT_TITLE = '1학년 3반 시간표';
-const PRINT_TITLE_KEY = 'timetable:printTitle';
-let printTitle = $state(DEFAULT_PRINT_TITLE);
-let printTitleReady = $state(false);
-
 onMount(() => {
 	now = Date.now();
-	try {
-		printTitle = localStorage.getItem(PRINT_TITLE_KEY) ?? DEFAULT_PRINT_TITLE;
-	} catch {
-		// Private mode or storage disabled — the default still prints.
-	}
-	printTitleReady = true;
-});
-
-$effect(() => {
-	if (!printTitleReady) return;
-	try {
-		localStorage.setItem(PRINT_TITLE_KEY, printTitle);
-	} catch {
-		// Not being able to remember it is not a reason to fail.
-	}
 });
 
 const blur = createBlurPulse();
@@ -108,7 +85,7 @@ function getPeriodLabel(period: number): string {
 	<!-- Printed heading. Screen readers already have the h1 above, and on paper
 	     this is the only thing identifying the sheet. -->
 	<h1 class="hidden print:block mb-5 text-center text-2xl font-bold tracking-tight text-foreground">
-		{printTitle || DEFAULT_PRINT_TITLE}
+		1학년 3반 시간표
 	</h1>
 
 	<!-- Header: Week Selector -->
@@ -168,28 +145,16 @@ function getPeriodLabel(period: number): string {
 				</tbody>
 			</table>
 		</HScroll>
-		<!-- Print controls: same well as the week toggle — one bar, concentric inners. -->
-		<div class="mt-3 flex items-center h-10 sm:h-11 rounded-xl bg-muted p-1 print:hidden">
-			<label for="print-title" class="sr-only">인쇄 제목</label>
-			<input
-				id="print-title"
-				type="text"
-				bind:value={printTitle}
-				placeholder={DEFAULT_PRINT_TITLE}
-				class="h-8 sm:h-9 flex-1 min-w-0 bg-transparent px-3.5 text-sm text-foreground placeholder:text-muted-foreground rounded-lg"
-			/>
+		{@const editedAt = timetableQuery.data.editedAt}
+		<div class="mt-3 flex items-center justify-between gap-3 pb-10 print:hidden">
+			<p class="text-xs text-muted-foreground">
+				업데이트: <span title={formatAbsolute(editedAt)}>{now === null ? formatAbsolute(editedAt) : formatRelative(editedAt, now)}</span>
+			</p>
 			<button
 				type="button"
 				onclick={() => window.print()}
-				class="pressable touch-target h-8 sm:h-9 px-3.5 rounded-lg bg-elevated shadow-sm dark:shadow-none text-sm font-semibold text-foreground"
+				class="pressable touch-target text-xs font-semibold text-muted-foreground pointer:hover:text-foreground"
 			>인쇄</button>
 		</div>
-
-		{#if timetableQuery.data}
-			{@const editedAt = timetableQuery.data.editedAt}
-			<p class="mt-3 text-xs text-muted-foreground pb-10 print:hidden">
-				업데이트: <span title={formatAbsolute(editedAt)}>{now === null ? formatAbsolute(editedAt) : formatRelative(editedAt, now)}</span>
-			</p>
-		{/if}
 	{/if}
 </div>

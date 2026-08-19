@@ -280,15 +280,26 @@ select:focus-visible {
 		overflow: visible !important;
 	}
 
+	/* Hard corners. The screen grids clip to rounded-xl, which eats the outer
+	   hairline and reads as leftover chrome on a sheet. */
+	*,
+	*::before,
+	*::after {
+		border-radius: 0 !important;
+	}
+
 	/* Close the frame: the outer edge should read like the lines inside it.
-	   With border-collapse the table's own border merges with the outermost
-	   cells', so stating it once gives the grid a continuous edge. */
+	   overflow-hidden was the rounded clip — without it the collapsed borders
+	   reach the edge. The same 1px on the table and every cell gives the grid
+	   a continuous matching edge; CSS grids (calendar, meals) already draw
+	   theirs on the wrapper. */
 	table {
+		overflow: visible !important;
 		border: 1px solid var(--border) !important;
 	}
 	table th,
 	table td {
-		border-color: var(--border) !important;
+		border: 1px solid var(--border) !important;
 	}
 
 	/* A substituted lesson is styled with hardcoded amber utilities including a
