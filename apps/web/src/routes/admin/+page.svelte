@@ -188,7 +188,7 @@ const lastUpdatedTs = $derived.by(() => {
 {#snippet noticeEditor()}
 	<div transition:slide={{ duration: 300, easing: expoOut }}>
 		<div
-			class="bg-card border border-border rounded-2xl p-4 sm:p-5 mb-6"
+			class="bg-card border border-border rounded-3xl p-4 mb-6"
 			in:fade={{ duration: 200, delay: 80 }}
 			out:fade={{ duration: 120 }}
 		>
@@ -204,7 +204,7 @@ const lastUpdatedTs = $derived.by(() => {
 						type="text"
 						bind:value={noticeForm.title}
 						onkeydown={(e) => { if (e.key === 'Enter' && e.isComposing) e.preventDefault(); }}
-						class="w-full h-11 px-3.5 rounded-xl bg-muted text-base text-foreground placeholder:text-muted-foreground break-words"
+						class="w-full h-11 px-3.5 rounded-lg bg-muted text-base text-foreground placeholder:text-muted-foreground break-words"
 						placeholder="예: 수학 과제 제출"
 					/>
 				</div>
@@ -217,7 +217,7 @@ const lastUpdatedTs = $derived.by(() => {
 							type="text"
 							bind:value={noticeForm.subject}
 							onkeydown={(e) => { if (e.key === 'Enter' && e.isComposing) e.preventDefault(); }}
-							class="w-full h-11 px-3.5 rounded-xl bg-muted text-base text-foreground placeholder:text-muted-foreground break-words"
+							class="w-full h-11 px-3.5 rounded-lg bg-muted text-base text-foreground placeholder:text-muted-foreground break-words"
 							placeholder="예: 수학"
 						/>
 					</div>
@@ -228,7 +228,7 @@ const lastUpdatedTs = $derived.by(() => {
 							<select
 								id="notice-type"
 								bind:value={noticeForm.type}
-								class="w-full h-11 pl-3.5 pr-10 rounded-xl bg-muted text-base text-foreground appearance-none"
+								class="w-full h-11 pl-3.5 pr-10 rounded-lg bg-muted text-base text-foreground appearance-none"
 							>
 								{#each noticeTypes as type}
 									<option value={type}>{type}</option>
@@ -251,7 +251,7 @@ const lastUpdatedTs = $derived.by(() => {
 						id="notice-date"
 						type="date"
 						bind:value={noticeForm.dueDate}
-						class="w-full h-11 px-3.5 rounded-xl bg-muted text-base text-foreground placeholder:text-muted-foreground"
+						class="w-full h-11 px-3.5 rounded-lg bg-muted text-base text-foreground placeholder:text-muted-foreground"
 					/>
 				</div>
 
@@ -262,7 +262,7 @@ const lastUpdatedTs = $derived.by(() => {
 						bind:value={noticeForm.description}
 						use:autosize={noticeForm.description}
 						rows="8"
-						class="w-full px-3.5 py-2.5 rounded-xl bg-muted text-base text-foreground font-mono placeholder:text-muted-foreground resize-none break-words overflow-hidden"
+						class="w-full px-3.5 py-2.5 rounded-lg bg-muted text-base text-foreground font-mono placeholder:text-muted-foreground resize-none break-words overflow-hidden"
 						placeholder="상세 설명 또는 준비물 목록&#10;&#10;마크다운 사용 가능:&#10;**굵게** *기울임* `코드`&#10;# 제목 ## 부제목&#10;- 목록 항목&#10;> 인용구&#10;![이미지](URL)&#10;유튜브 링크는 자동 변환됩니다"
 					></textarea>
 					<p class="text-xs text-muted-foreground mt-1.5">마크다운 문법을 사용할 수 있습니다. 상세 페이지에서 형식화되어 표시됩니다.</p>
@@ -293,7 +293,7 @@ const lastUpdatedTs = $derived.by(() => {
 {#if !data.isAuthenticated}
 	<!-- PIN Authentication Form -->
 	<div class="flex items-center justify-center min-h-[calc(100vh-8rem)] px-4">
-		<div class="bg-card p-8 border border-border rounded-2xl max-w-sm w-full">
+		<div class="bg-card p-8 border border-border rounded-3xl max-w-sm w-full">
 			<h1 class="text-2xl font-bold tracking-tight text-foreground mb-6 text-center">관리자 로그인</h1>
 
 			<form method="POST" action="?/login" use:enhance>
@@ -306,7 +306,7 @@ const lastUpdatedTs = $derived.by(() => {
 						inputmode="numeric"
 						autocomplete="current-password"
 						bind:value={pin}
-						class="w-full h-12 px-3.5 rounded-xl bg-muted text-base text-foreground placeholder:text-muted-foreground"
+						class="w-full h-12 px-3.5 rounded-lg bg-muted text-base text-foreground placeholder:text-muted-foreground"
 						placeholder="관리자 PIN을 입력하세요"
 						required
 					/>
@@ -446,9 +446,9 @@ const lastUpdatedTs = $derived.by(() => {
                 <div class="mt-6 pt-6 border-t border-border">
                     <h2 class="text-base sm:text-lg font-semibold mb-3 text-muted-foreground">지난 공지</h2>
                     {#each overview.data.pastMonths as m (m.monthKey)}
-                        <details class="mb-1.5 sm:mb-2 bg-card border border-border rounded-2xl overflow-hidden" open={openMonthKey === m.monthKey}>
+                        <details class="mb-1.5 sm:mb-2 bg-card border border-border rounded-3xl overflow-hidden" open={openMonthKey === m.monthKey}>
                             <summary
-                                class="touch-target flex items-center gap-2 px-3 sm:px-4 py-2.5 sm:py-3 cursor-pointer list-none transition-colors duration-150 pointer:hover:bg-muted text-muted-foreground font-semibold text-sm sm:text-base tabular-nums [&::-webkit-details-marker]:hidden"
+                                class="touch-target flex items-center gap-2 px-3 sm:px-4 py-2.5 sm:py-3 cursor-pointer list-none transition-colors duration-150 pointer:hover:bg-muted text-muted-foreground font-semibold text-sm sm:text-base [&::-webkit-details-marker]:hidden"
                                 onclick={(e) => {
                                     e.preventDefault();
                                     openMonthKey = openMonthKey === m.monthKey ? null : m.monthKey;
@@ -465,6 +465,7 @@ const lastUpdatedTs = $derived.by(() => {
                             </summary>
 
                             {#if openMonthKey === m.monthKey}
+                                <div transition:slide={{ duration: 300, easing: expoOut }}>
                                 {#key m.monthKey}
                                     <AdminPastMonthDetails
                                         monthKey={m.monthKey}
@@ -482,6 +483,7 @@ const lastUpdatedTs = $derived.by(() => {
                                         onDelete={(id: string) => handleDelete({ _id: id } as any)}
                                     />
                                 {/key}
+                                </div>
                             {/if}
                         </details>
                     {/each}

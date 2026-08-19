@@ -9,6 +9,7 @@ import SegmentedControl from '../../components/SegmentedControl.svelte';
 import { createBlurPulse } from '$lib/blurPulse.svelte';
 import { formatAbsolute, formatRelative } from '$lib/date';
 import { onMount } from 'svelte';
+import PillButton from '../../components/PillButton.svelte';
 import type { PageData } from './$types.js';
 
 const { data }: { data: PageData } = $props();
@@ -17,7 +18,33 @@ let selectedWeek = $state(0); // 0: this week, 1: next week
 
 // Relative time is resolved after mount so SSR and hydration agree on the markup.
 let now = $state<number | null>(null);
-onMount(() => { now = Date.now(); });
+
+// The heading that goes on the printout. Kept because whoever prints the
+// timetable prints it again next week, and retyping it every time is the kind
+// of small tax that stops people using the feature.
+const DEFAULT_PRINT_TITLE = '1학년 3반 시간표';
+const PRINT_TITLE_KEY = 'timetable:printTitle';
+let printTitle = $state(DEFAULT_PRINT_TITLE);
+let printTitleReady = $state(false);
+
+onMount(() => {
+	now = Date.now();
+	try {
+		printTitle = localStorage.getItem(PRINT_TITLE_KEY) ?? DEFAULT_PRINT_TITLE;
+	} catch {
+		// Private mode or storage disabled — the default still prints.
+	}
+	printTitleReady = true;
+});
+
+$effect(() => {
+	if (!printTitleReady) return;
+	try {
+		localStorage.setItem(PRINT_TITLE_KEY, printTitle);
+	} catch {
+		// Not being able to remember it is not a reason to fail.
+	}
+});
 
 const blur = createBlurPulse();
 $effect(() => { selectedWeek; blur.pulse(); });
@@ -77,9 +104,16 @@ function getPeriodLabel(period: number): string {
 </svelte:head>
 
 <div class="max-w-4xl mx-auto px-4 pt-4 pb-1 sm:pt-5 sm:pb-0 sm:px-4">
-	<h1 class="sr-only">시간표</h1>
+	<h1 class="sr-only print:hidden">시간표</h1>
+
+	<!-- Printed heading. Screen readers already have the h1 above, and on paper
+	     this is the only thing identifying the sheet. -->
+	<h1 class="hidden print:block mb-8 text-center text-2xl font-bold tracking-tight text-foreground">
+		{printTitle || DEFAULT_PRINT_TITLE}
+	</h1>
+
 	<!-- Header: Week Selector -->
-	<div class="mb-3">
+	<div class="mb-3 print:hidden">
 		<SegmentedControl
 			bind:value={selectedWeek}
 			options={[
@@ -97,7 +131,7 @@ function getPeriodLabel(period: number): string {
 		<EmptyState />
 	{:else}
 		<HScroll blurred={blur.blurred}>
-				<table class="w-full min-w-[18rem] table-fixed border border-border border-collapse overflow-hidden rounded-2xl mx-auto">
+				<table class="w-full min-w-[18rem] table-fixed border border-border border-collapse overflow-hidden rounded-xl mx-auto">
 				<thead>
 					<tr class="bg-muted">
 						<th scope="col" class="px-1 py-3 border border-border"><span class="sr-only">교시</span></th>
@@ -114,7 +148,10 @@ function getPeriodLabel(period: number): string {
 								<div class="text-[11px] sm:text-base text-muted-foreground tabular-nums leading-tight">{getPeriodLabel(i + 1)}</div>
 							</th>
 							{#each (timetableQuery.data?.timetable || []) as day}
-								<td class="border border-border py-3 sm:py-6 text-center {day[i]?.replaced ? 'bg-amber-100/70 dark:bg-amber-900/20' : 'bg-card'}">
+								<td
+									data-replaced={day[i]?.replaced ? '' : undefined}
+									class="border border-border py-3 sm:py-6 text-center {day[i]?.replaced ? 'bg-amber-100/70 dark:bg-amber-900/20' : 'bg-card'}"
+								>
 									{#if day[i]}
 										<div
 											class="truncate {subjectSizeClass(day[i].subject)} font-semibold {day[i].replaced ? 'text-amber-700 dark:text-amber-300' : 'text-foreground'}"
@@ -132,9 +169,22 @@ function getPeriodLabel(period: number): string {
 				</tbody>
 			</table>
 		</HScroll>
+		<!-- Print controls: the title that will head the sheet, and the action. -->
+		<div class="mt-3 flex items-center gap-2 print:hidden">
+			<label for="print-title" class="sr-only">인쇄 제목</label>
+			<input
+				id="print-title"
+				type="text"
+				bind:value={printTitle}
+				placeholder={DEFAULT_PRINT_TITLE}
+				class="h-10 flex-1 min-w-0 px-3.5 rounded-lg bg-muted text-sm text-foreground placeholder:text-muted-foreground"
+			/>
+			<PillButton text="인쇄" variant="secondary" onclick={() => window.print()} />
+		</div>
+
 		{#if timetableQuery.data}
 			{@const editedAt = timetableQuery.data.editedAt}
-			<p class="mt-3 text-xs text-muted-foreground pb-10">
+			<p class="mt-3 text-xs text-muted-foreground pb-10 print:hidden">
 				업데이트: <span title={formatAbsolute(editedAt)}>{now === null ? formatAbsolute(editedAt) : formatRelative(editedAt, now)}</span>
 			</p>
 		{/if}

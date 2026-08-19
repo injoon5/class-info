@@ -340,7 +340,7 @@ function onPanelKeydown(e: KeyboardEvent) {
       tabindex="-1"
       class="pointer-events-auto w-full sm:w-[26rem] sm:max-w-[90vw]
              bg-card text-card-foreground
-             rounded-t-3xl sm:rounded-2xl
+             rounded-t-3xl sm:rounded-3xl
              shadow-2xl flex flex-col
              max-h-[88svh] sm:max-h-[80svh]
              border border-border

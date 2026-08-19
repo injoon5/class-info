@@ -1,6 +1,5 @@
 <script lang="ts">
-import { fly } from 'svelte/transition';
-import { expoOut } from 'svelte/easing';
+import { blurFade } from '$lib/transitions';
 
 // A label that changes on the same control — "새 공지 추가" → "취소".
 //
@@ -10,6 +9,11 @@ import { expoOut } from 'svelte/easing';
 // natural width of the *current* label, the wrapper animates to that width, and
 // the visible labels cross over vertically on top of it. One label on screen at
 // a time, and the control's width travels instead of snapping.
+//
+// The labels cross over without moving. Sliding them was worse than the jump it
+// replaced: the wrapper has to clip to morph the width, so a flying label got
+// sliced by that clip edge and left a hard cut through the glyphs. Blurring them
+// out dissolves the old label instead of cutting it.
 
 const { text }: { text: string } = $props();
 
@@ -33,8 +37,8 @@ $effect(() => {
 	{#key text}
 		<span
 			class="absolute inset-0 flex items-center justify-center whitespace-nowrap"
-			in:fly={{ y: -10, duration: 220, easing: expoOut }}
-			out:fly={{ y: 10, duration: 160, easing: expoOut }}
+			in:blurFade={{ duration: 240, blur: 5 }}
+			out:blurFade={{ duration: 180, blur: 5 }}
 		>{text}</span>
 	{/key}
 </span>

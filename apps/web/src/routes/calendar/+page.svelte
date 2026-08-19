@@ -163,18 +163,18 @@ function eventsForDate(dateStr: string | null): CellEvent[] {
 
 // Color helpers — drawer event items
 function getSchoolEventPopupStyle(eventType: string) {
-  if (eventType === '공휴일') return { color: 'bg-red-400', bg: 'bg-red-50 dark:bg-red-950/30', label: '공휴일', labelColor: 'text-red-600 dark:text-red-400' };
-  if (eventType === '휴업일' || eventType === '재량휴업일') return { color: 'bg-amber-400', bg: 'bg-amber-50 dark:bg-amber-950/30', label: eventType, labelColor: 'text-amber-700 dark:text-amber-400' };
-  return { color: 'bg-sky-400', bg: 'bg-sky-50 dark:bg-sky-950/30', label: '학교 행사', labelColor: 'text-sky-700 dark:text-sky-400' };
+  if (eventType === '공휴일') return { color: 'bg-red-400', bg: 'bg-red-50 dark:bg-red-400/10', label: '공휴일', labelColor: 'text-red-600 dark:text-red-400' };
+  if (eventType === '휴업일' || eventType === '재량휴업일') return { color: 'bg-amber-400', bg: 'bg-amber-50 dark:bg-amber-400/10', label: eventType, labelColor: 'text-amber-700 dark:text-amber-400' };
+  return { color: 'bg-sky-400', bg: 'bg-sky-50 dark:bg-sky-400/10', label: '학교 행사', labelColor: 'text-sky-700 dark:text-sky-400' };
 }
 
 const CUSTOM_POPUP_STYLE: Record<string, { color: string; bg: string; labelColor: string }> = {
-  blue:   { color: 'bg-blue-400',   bg: 'bg-blue-50 dark:bg-blue-950/30',   labelColor: 'text-blue-600 dark:text-blue-400' },
-  green:  { color: 'bg-green-400',  bg: 'bg-green-50 dark:bg-green-950/30',  labelColor: 'text-green-700 dark:text-green-400' },
-  purple: { color: 'bg-purple-400', bg: 'bg-purple-50 dark:bg-purple-950/30', labelColor: 'text-purple-600 dark:text-purple-400' },
-  orange: { color: 'bg-orange-400', bg: 'bg-orange-50 dark:bg-orange-950/30', labelColor: 'text-orange-700 dark:text-orange-400' },
-  pink:   { color: 'bg-pink-400',   bg: 'bg-pink-50 dark:bg-pink-950/30',   labelColor: 'text-pink-600 dark:text-pink-400' },
-  teal:   { color: 'bg-teal-400',   bg: 'bg-teal-50 dark:bg-teal-950/30',   labelColor: 'text-teal-700 dark:text-teal-400' },
+  blue:   { color: 'bg-blue-400',   bg: 'bg-blue-50 dark:bg-blue-400/10',   labelColor: 'text-blue-600 dark:text-blue-400' },
+  green:  { color: 'bg-green-400',  bg: 'bg-green-50 dark:bg-green-400/10',  labelColor: 'text-green-700 dark:text-green-400' },
+  purple: { color: 'bg-purple-400', bg: 'bg-purple-50 dark:bg-purple-400/10', labelColor: 'text-purple-600 dark:text-purple-400' },
+  orange: { color: 'bg-orange-400', bg: 'bg-orange-50 dark:bg-orange-400/10', labelColor: 'text-orange-700 dark:text-orange-400' },
+  pink:   { color: 'bg-pink-400',   bg: 'bg-pink-50 dark:bg-pink-400/10',   labelColor: 'text-pink-600 dark:text-pink-400' },
+  teal:   { color: 'bg-teal-400',   bg: 'bg-teal-50 dark:bg-teal-400/10',   labelColor: 'text-teal-700 dark:text-teal-400' },
 };
 
 // Admin state
@@ -267,9 +267,9 @@ const dayNames = ['일','월','화','수','목','금','토'];
   <meta name="robots" content="noindex" />
 </svelte:head>
 
-<div class="max-w-4xl mx-auto px-4 py-2">
+<div class="max-w-4xl mx-auto px-4 pt-4 pb-4">
   <!-- Month navigation -->
-  <div class="flex items-center justify-between mb-3">
+  <div class="flex items-center justify-between mb-4">
     <button
       onclick={() => navigate(-1)}
       disabled={!canNavigate(-1)}
@@ -303,7 +303,7 @@ const dayNames = ['일','월','화','수','목','금','토'];
 
   <!-- Calendar -->
   <HScroll>
-      <div class="min-w-[40rem] border border-border rounded-2xl overflow-hidden">
+      <div class="min-w-[40rem] border border-border rounded-xl overflow-hidden">
 
         <!-- Day name header -->
         <div class="grid grid-cols-7 bg-muted border-b border-border">
@@ -419,10 +419,10 @@ const dayNames = ['일','월','화','수','목','금','토'];
         <input
           type="text"
           bind:value={newEventTitle}
-          use:focusOnElement
+          use:focusOnElement={320}
           aria-label="일정 제목"
           placeholder="예: 반티 주문 마감"
-          class="w-full h-11 px-3.5 rounded-xl bg-muted text-base text-foreground placeholder:text-muted-foreground"
+          class="w-full h-11 px-3.5 rounded-lg bg-muted text-base text-foreground placeholder:text-muted-foreground"
           onkeydown={(e) => {
             if (e.key === 'Enter' && !e.isComposing) handleAddEvent();
             if (e.key === 'Escape') { popupAddMode = false; newEventTitle = ''; }
@@ -514,7 +514,7 @@ const dayNames = ['일','월','화','수','목','금','토'];
     <ul class="space-y-2.5">
       {#each selectedDateEvents.school as event (event._id)}
         {@const style = getSchoolEventPopupStyle(event.eventType)}
-        <li class="flex rounded-xl overflow-hidden">
+        <li class="flex rounded-lg overflow-hidden">
           <div class="w-1.5 flex-shrink-0 {style.color}"></div>
           <div class="flex-1 px-3 py-2.5 {style.bg}">
             <p class="text-sm font-semibold {style.labelColor} mb-0.5">{style.label}</p>
@@ -524,7 +524,7 @@ const dayNames = ['일','월','화','수','목','금','토'];
       {/each}
       {#each selectedDateEvents.custom as event (event._id)}
         {@const style = CUSTOM_POPUP_STYLE[event.color] ?? CUSTOM_POPUP_STYLE.blue}
-        <li class="flex rounded-xl overflow-hidden">
+        <li class="flex rounded-lg overflow-hidden">
           <div class="w-1.5 flex-shrink-0 {style.color}"></div>
           <div class="flex-1 flex items-center justify-between gap-2 px-3 py-2.5 {style.bg}">
             <div class="min-w-0">

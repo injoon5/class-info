@@ -27,7 +27,7 @@ const groups = useQuery(api.notices.pastByMonth, { monthKey });
 
 </script>
 
-<div class="p-2 pt-0">
+<div class="px-3 pb-3 pt-1">
     {#if groups.isLoading}
         <div class="text-sm text-muted-foreground">불러오는 중…</div>
     {:else if groups.error}
@@ -43,7 +43,7 @@ const groups = useQuery(api.notices.pastByMonth, { monthKey });
                         {#if editor && editorTarget === String(notice._id)}
                             {@render editor()}
                         {:else}
-                        <div class="bg-muted/40 border border-border rounded-lg p-3 overflow-hidden">
+                        <div class="bg-muted/40 border border-border rounded-xl p-3 overflow-hidden">
                             <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
                                 <div class="flex-1 min-w-0">
                                     <div class="flex items-center gap-2 mb-1">

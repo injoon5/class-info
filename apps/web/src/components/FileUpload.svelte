@@ -176,7 +176,7 @@ function handleDrop(e: DragEvent) {
   <div
     role="group"
     aria-label="파일 업로드"
-    class="border-2 border-dashed rounded-xl {dragOver ? 'border-ring bg-muted' : 'border-border'} p-5 text-center transition-colors duration-150"
+    class="border-2 border-dashed rounded-lg {dragOver ? 'border-ring bg-muted' : 'border-border'} p-5 text-center transition-colors duration-150"
     ondragover={handleDragOver}
     ondragleave={handleDragLeave}
     ondrop={handleDrop}

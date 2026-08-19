@@ -236,7 +236,7 @@ function isToday(dateStr: string): boolean {
 				<!-- gap-0 + symmetric padding keeps the divider on the card's exact center at every width -->
 				<div class="grid {displayDinner ? 'grid-cols-2' : 'grid-cols-1'}">
 					<!-- Lunch -->
-					<div class={displayDinner ? 'pr-4 sm:pr-6' : ''}>
+					<div class="flex flex-col {displayDinner ? 'pr-4 sm:pr-6' : ''}">
 						<p class="text-sm font-semibold text-muted-foreground mb-2">중식</p>
 						{#if !displayLunch}
 							<p class="text-sm text-muted-foreground">급식 정보가 없어요</p>
@@ -247,13 +247,13 @@ function isToday(dateStr: string): boolean {
 								{/each}
 							</ul>
 							{#if displayLunch.calories}
-								<p class="mt-2.5 text-sm text-muted-foreground tabular-nums">{displayLunch.calories}</p>
+								<p class="mt-auto pt-2.5 text-sm text-muted-foreground tabular-nums">{displayLunch.calories}</p>
 							{/if}
 						{/if}
 					</div>
 					<!-- Dinner -->
 					{#if displayDinner}
-						<div class="border-l border-border pl-4 sm:pl-6">
+						<div class="flex flex-col border-l border-border pl-4 sm:pl-6">
 							<p class="text-sm font-semibold text-muted-foreground mb-2">석식</p>
 							<ul class="space-y-1.5">
 								{#each displayDinner.dishes as dish}
@@ -261,7 +261,7 @@ function isToday(dateStr: string): boolean {
 								{/each}
 							</ul>
 							{#if displayDinner.calories}
-								<p class="mt-2.5 text-sm text-muted-foreground tabular-nums">{displayDinner.calories}</p>
+								<p class="mt-auto pt-2.5 text-sm text-muted-foreground tabular-nums">{displayDinner.calories}</p>
 							{/if}
 						</div>
 					{/if}

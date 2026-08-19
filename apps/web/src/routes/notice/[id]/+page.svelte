@@ -75,7 +75,7 @@ $effect(() => {
 		{:else if !detail.data?.notice}
 			<div class="text-center py-16 text-sm text-muted-foreground">공지를 찾을 수 없어요</div>
 		{:else}
-			<div class="mb-4 mt-2 sm:mt-3 bg-card border border-border rounded-2xl p-4 sm:p-6">
+			<div class="mb-4 mt-2 sm:mt-3 bg-card border border-border rounded-3xl p-4 sm:p-6">
 				<div class="mb-4">
 					<div class="flex items-center gap-2 sm:gap-3 mb-1.5 sm:mb-2">
 						<span class="px-2 py-1 text-sm font-semibold rounded-md {getTypeColor(detail.data.notice.type)}">

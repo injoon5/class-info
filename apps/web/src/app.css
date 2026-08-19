@@ -202,6 +202,107 @@ select:focus-visible {
 	}
 }
 
+/* ── Print ──────────────────────────────────────────────────────────────────
+   Paper has no theme, so the reader's dark mode is overridden with the light
+   palette verbatim — the same hairline borders and near-white surfaces the app
+   already draws, not a separate print styling. Only the page's subject prints;
+   the chrome is hidden below. */
+@media print {
+	.dark {
+		--background: oklch(0.981 0 0);
+		--foreground: oklch(0.21 0 0);
+		--card: oklch(1 0 0);
+		--card-foreground: oklch(0.21 0 0);
+		--muted: oklch(0.955 0 0);
+		--muted-foreground: oklch(0.49 0 0);
+		/* A hairline that reads on a backlit screen comes out faint on paper, so
+		   print takes the same grey a step darker. */
+		--border: oklch(0.84 0 0);
+		--primary: oklch(0.24 0 0);
+		--primary-foreground: oklch(0.99 0 0);
+		--destructive: oklch(0.58 0.21 27);
+		--ring: oklch(0.55 0 0);
+		--elevated: oklch(1 0 0);
+	}
+
+	:root {
+		--border: oklch(0.84 0 0);
+	}
+
+	@page {
+		size: A4 portrait;
+		margin: 20mm;
+	}
+
+	html,
+	body {
+		background: #ffffff !important;
+		/* Safe-area padding is a device concern; on paper it just shifts things. */
+		padding: 0 !important;
+		margin: 0 !important;
+		height: auto !important;
+		min-height: 0 !important;
+	}
+
+	/* Keep the fills the tokens ask for — browsers drop backgrounds by default,
+	   which would erase the header row and the substituted-lesson highlight. */
+	* {
+		-webkit-print-color-adjust: exact !important;
+		print-color-adjust: exact !important;
+	}
+
+	/* App chrome never prints. The skip link is not a direct child of <body> —
+	   SvelteKit wraps the tree — so it is matched by its target. */
+	a[href='#main'],
+	header,
+	#aria-live-region {
+		display: none !important;
+	}
+
+	/* The subject of the page gets the sheet, centred inside the page margin. */
+	main :where(.max-w-4xl) {
+		max-width: none !important;
+		margin-inline: auto !important;
+		padding: 0 !important;
+	}
+
+	/* A horizontal scroller must not crop what it holds on paper. */
+	.overflow-x-auto {
+		overflow: visible !important;
+	}
+
+	/* Close the frame: the outer edge should read like the lines inside it.
+	   With border-collapse the table's own border merges with the outermost
+	   cells', so stating it once gives the grid a continuous edge. */
+	table {
+		border: 1px solid var(--border) !important;
+	}
+	table th,
+	table td {
+		border-color: var(--border) !important;
+	}
+
+	/* A substituted lesson is styled with hardcoded amber utilities including a
+	   dark: variant, which the token override above cannot reach — so printing
+	   from a dark browser put pale yellow on beige. Restate the light values. */
+	td[data-replaced] {
+		background-color: #fef7d8 !important;
+	}
+	td[data-replaced] > div:first-child {
+		color: #b45309 !important;
+	}
+
+	/* Never split a row across sheets. */
+	tr,
+	td,
+	th {
+		break-inside: avoid;
+	}
+	thead {
+		display: table-header-group;
+	}
+}
+
 /* ── Markdown (notice detail) — driven by tokens ───────────────────────────── */
 .markdown-content h1,
 .markdown-content h2,

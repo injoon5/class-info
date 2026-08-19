@@ -9,7 +9,7 @@ const groups = useQuery(api.notices.pastByMonth, { monthKey });
 
 </script>
 
-<div class="p-2 pt-0">
+<div class="px-3 pb-3 pt-1">
 	{#if groups.isLoading}
 		<div class="text-sm text-muted-foreground">불러오는 중…</div>
 	{:else if groups.error}
