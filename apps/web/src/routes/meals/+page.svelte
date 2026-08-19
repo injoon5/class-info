@@ -164,7 +164,7 @@ function openMealDrawer(day: MealDay) {
         {selectedMeal.dateInfo.year}년
       </p>
       <div class="flex items-baseline gap-2 flex-wrap">
-        <h2 class="text-2xl font-bold tracking-tight leading-tight text-foreground">
+        <h2 class="text-2xl font-bold leading-tight text-foreground">
           {selectedMeal.dateInfo.month}월 {selectedMeal.dateInfo.day}일
         </h2>
         <span class="text-base text-muted-foreground leading-tight">{selectedMeal.dateInfo.weekday}요일</span>
