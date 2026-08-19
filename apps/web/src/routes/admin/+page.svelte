@@ -485,28 +485,23 @@ const lastUpdatedTs = $derived.by(() => {
                                 <DisclosureCaret open={openMonthKey === m.monthKey} />
                                 {m.monthName} ({m.total}개)
                             </summary>
-
                             {#if openMonthKey === m.monthKey}
-                                <div transition:slide={slideY}>
-                                {#key m.monthKey}
-                                    <AdminPastMonthDetails
-                                        monthKey={m.monthKey}
-                                        {dismissedIds}
-                                        {editorTarget}
-                                        editor={noticeEditor}
-                                        onEdit={(id: string) => {
-                                            const all: any[] = (overview.data?.currentGroups || []).flatMap((g: any) => g.notices || []);
-                                            const found = all.find((n: any) => String(n?._id) === id);
-                                            if (found) {
-                                                editNotice(found);
-                                            } else {
-                                                editNotice(id);
-                                            }
-                                        }}
-                                        onDelete={(id: string) => handleDelete({ _id: id } as any)}
-                                    />
-                                {/key}
-                                </div>
+                                <AdminPastMonthDetails
+                                    monthKey={m.monthKey}
+                                    {dismissedIds}
+                                    {editorTarget}
+                                    editor={noticeEditor}
+                                    onEdit={(id: string) => {
+                                        const all: any[] = (overview.data?.currentGroups || []).flatMap((g: any) => g.notices || []);
+                                        const found = all.find((n: any) => String(n?._id) === id);
+                                        if (found) {
+                                            editNotice(found);
+                                        } else {
+                                            editNotice(id);
+                                        }
+                                    }}
+                                    onDelete={(id: string) => handleDelete({ _id: id } as any)}
+                                />
                             {/if}
                         </details>
                         </div>

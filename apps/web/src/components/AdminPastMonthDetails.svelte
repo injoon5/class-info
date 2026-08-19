@@ -6,7 +6,7 @@ import type { Snippet } from 'svelte';
 import { SvelteSet } from 'svelte/reactivity';
 import { fade, slide } from 'svelte/transition';
 import { flip } from 'svelte/animate';
-import { fadeFast, flipMove, slideY, slideYOut } from '$lib/transitions';
+import { fadeFast, flipMove, slideNone, slideY, slideYOut } from '$lib/transitions';
 import ConfirmDeleteActions from './ConfirmDeleteActions.svelte';
 import LoadingState from './LoadingState.svelte';
 import FluidHeight from './FluidHeight.svelte';
@@ -33,6 +33,21 @@ const {
 let confirmingDeleteId = $state<string | null>(null);
 
 const groups = useQuery(api.notices.pastByMonth, { monthKey });
+// First ready paint is silent so FluidHeight can tween spinner → full list
+// instead of measuring mid-slide. Later row/group intros still slide.
+let listLive = $state(false);
+$effect(() => {
+	if (groups.isLoading || groups.error) {
+		listLive = false;
+		return;
+	}
+	const frame = requestAnimationFrame(() => {
+		listLive = true;
+	});
+	return () => cancelAnimationFrame(frame);
+});
+const listSlide = $derived(listLive ? slideY : slideNone);
+
 const visibleGroups = $derived(
     (groups.data ?? [])
         .map((g) => ({
@@ -56,7 +71,7 @@ const visibleGroups = $derived(
             <div
                 class="mb-3 last:mb-0"
                 animate:flip={flipMove}
-                in:slide={slideY}
+                in:slide={listSlide}
                 out:slide={slideYOut}
             >
                 <h3 class="text-sm font-semibold mb-2 text-muted-foreground border-l-2 border-border pl-2">
@@ -66,7 +81,7 @@ const visibleGroups = $derived(
                     {#each group.notices as notice (notice._id)}
                         <div
                             animate:flip={flipMove}
-                            in:slide={slideY}
+                            in:slide={listSlide}
                             out:slide={slideYOut}
                         >
                         {#if editor && editorTarget === String(notice._id)}

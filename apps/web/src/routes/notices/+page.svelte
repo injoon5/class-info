@@ -1,6 +1,4 @@
 <script lang="ts">
-import { slide } from 'svelte/transition';
-import { slideY } from '$lib/transitions';
 import { useQuery } from 'convex-svelte';
 import { api } from "@class-info/backend/convex/_generated/api";
 import NoticeGroup from '../../components/NoticeGroup.svelte';
@@ -70,11 +68,7 @@ const overview = useQuery(api.notices.overview, {}, () => ({
                             {month.monthName} ({month.total}개)
                         </summary>
                         {#if openMonthKey === month.monthKey}
-                            <div transition:slide={slideY}>
-                                {#key month.monthKey}
-                                    <PastMonthDetails monthKey={month.monthKey} />
-                                {/key}
-                            </div>
+                            <PastMonthDetails monthKey={month.monthKey} />
                         {/if}
                     </details>
                 {/each}

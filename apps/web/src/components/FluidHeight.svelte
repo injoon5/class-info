@@ -3,50 +3,71 @@ import { Tween } from 'svelte/motion';
 import { tweenMove } from '$lib/transitions';
 import type { Snippet } from 'svelte';
 
-// Tweens height only when `key` changes (spinner → list). Stays `height: auto`
-// otherwise so nested slide/flip on rows still own their own motion.
+// Pixel-clip after first layout so a content swap (spinner → list) can tween
+// height. Parent <details> open/close stays instant.
+//
+// ResizeObserver follows nested row slides with duration 0. A key-change
+// tween has to win that race: the observer sees the new content immediately
+// and would otherwise snap the clip to the destination before the tween
+// starts. $effect.pre flags the swap before the DOM updates so RO is ignored
+// until the tween is actually running from the old height.
 
 const { key, children }: { key: string; children: Snippet } = $props();
 
-let box = $state<HTMLDivElement | undefined>();
 let inner = $state<HTMLDivElement | undefined>();
-let locked = $state(false);
+let measured = $state(false);
 const height = new Tween(0, tweenMove);
 
-let booted = false;
-let fromHeight = 0;
-let gen = 0;
+let prevKey: string | null = null;
+let pendingTween = false;
 
 $effect.pre(() => {
-	key;
-	fromHeight = box?.offsetHeight ?? 0;
+	if (prevKey !== null && key !== prevKey) pendingTween = true;
 });
 
 $effect(() => {
-	key;
 	const el = inner;
+	const k = key;
 	if (!el) return;
-	if (!booted) {
-		booted = true;
+
+	const next = el.offsetHeight;
+	if (next <= 0) return;
+
+	if (!measured) {
+		height.set(next, { duration: 0 });
+		measured = true;
+		prevKey = k;
+		pendingTween = false;
 		return;
 	}
 
-	const to = el.offsetHeight;
-	if (to === fromHeight) return;
+	if (pendingTween) {
+		prevKey = k;
+		void height.set(next).then(() => {
+			pendingTween = false;
+		});
+		return;
+	}
 
-	const id = ++gen;
-	height.set(fromHeight, { duration: 0 });
-	locked = true;
-	void height.set(to).then(() => {
-		if (id === gen) locked = false;
+	prevKey = k;
+});
+
+$effect(() => {
+	const el = inner;
+	if (!el) return;
+	const ro = new ResizeObserver(() => {
+		if (pendingTween || !measured) return;
+		const next = el.offsetHeight;
+		if (next > 0) height.set(next, { duration: 0 });
 	});
+	ro.observe(el);
+	return () => ro.disconnect();
 });
 </script>
 
 <div
-	bind:this={box}
-	class={locked ? 'overflow-hidden' : ''}
-	style:height={locked ? `${height.current}px` : undefined}
+	class={measured ? 'overflow-hidden' : ''}
+	style:height={measured ? `${height.current}px` : undefined}
 >
 	<div bind:this={inner} class="flow-root">
 		{@render children()}
