@@ -49,11 +49,13 @@ const overview = useQuery(
     {:else if overview.error}
         <ErrorState error={overview.error} />
     {:else}
-        <!-- Current and Future Notices -->
+        <!-- Current notices only. Past-month groups still render below. -->
         {#if overview.data?.currentGroups && overview.data.currentGroups.length > 0}
             {#each overview.data.currentGroups as group (group.date)}
                 <NoticeGroup {group} />
             {/each}
+        {:else}
+            <EmptyState message="공지가 없어요" />
         {/if}
 
         {#if overview.data?.pastMonths && overview.data.pastMonths.length > 0}
@@ -77,9 +79,6 @@ const overview = useQuery(
                     </details>
                 {/each}
             </div>
-        {/if}
-        {#if (!overview.data?.currentGroups || overview.data.currentGroups.length === 0) && (!overview.data?.pastMonths || overview.data.pastMonths.length === 0)}
-            <EmptyState message="등록된 공지가 없어요" />
         {/if}
     {/if}
     <NoticeFooter notices={overview.data?.currentGroups || []} />
