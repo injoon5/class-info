@@ -165,7 +165,7 @@ function openMealDrawer(day: any) {
 >
   {#snippet header()}
     {#if selectedMeal}
-      <p class="text-xs font-semibold text-muted-foreground mb-1 tabular-nums">
+      <p class="text-sm font-semibold text-muted-foreground mb-1 tabular-nums">
         {selectedMeal.dateInfo.year}년
       </p>
       <div class="flex items-baseline gap-2 flex-wrap">
@@ -173,7 +173,7 @@ function openMealDrawer(day: any) {
           {selectedMeal.dateInfo.month}월 {selectedMeal.dateInfo.day}일
         </h2>
         <span class="text-base text-muted-foreground leading-tight">{selectedMeal.dateInfo.weekday}요일</span>
-        <span class="text-xs font-semibold px-2 py-0.5 rounded-full bg-muted text-muted-foreground leading-none">
+        <span class="text-sm font-semibold px-2 py-0.5 rounded-full bg-muted text-muted-foreground leading-none">
           {selectedMeal.meal.mealType}
         </span>
       </div>
@@ -185,7 +185,7 @@ function openMealDrawer(day: any) {
     <ul class="space-y-2">
       {#each selectedMeal.meal.dishes as dish}
         <li class="flex items-start gap-2.5 py-1">
-          <span class="mt-1.5 w-1.5 h-1.5 rounded-full bg-muted-foreground/50 flex-shrink-0"></span>
+          <span class="mt-2 w-1.5 h-1.5 rounded-full bg-muted-foreground/50 flex-shrink-0"></span>
           <span class="text-base text-foreground leading-snug">{dish}</span>
         </li>
       {/each}
@@ -198,20 +198,20 @@ function openMealDrawer(day: any) {
             return idx !== -1 ? [s.slice(0, idx).trim(), s.slice(idx + 3).trim()] : [s, ''];
           })
         : []}
-      <div class="mt-4 pt-4 -mx-4 px-4 border-t border-border">
+      <div class="mt-4 pt-4 border-t border-border">
         {#if selectedMeal.meal.calories}
           <div class="flex items-center gap-2 mb-3">
-            <span class="text-xs font-semibold text-muted-foreground">열량</span>
+            <span class="text-sm font-semibold text-muted-foreground">열량</span>
             <span class="text-sm text-foreground tabular-nums">{selectedMeal.meal.calories}</span>
           </div>
         {/if}
         {#if nutrientRows.length > 0}
-          <p class="text-xs font-semibold text-muted-foreground mb-2">영양</p>
+          <p class="text-sm font-semibold text-muted-foreground mb-2">영양</p>
           <div class="grid grid-cols-3 gap-x-4 gap-y-1.5">
             {#each nutrientRows as [name, value]}
               <div class="flex items-baseline justify-between gap-1 border-b border-border pb-1.5">
-                <span class="text-xs text-muted-foreground truncate">{name}</span>
-                <span class="text-xs text-foreground tabular-nums flex-shrink-0">{value}</span>
+                <span class="text-sm text-muted-foreground truncate">{name}</span>
+                <span class="text-sm text-foreground tabular-nums flex-shrink-0">{value}</span>
               </div>
             {/each}
           </div>

@@ -65,7 +65,7 @@ const overview = useQuery(api.notices.overview, {}, () => ({
                         >
                             <svg
                                 viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2"
-                                class="w-4 h-4 flex-shrink-0 text-muted-foreground transition-transform duration-150 {openMonthKey === month.monthKey ? 'rotate-90' : ''}"
+                                class="w-4 h-4 flex-shrink-0 text-muted-foreground transition-[rotate] duration-200 ease-out-expo {openMonthKey === month.monthKey ? 'rotate-90' : ''}"
                                 aria-hidden="true"
                             >
                                 <path stroke-linecap="round" stroke-linejoin="round" d="M7.5 4.5l5 5.5-5 5.5"/>
