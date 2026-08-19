@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "vite dev",
     "build": "vite build",
+    "build:vercel": "cd ../../packages/backend && npx convex deploy --cmd-url-env-var-name PUBLIC_CONVEX_URL --cmd 'cd ../../apps/web && npm run build'",
     "preview": "vite preview",
     "prepare": "svelte-kit sync || echo ''",
     "check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
