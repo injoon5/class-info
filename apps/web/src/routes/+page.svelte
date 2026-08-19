@@ -2,6 +2,7 @@
 import { useQuery } from 'convex-svelte';
 import { api } from "@class-info/backend/convex/_generated/api";
 import NoticeCard from '../components/NoticeCard.svelte';
+import PillButton from '../components/PillButton.svelte';
 import { getNowInKst, yyyymmdd, WEEKDAYS_KR } from '$lib/date';
 import { eventDotClass } from '$lib/utils';
 import type { PageData } from './$types.js';
@@ -99,8 +100,39 @@ const upcomingEvents = $derived(
 );
 
 // ── Notices ───────────────────────────────────────────────────────────────────
+const PREVIEW_NOTICE_LIMIT = 4;
+
 const currentGroups = $derived(noticesQuery.data?.currentGroups ?? []);
 const hasNotices = $derived(currentGroups.length > 0);
+
+// Take whole groups until the budget runs out, trimming the last group rather
+// than dropping it — the earliest deadlines are the ones worth showing.
+const noticePreview = $derived.by(() => {
+	const preview: any[] = [];
+	let budget = PREVIEW_NOTICE_LIMIT;
+	for (const group of currentGroups as any[]) {
+		if (budget <= 0) break;
+		const notices = (group.notices ?? []).slice(0, budget);
+		if (notices.length === 0) continue;
+		preview.push({ ...group, notices });
+		budget -= notices.length;
+	}
+	return preview;
+});
+
+// The first notice past the cut. It is what the fade is drawn over, so the
+// "there is more" hint is the actual next notice rather than a decoy — and when
+// this is null there is genuinely nothing more, and no hint is drawn at all.
+const peekNotice = $derived.by(() => {
+	const shown = noticePreview.reduce((n, g: any) => n + (g.notices?.length ?? 0), 0);
+	let i = 0;
+	for (const group of currentGroups as any[]) {
+		for (const notice of group.notices ?? []) {
+			if (i++ === shown) return notice;
+		}
+	}
+	return null;
+});
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 function formatEventDate(dateStr: string): string {
@@ -260,7 +292,7 @@ function isToday(dateStr: string): boolean {
 				</div>
 			{:else}
 				<div class="space-y-4">
-					{#each currentGroups as group (group.date)}
+					{#each noticePreview as group (group.date)}
 						<div>
 							<p class="text-sm font-semibold text-muted-foreground mb-2">
 								{group.displayDate}
@@ -272,6 +304,31 @@ function isToday(dateStr: string): boolean {
 							</div>
 						</div>
 					{/each}
+
+					{#if peekNotice}
+						<!-- The list is shown continuing rather than described as
+						     continuing: the next notice is cropped, faded into the page,
+						     and the link sits on the fade. Decorative only — it is out of
+						     the tab order and the a11y tree, and the link is the target. -->
+						<div class="relative -mt-2.5">
+							<div class="h-20 overflow-hidden" aria-hidden="true" inert>
+								<NoticeCard notice={peekNotice} />
+							</div>
+							<div
+								class="pointer-events-none absolute inset-0 bg-gradient-to-b from-background/0 via-background/70 to-background"
+								aria-hidden="true"
+							></div>
+							<div class="absolute inset-x-0 bottom-0 flex justify-center">
+								<PillButton
+									href="/notices"
+									text="모두 보기"
+									variant="secondary"
+									size="sm"
+									class="bg-background"
+								/>
+							</div>
+						</div>
+					{/if}
 				</div>
 			{/if}
 		</section>
