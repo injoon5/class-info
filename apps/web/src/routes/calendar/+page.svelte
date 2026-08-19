@@ -2,8 +2,8 @@
 import { useQuery, useConvexClient } from 'convex-svelte';
 import { api } from "@class-info/backend/convex/_generated/api";
 import type { Id } from "@class-info/backend/convex/_generated/dataModel";
-import Drawer from '../../components/Drawer.svelte';
-import HScroll from '../../components/HScroll.svelte';
+import Drawer from '$lib/components/ui/Drawer.svelte';
+import HScroll from '$lib/components/ui/HScroll.svelte';
 import { getNowInKst, toYyyymmdd } from '$lib/date';
 import {
   CUSTOM_COLOR_SWATCH,
@@ -13,7 +13,7 @@ import {
 } from '$lib/eventChrome';
 import type { PublicEvent } from '@class-info/backend/convex/validators';
 import { focusOnElement } from '$lib/actions/focus';
-import PillButton from '../../components/PillButton.svelte';
+import PillButton from '$lib/components/ui/PillButton.svelte';
 import { fade, fly, slide } from 'svelte/transition';
 import { fadeFast, fadeIn, fadeOut, flyIn, slideY } from '$lib/transitions';
 import type { PageData } from './$types.js';

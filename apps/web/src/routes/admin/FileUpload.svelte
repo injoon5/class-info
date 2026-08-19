@@ -4,8 +4,8 @@ import { api } from "@class-info/backend/convex/_generated/api";
 import type { Id } from "@class-info/backend/convex/_generated/dataModel";
 import { fly } from 'svelte/transition';
 import { flyHelper } from '$lib/transitions';
-import PillButton from './PillButton.svelte';
-import { formatFileSize } from '$lib/utils';
+import PillButton from '$lib/components/ui/PillButton.svelte';
+import { formatFileSize } from '$lib/format';
 
 const {
   files = [],

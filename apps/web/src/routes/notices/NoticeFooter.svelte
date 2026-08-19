@@ -1,9 +1,8 @@
 <script lang="ts">
 import { fly } from 'svelte/transition';
 import { flyHelper } from '$lib/transitions';
-import { generateCopyText } from '../lib/utils.js';
-import type { DayGroup } from '@class-info/backend/convex/validators';
-import PillButton from './PillButton.svelte';
+import { generateCopyText, type DayGroup } from '$lib/notices';
+import PillButton from '$lib/components/ui/PillButton.svelte';
 
 const { notices }: { notices: DayGroup[] } = $props();
 

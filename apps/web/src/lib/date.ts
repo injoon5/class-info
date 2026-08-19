@@ -81,3 +81,10 @@ export function formatRelative(ts: number | string | Date, now: number = Date.no
 	// Older than a month: an absolute date carries more than "5주 전" does.
 	return new Date(ts).toLocaleDateString('ko-KR', { year: 'numeric', month: 'long', day: 'numeric' });
 }
+
+export function formatDate(dateString: string) {
+	const parsed = parseIsoDate(dateString);
+	if (!parsed) return dateString;
+	const weekday = weekdayKrUtc(parsed.y, parsed.m, parsed.d);
+	return `${parsed.y}년 ${parsed.m}월 ${parsed.d}일 (${weekday})`;
+}

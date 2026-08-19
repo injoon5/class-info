@@ -1,11 +1,11 @@
 <script lang="ts">
-import { getTypeColor } from '../lib/utils.js';
+import { noticeTypeClass, type MinimalNotice } from '$lib/notices';
 
 const {
 	notice,
 	isPast = false,
 	interactive = true
-}: { notice: any; isPast?: boolean; interactive?: boolean } = $props();
+}: { notice: MinimalNotice; isPast?: boolean; interactive?: boolean } = $props();
 
 const isLink = $derived(
 	interactive && Boolean((notice?.summary && String(notice.summary).trim()) || notice?.hasFiles)
@@ -15,7 +15,7 @@ const containerClass = $derived(
     `${isPast ? 'bg-card/60 border-border opacity-80 rounded-xl' : 'bg-card border-border rounded-xl'} border p-2.5 sm:p-3${isLink ? ' pressable-xl' : ''} ${isLink ? (isPast ? 'transition-opacity pointer:hover:opacity-100' : 'transition-colors pointer:hover:border-muted-foreground/40') : ''}`
 );
 const headerGapClass = $derived(`flex items-center gap-1.5 sm:gap-2 ${isPast ? 'mb-0.5 sm:mb-1' : 'mb-0.5 sm:mb-1'}`);
-const typePillClass = $derived(`px-1.5 py-0.5 ${isPast ? 'text-xs' : 'text-xs sm:text-sm'} font-semibold rounded-md ${getTypeColor(notice.type)} ${isPast ? 'opacity-75' : ''}`);
+const typePillClass = $derived(`px-1.5 py-0.5 ${isPast ? 'text-xs' : 'text-xs sm:text-sm'} font-semibold rounded-md ${noticeTypeClass(notice.type)} ${isPast ? 'opacity-75' : ''}`);
 const subjectClass = $derived(`${isPast ? 'text-xs text-muted-foreground' : 'text-sm font-semibold text-muted-foreground'}`);
 const titleWrapClass = $derived(`flex items-center gap-1.5`);
 const titleClass = $derived(`${isPast ? ' text-muted-foreground text-xs sm:text-sm' : 'font-semibold text-foreground text-list sm:text-base'}`);

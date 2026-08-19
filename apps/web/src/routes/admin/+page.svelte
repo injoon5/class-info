@@ -3,15 +3,14 @@ import { useConvexClient } from 'convex-svelte';
 import { api } from "@class-info/backend/convex/_generated/api";
 import type { Id } from "@class-info/backend/convex/_generated/dataModel";
 import { enhance } from '$app/forms';
-import FileUpload from '../../components/FileUpload.svelte';
-import { getTypeColor } from '$lib/utils';
+import FileUpload from './FileUpload.svelte';
+import { noticeTypeClass, type DayGroup, type MinimalNotice } from '$lib/notices';
 import { formatAbsolute, formatRelative } from '$lib/date';
-import type { DayGroup, MinimalNotice } from '@class-info/backend/convex/validators';
-import LoadingState from '../../components/LoadingState.svelte';
-import PillButton from '../../components/PillButton.svelte';
-import ConfirmDeleteActions from '../../components/ConfirmDeleteActions.svelte';
-import AdminPastMonthDetails from '../../components/AdminPastMonthDetails.svelte';
-import DisclosureCaret from '../../components/DisclosureCaret.svelte';
+import LoadingState from '$lib/components/ui/LoadingState.svelte';
+import PillButton from '$lib/components/ui/PillButton.svelte';
+import ConfirmDeleteActions from '$lib/components/ui/ConfirmDeleteActions.svelte';
+import AdminPastMonthDetails from './AdminPastMonthDetails.svelte';
+import DisclosureCaret from '$lib/components/ui/DisclosureCaret.svelte';
 import { autosize } from '$lib/actions/autosize';
 import { onMount } from 'svelte';
 import { SvelteSet } from 'svelte/reactivity';
@@ -422,7 +421,7 @@ const lastUpdatedTs = $derived.by(() => {
                                 <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
                                     <div class="flex-1 min-w-0">
                                         <div class="flex items-center gap-1.5 sm:gap-2 mb-1">
-                                            <span class="px-1.5 py-0.5 text-xs sm:text-sm font-semibold rounded-md {getTypeColor(notice.type)}">
+                                            <span class="px-1.5 py-0.5 text-xs sm:text-sm font-semibold rounded-md {noticeTypeClass(notice.type)}">
                                                 {notice.type}
                                             </span>
                                             <span class="text-sm font-semibold text-muted-foreground">

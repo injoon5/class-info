@@ -2,12 +2,13 @@
 import { useQuery } from 'convex-svelte';
 import { api } from "@class-info/backend/convex/_generated/api";
 import { page } from '$app/state';
-import { getTypeColor, getFirstLine, formatDate, formatFileSize } from '../../../lib/utils.js';
-import { renderMarkdown } from '$lib/markdown';
-import { formatAbsolute } from '$lib/date';
-import LoadingState from '../../../components/LoadingState.svelte';
-import PillButton from '../../../components/PillButton.svelte';
-import ErrorState from '../../../components/ErrorState.svelte';
+import { noticeTypeClass } from '$lib/notices';
+import { getFirstLine, renderMarkdown } from '$lib/markdown';
+import { formatAbsolute, formatDate } from '$lib/date';
+import { formatFileSize } from '$lib/format';
+import LoadingState from '$lib/components/ui/LoadingState.svelte';
+import PillButton from '$lib/components/ui/PillButton.svelte';
+import ErrorState from '$lib/components/ui/ErrorState.svelte';
 import type { PageData } from './$types.js';
 
 const { data }: { data: PageData } = $props();
@@ -78,7 +79,7 @@ $effect(() => {
 				<div class="mb-4">
 					<div class="flex items-center gap-2 sm:gap-3 mb-1.5 sm:mb-2">
 						<span class="inline-flex rounded-[9px] border border-border p-[3px]">
-							<span class="rounded-md px-2 py-1 text-sm font-semibold {getTypeColor(detail.data.notice.type)}">
+							<span class="rounded-md px-2 py-1 text-sm font-semibold {noticeTypeClass(detail.data.notice.type)}">
 								{detail.data.notice.type}
 							</span>
 						</span>

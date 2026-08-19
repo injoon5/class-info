@@ -1,5 +1,9 @@
 node_modules
 
+# Convex lives in packages/backend. A leftover `convex/` here is empty codegen
+# from running the CLI in the wrong package — don't commit it.
+/convex
+
 # Output
 .output
 .vercel

@@ -2,15 +2,15 @@
 import { useQuery } from 'convex-svelte';
 import { api } from "@class-info/backend/convex/_generated/api";
 import type { Id } from "@class-info/backend/convex/_generated/dataModel";
-import { getTypeColor } from '../lib/utils.js';
+import { noticeTypeClass } from '$lib/notices';
 import type { Snippet } from 'svelte';
 import { SvelteSet } from 'svelte/reactivity';
 import { fade, slide } from 'svelte/transition';
 import { flip } from 'svelte/animate';
 import { fadeFast, flipMove, slideNone, slideY, slideYOut } from '$lib/transitions';
-import ConfirmDeleteActions from './ConfirmDeleteActions.svelte';
-import LoadingState from './LoadingState.svelte';
-import FluidHeight from './FluidHeight.svelte';
+import ConfirmDeleteActions from '$lib/components/ui/ConfirmDeleteActions.svelte';
+import LoadingState from '$lib/components/ui/LoadingState.svelte';
+import FluidHeight from '$lib/components/ui/FluidHeight.svelte';
 
 // `editorTarget` and `editor` come from the admin page so a past notice is
 // edited in its own row too, not somewhere else on the page.
@@ -99,7 +99,7 @@ const visibleGroups = $derived(
                             <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
                                 <div class="flex-1 min-w-0">
                                     <div class="flex items-center gap-2 mb-1">
-                                        <span class="px-1.5 py-0.5 text-xs font-semibold rounded-md opacity-90 {getTypeColor(notice.type)}">
+                                        <span class="px-1.5 py-0.5 text-xs font-semibold rounded-md opacity-90 {noticeTypeClass(notice.type)}">
                                             {notice.type}
                                         </span>
                                         <span class="text-xs text-muted-foreground">

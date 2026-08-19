@@ -1,6 +1,6 @@
 <script lang="ts">
     import { page } from '$app/state';
-    import PillButton from '../components/PillButton.svelte';
+    import PillButton from '$lib/components/ui/PillButton.svelte';
 </script>
 
 <svelte:head>

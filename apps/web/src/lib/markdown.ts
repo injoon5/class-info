@@ -88,3 +88,19 @@ export function renderMarkdown(text: string): string {
     return `<div class="video-embed"><iframe src="https://www.youtube.com/embed/${id}${start}" title="YouTube video" loading="lazy" referrerpolicy="strict-origin-when-cross-origin" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen sandbox="allow-scripts allow-same-origin allow-presentation"></iframe></div>`;
   });
 }
+
+export function getFirstLine(text: string): string {
+	if (!text) return '';
+	const cleanText = text
+		.replace(/^#{1,6}\s+/gm, '')
+		.replace(/\*\*(.*?)\*\*/g, '$1')
+		.replace(/\*(.*?)\*/g, '$1')
+		.replace(/`(.*?)`/g, '$1')
+		.replace(/\[([^\]]*)\]\([^)]*\)/g, '$1')
+		.replace(/^>\s+/gm, '')
+		.replace(/^-\s+/gm, '')
+		.replace(/^\d+\.\s+/gm, '')
+		.trim();
+
+	return cleanText.split('\n')[0] || '';
+}

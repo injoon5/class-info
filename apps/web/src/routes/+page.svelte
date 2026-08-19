@@ -1,10 +1,11 @@
 <script lang="ts">
 import { useQuery } from 'convex-svelte';
 import { api } from "@class-info/backend/convex/_generated/api";
-import NoticeCard from '../components/NoticeCard.svelte';
+import NoticeCard from '$lib/components/notices/NoticeCard.svelte';
 import { getNowInKst, yyyymmdd, WEEKDAYS_KR } from '$lib/date';
 import { eventChrome } from '$lib/eventChrome';
-import type { DayGroup, MinimalNotice, PublicEvent } from '@class-info/backend/convex/validators';
+import type { DayGroup, MinimalNotice } from '$lib/notices';
+import type { PublicEvent } from '@class-info/backend/convex/validators';
 import type { PageData } from './$types.js';
 
 const { data }: { data: PageData } = $props();
