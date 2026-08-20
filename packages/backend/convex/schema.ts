@@ -48,6 +48,24 @@ export default defineSchema({
     week: v.number(),
     editedAt: v.number(),
   }).index("by_week", ["week"]),
+
+  // The standing weekly timetable, independent of the substitutions the
+  // upstream feed carries. A single row: an admin snapshots a fetched week
+  // into it, then corrects it by hand. Days are Mon–Fri; each day's length is
+  // its own, because Friday is routinely shorter than Monday.
+  fullTimetable: defineTable({
+    day_time: v.array(v.string()),
+    timetable: v.array(
+      v.array(
+        v.object({
+          subject: v.string(),
+          teacher: v.string(),
+        })
+      )
+    ),
+    updatedAt: v.number(),
+  }),
+
   
   settings: defineTable({
     key: v.string(),
@@ -87,6 +105,10 @@ export default defineSchema({
     eventType: v.optional(v.string()), // SBTR_DD_SC_NM — school only
     schoolCode: v.optional(v.string()), // school only
     color: v.optional(v.string()), // "blue"|"green"|"purple"|"orange"|"pink"|"teal" — custom only
+    // Counted down to on the home page. Set on either source; school rows are
+    // wiped and re-inserted on every sync, so the flag is carried across by
+    // (date, title) — see schedule.upsertManySchoolEvents.
+    dday: v.optional(v.boolean()),
     createdAt: v.number(),
     updatedAt: v.number(),
   })

@@ -48,6 +48,19 @@ function mealFor(day: MealDay, type: string): PublicMeal | null {
   return type === '중식' ? day.lunch : day.dinner;
 }
 
+// Between the 4pm rollover and 7pm the grid has moved on to the next school
+// day, but tonight's 석식 has not been served yet — so on the 석식 tab the
+// highlight stays on today until it has been. Only when today actually has a
+// dinner to show: on a Saturday, today isn't even a column.
+const todayDinner = $derived(
+  [...(mealsQuery.data?.thisWeek.days ?? []), ...(mealsQuery.data?.nextWeek.days ?? [])].find(
+    (d) => d.date === todayYmd
+  )?.dinner ?? null
+);
+const highlightDay = $derived(
+  selectedMealType === '석식' && !data.afterDinner && todayDinner ? todayYmd : displayDay
+);
+
 function formatDateFull(dateStr: string): { year: number; month: number; day: number; weekday: string } {
   const y = Number(dateStr.slice(0, 4));
   const m = Number(dateStr.slice(4, 6));
@@ -117,7 +130,7 @@ function openMealDrawer(day: MealDay) {
           {#each week.days as day (day.date)}
             {@const meal = mealFor(day, selectedMealType)}
             {@const hasMeal = !!meal}
-            {@const isDisplayCol = day.date === displayDay}
+            {@const isDisplayCol = day.date === highlightDay}
             {@const dayLabel = relativeDayLabel(day.date, todayYmd)}
             <button
               type="button"

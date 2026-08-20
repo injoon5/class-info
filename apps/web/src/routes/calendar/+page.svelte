@@ -4,7 +4,7 @@ import { api } from "@class-info/backend/convex/_generated/api";
 import type { Id } from "@class-info/backend/convex/_generated/dataModel";
 import Drawer from '$lib/components/ui/Drawer.svelte';
 import HScroll from '$lib/components/ui/HScroll.svelte';
-import { getNowInKst, toYyyymmdd } from '$lib/date';
+import { ddayLabel, getNowInKst, toYyyymmdd } from '$lib/date';
 import {
   CUSTOM_COLOR_SWATCH,
   CUSTOM_EVENT_COLORS,
@@ -107,13 +107,16 @@ const customEventsByDate = $derived(
   indexByDate((eventsQuery.data ?? []).filter((e) => e.source === 'custom'))
 );
 
-type CellEvent = { id: string; title: string; chipClass: string };
+type CellEvent = { id: string; title: string; dday: string; chipClass: string };
 
 function eventsForDate(dateStr: string | null): CellEvent[] {
   if (!dateStr) return [];
   return [...(schoolEventsByDate[dateStr] ?? []), ...(customEventsByDate[dateStr] ?? [])].map((e) => ({
     id: String(e._id),
     title: e.title,
+    // A countdown is only news while it is still ahead; past dates keep the
+    // flag (an admin may reuse it next year) but stop announcing it.
+    dday: e.dday && e.date >= todayStr ? ddayLabel(e.date, todayStr) : '',
     chipClass: eventChrome(e).chip,
   }));
 }
@@ -178,6 +181,21 @@ async function handleAddEvent() {
     saveError = '저장하지 못했어요. 잠시 후 다시 시도해 주세요.';
   } finally {
     isSaving = false;
+  }
+}
+
+// Works on school events as well as custom ones: a countdown to the exam the
+// feed already carries is the case this exists for.
+async function handleToggleDday(event: PublicEvent) {
+  saveError = null;
+  try {
+    await client.mutation(api.schedule.setEventDday, {
+      sessionToken,
+      id: event._id,
+      dday: !event.dday,
+    });
+  } catch {
+    saveError = 'D-Day를 바꾸지 못했어요. 잠시 후 다시 시도해 주세요.';
   }
 }
 
@@ -326,7 +344,12 @@ const dayNames = ['일','월','화','수','목','금','토'];
                   </div>
 
                   {#each cellEvents as event (event.id)}
-                    <div class="text-xs rounded px-1 py-0.5 mb-0.5 truncate leading-tight {event.chipClass}" title={event.title}>{event.title}</div>
+                    <!-- Flex, not a truncated string: the countdown is the part
+                         that must survive a title too long for the cell. -->
+                    <div class="flex items-baseline gap-1 text-xs rounded px-1 py-0.5 mb-0.5 leading-tight {event.chipClass}" title={event.title}>
+                      {#if event.dday}<span class="font-bold shrink-0">{event.dday}</span>{/if}
+                      <span class="truncate">{event.title}</span>
+                    </div>
                   {/each}
                 {/if}
               </div>
@@ -443,6 +466,52 @@ const dayNames = ['일','월','화','수','목','금','토'];
   </div>
 {/snippet}
 
+<!-- One row shape for both sources: only the delete button is exclusive to
+     custom events, and the D-Day toggle deliberately is not. -->
+{#snippet eventRow(event: PublicEvent, deletable: boolean)}
+  {@const chrome = eventChrome(event)}
+  {@const countdown = event.dday && event.date >= todayStr ? ddayLabel(event.date, todayStr) : ''}
+  <li class="flex rounded-lg overflow-hidden">
+    <div class="w-1.5 flex-shrink-0 {chrome.popupBar}"></div>
+    <div class="flex-1 flex items-center justify-between gap-3 px-3 py-2.5 {chrome.popupBg}">
+      <div class="min-w-0">
+        <p class="flex items-baseline gap-2 mb-0.5">
+          <span class="text-sm font-semibold {chrome.labelColor}">{chrome.label}</span>
+          {#if countdown}
+            <span class="text-sm font-bold text-foreground">{countdown}</span>
+          {/if}
+        </p>
+        <p class="text-base font-semibold text-foreground leading-snug">{event.title}</p>
+      </div>
+      {#if isAuthenticated}
+        <div class="flex items-center gap-1 flex-shrink-0">
+          <button
+            type="button"
+            onclick={() => handleToggleDday(event)}
+            aria-pressed={event.dday === true}
+            title={event.dday ? 'D-Day 해제' : 'D-Day로 표시'}
+            class="pressable touch-target px-2.5 py-1 rounded-full text-xs font-semibold transition-colors duration-150
+              {event.dday
+                ? 'bg-primary text-primary-foreground'
+                : 'border border-border text-muted-foreground pointer:hover:text-foreground pointer:hover:bg-muted'}"
+          >D-Day</button>
+          {#if deletable}
+            <button
+              onclick={() => handleDeleteCustomEvent(event._id)}
+              class="pressable-icon touch-target flex-shrink-0 w-7 h-7 flex items-center justify-center rounded-full text-muted-foreground pointer:hover:text-destructive pointer:hover:bg-destructive/10 transition-colors duration-150"
+              aria-label="삭제" title="삭제"
+            >
+              <svg viewBox="0 0 20 20" fill="currentColor" class="w-4 h-4">
+                <path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clip-rule="evenodd"/>
+              </svg>
+            </button>
+          {/if}
+        </div>
+      {/if}
+    </div>
+  </li>
+{/snippet}
+
 <!-- Day detail drawer -->
 <Drawer
   open={selectedDate !== null}
@@ -482,37 +551,10 @@ const dayNames = ['일','월','화','수','목','금','토'];
   {:else}
     <ul class="space-y-2.5">
       {#each selectedDateEvents.school as event (event._id)}
-        {@const chrome = eventChrome(event)}
-        <li class="flex rounded-lg overflow-hidden">
-          <div class="w-1.5 flex-shrink-0 {chrome.popupBar}"></div>
-          <div class="flex-1 px-3 py-2.5 {chrome.popupBg}">
-            <p class="text-sm font-semibold {chrome.labelColor} mb-0.5">{chrome.label}</p>
-            <p class="text-base font-semibold text-foreground leading-snug">{event.title}</p>
-          </div>
-        </li>
+        {@render eventRow(event, false)}
       {/each}
       {#each selectedDateEvents.custom as event (event._id)}
-        {@const chrome = eventChrome(event)}
-        <li class="flex rounded-lg overflow-hidden">
-          <div class="w-1.5 flex-shrink-0 {chrome.popupBar}"></div>
-          <div class="flex-1 flex items-center justify-between gap-2 px-3 py-2.5 {chrome.popupBg}">
-            <div class="min-w-0">
-              <p class="text-sm font-semibold {chrome.labelColor} mb-0.5">{chrome.label}</p>
-              <p class="text-base font-semibold text-foreground leading-snug">{event.title}</p>
-            </div>
-            {#if isAuthenticated}
-              <button
-                onclick={() => handleDeleteCustomEvent(event._id)}
-                class="pressable-icon touch-target flex-shrink-0 w-7 h-7 flex items-center justify-center rounded-full text-muted-foreground pointer:hover:text-destructive pointer:hover:bg-destructive/10 transition-colors duration-150"
-                aria-label="삭제" title="삭제"
-              >
-                <svg viewBox="0 0 20 20" fill="currentColor" class="w-4 h-4">
-                  <path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clip-rule="evenodd"/>
-                </svg>
-              </button>
-            {/if}
-          </div>
-        </li>
+        {@render eventRow(event, true)}
       {/each}
     </ul>
   {/if}

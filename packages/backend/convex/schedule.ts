@@ -30,6 +30,11 @@ type ExternalScheduleEvent = {
 
 const TITLE_MAX = 100;
 
+// \u0000 can't occur in a date or a title, so it can't be forged by one.
+function ddayKey(date: string, title: string): string {
+  return `${date}\u0000${title}`;
+}
+
 export const upsertManySchoolEvents = internalMutation({
   args: {
     events: v.array(
@@ -60,18 +65,27 @@ export const upsertManySchoolEvents = internalMutation({
 
     const toDelete = existing.filter((ev) => ev.source !== "custom");
 
+    // A D-day an admin set on a school event has to outlive the row it was set
+    // on: every sync deletes and re-inserts the whole range. The feed has no
+    // stable id, so (date, title) is the identity that carries the flag over.
+    const carriedDdays = new Set(
+      toDelete.filter((ev) => ev.dday === true).map((ev) => ddayKey(ev.date, ev.title))
+    );
+
     for (const ev of toDelete) {
       await ctx.db.delete(ev._id);
     }
 
     const now = Date.now();
     for (const ev of events) {
+      const dday = carriedDdays.has(ddayKey(ev.date, ev.eventName));
       await ctx.db.insert("schedules", {
         date: ev.date,
         title: ev.eventName,
         source: "school",
         eventType: ev.eventType,
         schoolCode: ev.schoolCode,
+        ...(dday ? { dday: true } : {}),
         createdAt: now,
         updatedAt: now,
       });
@@ -193,6 +207,9 @@ export const getEventsInRange = query({
 // How far past the display day the home page's event list reaches.
 const HOME_EVENT_WINDOW_DAYS = 7;
 
+// The home hero holds a couple of countdowns before it stops being a hero.
+const HOME_DDAY_LIMIT = 3;
+
 // One indexed pass over the schedule, wide enough to answer both questions the
 // home page asks. It reaches a full lookahead *behind* today because a break
 // already under way is only marked on its first day — see closedYmdsFromSchedule
@@ -231,7 +248,11 @@ export const schoolDisplayDay = query({
 // same scan, so it costs one query and ships only the days actually rendered.
 export const homeSchedule = query({
   args: schoolClockArgs,
-  returns: v.object({ displayDay: v.string(), events: v.array(publicEvent) }),
+  returns: v.object({
+    displayDay: v.string(),
+    events: v.array(publicEvent),
+    ddays: v.array(publicEvent),
+  }),
   handler: async (ctx, { today, afterRollover }) => {
     const { rows, displayDay } = await scanSchoolDays(ctx, today, afterRollover);
     const windowEnd = addDaysYyyymmdd(displayDay, HOME_EVENT_WINDOW_DAYS);
@@ -239,7 +260,29 @@ export const homeSchedule = query({
       .filter((row) => row.date >= today && row.date <= windowEnd)
       .map(projectSchedule)
       .filter((e): e is NonNullable<typeof e> => e !== null);
-    return { displayDay, events };
+    // Countdowns reach past the event window — that is the point of them — but
+    // only forward: a date already gone is no longer being counted down to.
+    const ddays = rows
+      .filter((row) => row.dday === true && row.date >= today)
+      .sort((a, b) => a.date.localeCompare(b.date))
+      .slice(0, HOME_DDAY_LIMIT)
+      .map(projectSchedule)
+      .filter((e): e is NonNullable<typeof e> => e !== null);
+    return { displayDay, events, ddays };
+  },
+});
+
+// Sets the countdown flag. Works on school rows as well as custom ones — a
+// countdown to the exam the feed already knows about is the common case.
+export const setEventDday = mutation({
+  args: { sessionToken: v.string(), id: v.id("schedules"), dday: v.boolean() },
+  returns: v.null(),
+  handler: async (ctx, { sessionToken, id, dday }) => {
+    await requireAdmin(ctx, sessionToken);
+    const existing = await ctx.db.get(id);
+    if (!existing) return null;
+    await ctx.db.patch(id, { dday, updatedAt: Date.now() });
+    return null;
   },
 });
 

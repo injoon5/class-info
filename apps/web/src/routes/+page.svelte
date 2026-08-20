@@ -6,6 +6,7 @@ import {
 	addDaysYyyymmdd,
 	parseYyyymmdd,
 	weekdayKrUtc,
+	ddayLabel,
 	relativeDayLabel,
 	weekOffsetBetween,
 	ymdWeekday
@@ -115,6 +116,11 @@ const allEvents = $derived(
 
 const displayDayEvents = $derived(allEvents.filter((e) => e.date === displayDay));
 
+// Countdowns an admin pinned, already filtered to today-onward and capped by
+// the server. Counted from the real today, never the display day — a countdown
+// that jumped a day at 4pm would be wrong for the rest of the afternoon.
+const ddayEvents = $derived(data.ddays ?? []);
+
 // Spans from today, not from the display day: an event still happening today
 // shouldn't vanish from the list at 4pm just because the timetable rolled over.
 // The display day is emphasised within the list instead. The far end is the
@@ -195,25 +201,41 @@ function isDisplayDayEvent(dateStr: string): boolean {
 <div class="max-w-4xl mx-auto px-4 pt-6 pb-16 sm:pt-8">
 
 	<!-- ── Date hero ───────────────────────────────────────────────────────── -->
-	<header class="flex flex-wrap items-baseline justify-between gap-x-6 gap-y-1.5 mb-6 sm:mb-8">
-		<h1 class="flex flex-wrap items-baseline gap-x-2.5 sm:gap-x-3">
-			{#if isTomorrow}
-				<span class="text-2xl sm:text-3xl font-bold text-amber-700 dark:text-amber-400 whitespace-nowrap">내일</span>
+	<header class="mb-6 sm:mb-8">
+		<div class="flex flex-wrap items-baseline justify-between gap-x-6 gap-y-1.5">
+			<h1 class="flex flex-wrap items-baseline gap-x-2.5 sm:gap-x-3">
+				{#if isTomorrow}
+					<span class="text-2xl sm:text-3xl font-bold text-amber-700 dark:text-amber-400 whitespace-nowrap">내일</span>
+				{/if}
+				<span class="text-2xl sm:text-3xl font-bold text-foreground whitespace-nowrap">{displayMonth}월 {displayDate}일</span>
+				<span class="text-base sm:text-lg text-muted-foreground whitespace-nowrap">{displayWeekday}요일</span>
+			</h1>
+			{#if displayDayEvents.length > 0}
+				<div class="flex flex-wrap items-baseline gap-x-4 gap-y-1 text-base sm:text-lg">
+					{#each displayDayEvents as event (event._id)}
+						<span class="inline-flex items-baseline gap-1.5">
+							<span class="font-semibold text-foreground">{event.title}</span>
+							{#if eventTypeLabel(event)}
+								<span class="text-sm font-semibold {eventChrome(event).labelColor}">{eventTypeLabel(event)}</span>
+							{/if}
+						</span>
+					{/each}
+				</div>
 			{/if}
-			<span class="text-2xl sm:text-3xl font-bold text-foreground whitespace-nowrap">{displayMonth}월 {displayDate}일</span>
-			<span class="text-base sm:text-lg text-muted-foreground whitespace-nowrap">{displayWeekday}요일</span>
-		</h1>
-		{#if displayDayEvents.length > 0}
-			<div class="flex flex-wrap items-baseline gap-x-4 gap-y-1 text-base sm:text-lg">
-				{#each displayDayEvents as event (event._id)}
-					<span class="inline-flex items-baseline gap-1.5">
-						<span class="font-semibold text-foreground">{event.title}</span>
-						{#if eventTypeLabel(event)}
-							<span class="text-sm font-semibold {eventChrome(event).labelColor}">{eventTypeLabel(event)}</span>
-						{/if}
-					</span>
+		</div>
+
+		<!-- Countdowns sit under the date they are counted from. A neutral pill
+		     with a coloured number: three of them in the event's own fill would
+		     out-shout the date above, and the number is the part being read. -->
+		{#if ddayEvents.length > 0}
+			<ul class="mt-3 flex flex-wrap items-center gap-2">
+				{#each ddayEvents as event (event._id)}
+					<li class="inline-flex items-baseline gap-1.5 rounded-full border border-border bg-card py-1 pl-2.5 pr-3">
+						<span class="text-sm font-bold {eventChrome(event).labelColor}">{ddayLabel(event.date, todayYmd)}</span>
+						<span class="text-sm font-semibold text-foreground">{event.title}</span>
+					</li>
 				{/each}
-			</div>
+			</ul>
 		{/if}
 	</header>
 

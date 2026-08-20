@@ -169,14 +169,26 @@ export function mondayYyyymmddOf(ymd: string): string {
   return addDaysYyyymmdd(ymd, dow === 0 ? -6 : 1 - dow);
 }
 
+export function daysBetweenYmd(fromYmd: string, toYmd: string): number {
+  const a = assertYyyymmdd(fromYmd);
+  const b = assertYyyymmdd(toYmd);
+  return Math.round(
+    (Date.UTC(b.y, b.m - 1, b.d) - Date.UTC(a.y, a.m - 1, a.d)) / 86_400_000,
+  );
+}
+
 export function weekOffsetBetween(fromYmd: string, toYmd: string): number {
-  const a = mondayYyyymmddOf(fromYmd);
-  const b = mondayYyyymmddOf(toYmd);
-  const pa = assertYyyymmdd(a);
-  const pb = assertYyyymmdd(b);
-  const days =
-    (Date.UTC(pb.y, pb.m - 1, pb.d) - Date.UTC(pa.y, pa.m - 1, pa.d)) / 86_400_000;
-  return Math.round(days / 7);
+  return Math.round(
+    daysBetweenYmd(mondayYyyymmddOf(fromYmd), mondayYyyymmddOf(toYmd)) / 7,
+  );
+}
+
+// "D-7" / "D-DAY" / "D+3", counted in whole calendar days from today. The day
+// itself is D-DAY rather than D-0 — that is how a Korean reader writes it.
+export function ddayLabel(ymd: string, todayYmd: string): string {
+  const days = daysBetweenYmd(todayYmd, ymd);
+  if (days === 0) return "D-DAY";
+  return days > 0 ? `D-${days}` : `D+${-days}`;
 }
 
 const CLOSED_EVENT_TYPES = new Set(["공휴일", "휴업일", "재량휴업일"]);
