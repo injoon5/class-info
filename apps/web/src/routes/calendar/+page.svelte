@@ -16,7 +16,7 @@ import { focusOnElement } from '$lib/actions/focus';
 import PillButton from '$lib/components/ui/PillButton.svelte';
 import Spinner from '$lib/components/ui/Spinner.svelte';
 import { fade, slide } from 'svelte/transition';
-import { fadeFast, fadeIn, fadeInAfter, fadeOut, slideYBoth } from '$lib/transitions';
+import { fadeFast, fadeInAfter, fadeOut, reveal, slideYBoth } from '$lib/transitions';
 import type { PageData } from './$types.js';
 
 const { data }: { data: PageData } = $props();
@@ -367,11 +367,13 @@ const dayNames = ['일','월','화','수','목','금','토'];
       </PillButton>
     </div>
   {:else}
-    <!-- Height only — no fly. A transform on this node plus the keyboard
-         is what froze the sheet on iOS. Bidirectional, so `cubicOut`: one
-         easing has to read as motion opening and closing alike. -->
+    <!-- Height only on this node — no fly. A transform *here* plus the
+         keyboard is what froze the sheet on iOS; the reveal's rise lives on
+         the content inside, where it is gone before the field takes focus.
+         Bidirectional, so `cubicOut`: one easing has to read as motion
+         opening and closing alike. -->
     <div class="col-start-1 row-start-1" transition:slide={slideYBoth}>
-    <div class="space-y-5 pt-1" in:fade={fadeIn} out:fade={fadeOut}>
+    <div class="space-y-5 pt-1" in:reveal out:fade={fadeOut}>
       <div class="space-y-3.5">
         <input
           type="text"

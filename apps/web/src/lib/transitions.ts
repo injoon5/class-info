@@ -1,4 +1,4 @@
-import { cubicIn, cubicOut, expoOut } from 'svelte/easing';
+import { cubicIn, cubicOut, expoOut, linear } from 'svelte/easing';
 import { prefersReducedMotion } from 'svelte/motion';
 import type { EasingFunction, TransitionConfig } from 'svelte/transition';
 
@@ -25,6 +25,14 @@ import type { EasingFunction, TransitionConfig } from 'svelte/transition';
 // keep `expoOut`; exits take `cubicIn` so they accelerate away (the curve
 // `tweenPanelClose` already uses); anything bidirectional takes `cubicOut`,
 // which reads as motion in both directions.
+//
+// ── Reveals ─────────────────────────────────────────────────────────────────
+// Every box that opens does the same two things: the height slides, and the
+// content rises the last few pixels into place behind it (`reveal`). Content
+// that sits at its final position while the edge sweeps past it is a curtain
+// going up — the box moves and nothing in it does. Closing is not the mirror
+// image: the content fades out where it stands and the height follows it, so
+// nothing is still legible while the box is shutting on it.
 
 function ms(duration: number): number {
 	return prefersReducedMotion.current ? 0 : duration;
@@ -182,14 +190,72 @@ export const SHEET_PRESENT = { damping: 0.7, response: 0.34 };
  */
 export const SHEET_DISMISS = { damping: 0.75, response: 0.24 };
 
+/**
+ * How far below its resting place revealed content starts. Small on purpose:
+ * enough to read as arrival, not enough to look like a second layout change
+ * happening next to the box's own.
+ */
+export const REVEAL_RISE = 8;
+
+/**
+ * Content arriving inside a box that is opening.
+ *
+ * A height slide on its own reads as a curtain going up: the content is
+ * already sitting in its final place and the edge merely uncovers it. Here the
+ * content starts a few pixels low and rises as the box opens, so it arrives
+ * under its own steam instead of being revealed by something else. The rise
+ * shares the height's `expoOut`, so the offset stays proportional to the
+ * distance the box has left to travel and the two stop together — a separate
+ * curve would have the content still drifting after the box had settled.
+ *
+ * Opacity is not on that curve. It waits out `fadeDelay` first, so the box is
+ * most of the way open before anything is legible inside it: text fading in
+ * across a two-pixel sliver is the part that reads as jitter. The defaults are
+ * the delayed fade every reveal used to spell out for itself.
+ *
+ * Intro only. Leaving is a fade in place (`fadeOut`) — the content clears out
+ * before the box collapses, and a rise on the way out only competes with it.
+ */
+export function reveal(
+	_node: Element,
+	{
+		y = REVEAL_RISE,
+		duration = 300,
+		delay = 0,
+		fadeDelay = 80,
+		fadeDuration = 200
+	}: {
+		y?: number;
+		duration?: number;
+		delay?: number;
+		fadeDelay?: number;
+		fadeDuration?: number;
+	} = {}
+): TransitionConfig {
+	const total = ms(duration);
+	if (total === 0) return { duration: 0 };
+
+	const fadeStart = ms(fadeDelay);
+	const fadeSpan = ms(fadeDuration);
+
+	// `linear`, because `t` has to stay the raw time fraction: the rise and the
+	// fade are eased separately below, off the same clock.
+	return {
+		delay: ms(delay),
+		duration: total,
+		easing: linear,
+		css: (t: number) => {
+			const rise = (1 - expoOut(t)) * y;
+			const faded = fadeSpan > 0 ? (t * total - fadeStart) / fadeSpan : 1;
+			const opacity = expoOut(Math.min(Math.max(faded, 0), 1));
+			return `transform: translate3d(0, ${rise.toFixed(2)}px, 0); opacity: ${opacity.toFixed(3)};`;
+		}
+	};
+}
+
 export const fadeFast = {
 	get duration() { return ms(100); },
 	easing: cubicOut
-};
-export const fadeIn = {
-	get duration() { return ms(200); },
-	get delay() { return ms(80); },
-	easing: expoOut
 };
 export const fadeOut = {
 	get duration() { return ms(120); },

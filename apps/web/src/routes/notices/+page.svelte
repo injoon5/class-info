@@ -7,7 +7,7 @@ import LoadingState from '$lib/components/ui/LoadingState.svelte';
 import ErrorState from '$lib/components/ui/ErrorState.svelte';
 import EmptyState from '$lib/components/ui/EmptyState.svelte';
 import NoticeFooter from './NoticeFooter.svelte';
-import DisclosureCaret from '$lib/components/ui/DisclosureCaret.svelte';
+import Disclosure from '$lib/components/ui/Disclosure.svelte';
 import type { PageData } from './$types.js';
 
 const { data }: { data: PageData } = $props();
@@ -62,21 +62,14 @@ const overview = useQuery(
             <div class="mt-6 sm:mt-8 pt-4 sm:pt-6 border-t border-border">
                 <h2 class="text-base sm:text-lg font-semibold mb-2 sm:mb-3 text-muted-foreground">지난 공지</h2>
                 {#each overview.data.pastMonths as month (month.monthKey)}
-                    <details class="mb-1.5 sm:mb-2 bg-card border border-border rounded-3xl overflow-hidden" open={openMonthKey === month.monthKey}>
-                        <summary
-                            class="touch-target flex items-center gap-2 px-3 sm:px-4 py-2.5 sm:py-3 cursor-pointer list-none transition-colors duration-150 pointer:hover:bg-muted text-muted-foreground font-semibold text-sm sm:text-base [&::-webkit-details-marker]:hidden"
-                            onclick={(e) => {
-                                e.preventDefault();
-                                openMonthKey = openMonthKey === month.monthKey ? null : month.monthKey;
-                            }}
-                        >
-                            <DisclosureCaret open={openMonthKey === month.monthKey} />
-                            {month.monthName} ({month.total}개)
-                        </summary>
-                        {#if openMonthKey === month.monthKey}
-                            <PastMonthDetails monthKey={month.monthKey} cutoff={data.cutoff} today={data.today} />
-                        {/if}
-                    </details>
+                    <Disclosure
+                        class="mb-1.5 sm:mb-2"
+                        open={openMonthKey === month.monthKey}
+                        label="{month.monthName} ({month.total}개)"
+                        onToggle={() => (openMonthKey = openMonthKey === month.monthKey ? null : month.monthKey)}
+                    >
+                        <PastMonthDetails monthKey={month.monthKey} cutoff={data.cutoff} today={data.today} />
+                    </Disclosure>
                 {/each}
             </div>
         {/if}
