@@ -22,5 +22,5 @@ export const load = (async () => {
 		})
 	]);
 
-	return { weekStart, twoWeeks, displayDay };
+	return { weekStart, twoWeeks, displayDay, todayYmd: displayClock.today };
 }) satisfies PageLoad;

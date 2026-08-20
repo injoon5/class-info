@@ -3,11 +3,20 @@ import { onMount, type Snippet } from 'svelte';
 
 // Horizontally scrollable region with fade gradients that appear only on the
 // side(s) that have more content. Shared by timetable / meals / calendar.
-const { children, blurred = false }: { children: Snippet; blurred?: boolean } = $props();
+//
+// `anchor` is a selector for a descendant to bring into view once, on first
+// layout — for a week grid that is wider than a phone, the interesting column
+// is otherwise off-screen until the reader scrolls.
+const {
+	children,
+	blurred = false,
+	anchor
+}: { children: Snippet; blurred?: boolean; anchor?: string } = $props();
 
 let scrollContainer = $state<HTMLDivElement>();
 let scrollLeft = $state(0);
 let scrollRight = $state(0);
+let aligned = false;
 
 function updateGradients() {
 	if (!scrollContainer) return;
@@ -17,11 +26,43 @@ function updateGradients() {
 	scrollRight = hasOverflow ? scrollWidth - clientWidth - left : 0;
 }
 
-onMount(() => {
+// Assigns scrollLeft rather than calling scrollIntoView: on iOS the latter
+// also scrolls the page vertically and can pick an ancestor scroll port. Runs
+// at most once, so it never fights a reader who has already scrolled.
+function alignToAnchor() {
+	if (aligned || !anchor || !scrollContainer) return;
+	// Not laid out yet — retry from the ResizeObserver.
+	if (scrollContainer.clientWidth === 0) return;
+	const el = scrollContainer.querySelector<HTMLElement>(anchor);
+	if (!el) return;
+
+	const max = scrollContainer.scrollWidth - scrollContainer.clientWidth;
+	if (max > 0) {
+		const port = scrollContainer.getBoundingClientRect();
+		const target = el.getBoundingClientRect();
+		// Centre it when there is room; the clamp pins it to whichever edge it
+		// sits nearest, which is what brings its neighbours along with it.
+		const delta = target.left - port.left - (port.width - target.width) / 2;
+		scrollContainer.scrollLeft = Math.min(Math.max(scrollContainer.scrollLeft + delta, 0), max);
+	}
+	aligned = true;
 	updateGradients();
-	const ro = new ResizeObserver(() => updateGradients());
+}
+
+onMount(() => {
+	alignToAnchor();
+	updateGradients();
+	// Safari settles layout a frame late often enough to matter here.
+	const raf = requestAnimationFrame(alignToAnchor);
+	const ro = new ResizeObserver(() => {
+		alignToAnchor();
+		updateGradients();
+	});
 	if (scrollContainer) ro.observe(scrollContainer);
-	return () => ro.disconnect();
+	return () => {
+		cancelAnimationFrame(raf);
+		ro.disconnect();
+	};
 });
 </script>
 
