@@ -1,3 +1,5 @@
+import { reducedMotion } from '$lib/transitions';
+
 // Focus an element the moment it is revealed. An action rather than an
 // $effect, so the intent lives on the element and $effect stays reserved for
 // syncing external state.
@@ -11,6 +13,11 @@ export function focusOnElement(node: HTMLElement, delay: number = 0) {
 	// focus "succeeds" with no keyboard — and the next tap does nothing
 	// because the field is already focused.
 	if (window.matchMedia('(pointer: coarse)').matches) return {};
+
+	// The delay only exists to outlast an animation. With motion reduced there
+	// is no animation to outlast, and waiting would just leave the field
+	// unfocused for no reason.
+	if (reducedMotion()) delay = 0;
 
 	if (delay <= 0) {
 		node.focus();

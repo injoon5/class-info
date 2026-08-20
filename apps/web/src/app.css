@@ -225,6 +225,17 @@ select:focus-visible {
 	}
 }
 
+/* Chrome applies `:active` the moment a finger lands and only drops it once
+   it has decided the touch was a scroll, so a card shrinks and springs back
+   as the list starts moving under it. The layout script flags an in-flight
+   scroll; press feedback sits it out. */
+[data-scrolling] .pressable:active,
+[data-scrolling] .pressable-lg:active,
+[data-scrolling] .pressable-xl:active,
+[data-scrolling] .pressable-icon:active {
+	transform: none;
+}
+
 @media (prefers-reduced-motion: reduce) {
 	*, *::before, *::after {
 		animation-duration: 0.001ms !important;

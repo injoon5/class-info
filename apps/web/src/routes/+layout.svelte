@@ -24,15 +24,42 @@
 	});
 
 	// Keep the current page for a beat so a preloaded nav doesn't flash a spinner.
+	const PENDING_DELAY_MS = 80;
+	// …and once the spinner is up, keep it up. A 200ms navigation rendered
+	// content → spinner → content, and a frame of spinner between two frames of
+	// the real page reads as a glitch rather than as loading — it costs more
+	// than the wait it saved.
+	const PENDING_MIN_MS = 320;
+
 	let showPending = $state(false);
+	// Plain locals: the effect below decides what to do based on what is already
+	// on screen, and reading the state it also writes would make it depend on
+	// itself.
+	let shown = false;
+	let shownAt = 0;
+
 	$effect(() => {
-		if (!pendingNav) {
+		if (pendingNav) {
+			const t = setTimeout(() => {
+				shown = true;
+				shownAt = Date.now();
+				showPending = true;
+			}, PENDING_DELAY_MS);
+			return () => clearTimeout(t);
+		}
+
+		if (!shown) return;
+
+		const remaining = PENDING_MIN_MS - (Date.now() - shownAt);
+		if (remaining <= 0) {
+			shown = false;
 			showPending = false;
 			return;
 		}
 		const t = setTimeout(() => {
-			showPending = true;
-		}, 80);
+			shown = false;
+			showPending = false;
+		}, remaining);
 		return () => clearTimeout(t);
 	});
 
@@ -41,6 +68,31 @@
 			collectorUrl: 'https://collector.onedollarstats.com/events',
 			autocollect: true,
 		});
+	});
+
+	// Press feedback scales the control down, and Chrome applies `:active` on
+	// touchstart — before it knows whether the finger is pressing or starting
+	// a scroll. Flag the scroll so app.css can stand the transform down.
+	// Capturing, so nested scrollers (tables, the drawer body) count too.
+	onMount(() => {
+		const root = document.documentElement;
+		let timer: ReturnType<typeof setTimeout> | null = null;
+
+		const onScroll = () => {
+			root.dataset.scrolling = '';
+			if (timer) clearTimeout(timer);
+			timer = setTimeout(() => {
+				delete root.dataset.scrolling;
+				timer = null;
+			}, 120);
+		};
+
+		window.addEventListener('scroll', onScroll, { passive: true, capture: true });
+		return () => {
+			window.removeEventListener('scroll', onScroll, { capture: true });
+			if (timer) clearTimeout(timer);
+			delete root.dataset.scrolling;
+		};
 	});
 </script>
     <a href="#main" class="sr-only focus:not-sr-only focus:fixed focus:z-[1000] focus:top-2 focus:left-2 focus:bg-primary focus:text-primary-foreground focus:px-3 focus:py-2 focus:rounded-lg">본문으로 건너뛰기</a>

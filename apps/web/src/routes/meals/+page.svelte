@@ -120,7 +120,7 @@ function openMealDrawer(day: MealDay) {
               type="button"
               onclick={() => openMealDrawer(day)}
               disabled={!hasMeal}
-              class="relative p-2.5 sm:px-3 sm:py-3 flex flex-col justify-between min-h-[15rem] text-left w-full transition-colors
+              class="relative p-2.5 sm:px-3 sm:py-3 flex flex-col justify-between min-h-[15rem] text-left w-full transition-colors duration-150
                 {isTodayCol ? 'bg-muted/60' : 'bg-card'}
                 {hasMeal ? 'cursor-pointer pointer:hover:bg-muted' : 'cursor-default'}"
             >

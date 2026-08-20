@@ -1,5 +1,6 @@
 <script lang="ts">
 import { generateCopyText, type DayGroup } from '$lib/notices';
+import MorphLabel from '$lib/components/ui/MorphLabel.svelte';
 
 const { notices }: { notices: DayGroup[] } = $props();
 
@@ -44,7 +45,7 @@ async function copyToClipboard() {
 		disabled={!canCopy}
 		class="touch-target py-1 transition-colors duration-150 pointer:hover:text-foreground disabled:opacity-30 disabled:pointer-events-none"
 	>
-		{copied ? '복사됨' : '복사'}
+		<MorphLabel text={copied ? '복사됨' : '복사'} />
 	</button>
 	<a
 		href="/admin"

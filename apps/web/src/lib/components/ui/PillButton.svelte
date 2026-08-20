@@ -66,15 +66,27 @@ const base = $derived(
 );
 </script>
 
+{#snippet spinner()}
+	<Spinner size="sm" />
+{/snippet}
+
 {#if href}
 	<a {href} class={base} aria-disabled={disabled || undefined}>
 		{#if children}{@render children()}{:else if morph && text}<MorphLabel {text} />{:else}{text}{/if}
 	</a>
 {:else}
 	<button {type} {onclick} {disabled} class={base} aria-busy={pending || undefined}>
-		{#if pending}
-			<Spinner size="sm" />
+		<!-- A morphing label measures the spinner with the text. Beside it, the
+		     spinner snapped the button wider by its own width plus the gap the
+		     instant it appeared, while the label width was still travelling. -->
+		{#if children}
+			{#if pending}{@render spinner()}{/if}
+			{@render children()}
+		{:else if morph && text}
+			<MorphLabel {text} leading={pending ? spinner : undefined} />
+		{:else}
+			{#if pending}{@render spinner()}{/if}
+			{text}
 		{/if}
-		{#if children}{@render children()}{:else if morph && text}<MorphLabel {text} />{:else}{text}{/if}
 	</button>
 {/if}
