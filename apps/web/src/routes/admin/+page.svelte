@@ -10,12 +10,12 @@ import LoadingState from '$lib/components/ui/LoadingState.svelte';
 import PillButton from '$lib/components/ui/PillButton.svelte';
 import ConfirmDeleteActions from '$lib/components/ui/ConfirmDeleteActions.svelte';
 import AdminPastMonthDetails from './AdminPastMonthDetails.svelte';
-import DisclosureCaret from '$lib/components/ui/DisclosureCaret.svelte';
+import Disclosure from '$lib/components/ui/Disclosure.svelte';
 import { autosize } from '$lib/actions/autosize';
 import { tick } from 'svelte';
 import { SvelteSet } from 'svelte/reactivity';
 import { fade, slide } from 'svelte/transition';
-import { fadeIn, fadeOut, slideNone, slideY, slideYOut } from '$lib/transitions';
+import { fadeOut, reveal, slideNone, slideY, slideYOut } from '$lib/transitions';
 import { useQuery } from 'convex-svelte';
 import { followCollapsing } from '$lib/scroll';
 import type { PageData, ActionData } from './$types';
@@ -231,7 +231,7 @@ const lastUpdatedTs = $derived.by(() => {
 	<div id="notice-editor" in:slide={slideY} out:slide={slideYOut}>
 		<div
 			class="bg-card border border-border rounded-3xl p-4 mb-6"
-			in:fade={fadeIn}
+			in:reveal
 			out:fade={fadeOut}
 		>
 			<h2 class="text-lg font-semibold mb-4 text-foreground">
@@ -484,34 +484,23 @@ const lastUpdatedTs = $derived.by(() => {
                     <h2 class="text-base sm:text-lg font-semibold mb-3 text-muted-foreground">지난 공지</h2>
                     {#each overview.data.pastMonths as m (m.monthKey)}
                         <div class="mb-1.5 sm:mb-2" in:slide={listSlide} out:slide={slideYOut}>
-                        <details
-                            class="bg-card border border-border rounded-3xl overflow-hidden"
+                        <Disclosure
                             open={openMonthKey === m.monthKey}
+                            label="{m.monthName} ({m.total}개)"
+                            onToggle={() => (openMonthKey = openMonthKey === m.monthKey ? null : m.monthKey)}
                         >
-                            <summary
-                                class="touch-target flex items-center gap-2 px-3 sm:px-4 py-2.5 sm:py-3 cursor-pointer list-none transition-colors duration-150 pointer:hover:bg-muted text-muted-foreground font-semibold text-sm sm:text-base [&::-webkit-details-marker]:hidden"
-                                onclick={(e) => {
-                                    e.preventDefault();
-                                    openMonthKey = openMonthKey === m.monthKey ? null : m.monthKey;
-                                }}
-                            >
-                                <DisclosureCaret open={openMonthKey === m.monthKey} />
-                                {m.monthName} ({m.total}개)
-                            </summary>
-                            {#if openMonthKey === m.monthKey}
-                                <AdminPastMonthDetails
-                                    monthKey={m.monthKey}
-                                    cutoff={data.cutoff}
-                                    today={data.today}
-                                    {dismissedIds}
-                                    {editorTarget}
-                                    bind:confirmingDeleteId
-                                    editor={noticeEditor}
-                                    onEdit={editNotice}
-                                    onDelete={handleDelete}
-                                />
-                            {/if}
-                        </details>
+                            <AdminPastMonthDetails
+                                monthKey={m.monthKey}
+                                cutoff={data.cutoff}
+                                today={data.today}
+                                {dismissedIds}
+                                {editorTarget}
+                                bind:confirmingDeleteId
+                                editor={noticeEditor}
+                                onEdit={editNotice}
+                                onDelete={handleDelete}
+                            />
+                        </Disclosure>
                         </div>
                     {/each}
                 </div>
