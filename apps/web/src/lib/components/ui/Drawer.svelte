@@ -361,6 +361,7 @@ function isDragIgnored(target: EventTarget | null) {
 }
 
 function onTouchStart(e: TouchEvent) {
+  lastTouchAt = performance.now();
   if (e.touches.length > 1) return;
   if (isClosing || !isVisible) return;
   if (isDragIgnored(e.target)) return;
@@ -390,11 +391,31 @@ function onTouchMove(e: TouchEvent) {
 }
 
 function onTouchEnd() {
+  // Re-stamped on the way out too: a long drag would otherwise age past the
+  // window before the replayed mousedown arrives.
+  lastTouchAt = performance.now();
   pendingTouch = false;
   endDrag();
 }
 
 // ── Mouse drag ───────────────────────────────────────────────────────────────
+
+// A press is not a drag until it travels. Starting the drag on mousedown meant
+// `preventDefault` fired for every press that landed outside the scroller —
+// and preventing a mousedown's default cancels the focus it was about to give.
+// Browsers replay a tap as mousedown/mouseup/click once the touch ends, so on
+// a phone that swallowed the focus for anything in the header or footer: the
+// calendar's add-event field could be tapped, and nothing happened. Waiting
+// for the pointer to travel means a plain press keeps its default, and a real
+// drag still suppresses selection the moment it starts.
+const MOUSE_SLOP = 6;
+let pendingMouse = $state(false);
+let pendingMouseY = 0;
+
+// The replayed tap above is not a second gesture. Ignore mouse events that
+// arrive on the heels of a touch, so only one path drives the sheet.
+const SYNTHETIC_MOUSE_MS = 700;
+let lastTouchAt = 0;
 
 $effect(() => {
   const panel = panelEl;
@@ -404,14 +425,22 @@ $effect(() => {
 });
 
 $effect(() => {
-  if (!isDragging) return;
+  if (!pendingMouse && !isDragging) return;
   document.addEventListener('mousemove', onMouseMove);
   document.addEventListener('mouseup', onMouseUp);
-  document.body.style.cursor = 'grabbing';
-  document.body.style.userSelect = 'none';
   return () => {
     document.removeEventListener('mousemove', onMouseMove);
     document.removeEventListener('mouseup', onMouseUp);
+  };
+});
+
+// Cursor and selection belong to a drag that is actually happening, not to a
+// press that might still turn out to be a click.
+$effect(() => {
+  if (!isDragging) return;
+  document.body.style.cursor = 'grabbing';
+  document.body.style.userSelect = 'none';
+  return () => {
     document.body.style.cursor = '';
     document.body.style.userSelect = '';
   };
@@ -419,15 +448,27 @@ $effect(() => {
 
 function onMouseDown(e: MouseEvent) {
   if (e.button !== 0) return;
+  if (performance.now() - lastTouchAt < SYNTHETIC_MOUSE_MS) return;
   if (contentEl && contentEl.contains(e.target as Node)) return;
-  if (startDrag(e.clientY)) e.preventDefault();
+  // Same fields the touch path leaves alone — dragging inside one is the user
+  // selecting text, not reaching for the sheet.
+  if (isDragIgnored(e.target)) return;
+  pendingMouse = true;
+  pendingMouseY = e.clientY;
 }
 
 function onMouseMove(e: MouseEvent) {
+  if (!isDragging) {
+    if (!pendingMouse) return;
+    if (Math.abs(e.clientY - pendingMouseY) < MOUSE_SLOP) return;
+    pendingMouse = false;
+    if (!startDrag(pendingMouseY)) return;
+  }
   moveDrag(e.clientY);
 }
 
 function onMouseUp() {
+  pendingMouse = false;
   endDrag();
 }
 
