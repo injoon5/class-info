@@ -41,6 +41,13 @@ export const noticeClockArgs = {
   today: isoDate,
 };
 
+// The client's KST clock, as the school-day queries take it: today's date and
+// whether it is already past the display rollover hour.
+export const schoolClockArgs = {
+  today: v.string(), // YYYYMMDD
+  afterRollover: v.boolean(),
+};
+
 export const timetableSlot = v.object({
   period: v.number(),
   subject: v.string(),
