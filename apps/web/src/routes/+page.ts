@@ -1,7 +1,15 @@
 import type { PageLoad } from './$types.js';
 import { api } from '@class-info/backend/convex/_generated/api';
 import { convexHttp } from '$lib/convex';
-import { addDaysYyyymmdd, getNowInKst, noticeClock, thisMondayYyyymmdd, yyyymmdd } from '$lib/date';
+import {
+	addDaysYyyymmdd,
+	getNowInKst,
+	isAtOrAfterDinnerEnd,
+	noticeClock,
+	schoolDisplayClock,
+	thisMondayYyyymmdd,
+	yyyymmdd
+} from '$lib/date';
 
 function emptyMeals(weekStart: string) {
 	return {
@@ -18,12 +26,21 @@ function emptyMeals(weekStart: string) {
 export const load = (async () => {
 	const now = getNowInKst();
 	const clock = noticeClock(now);
+	const displayClock = schoolDisplayClock(now);
 	const weekStart = thisMondayYyyymmdd(now);
 	const todayYmd = yyyymmdd(now);
-	const rangeEnd = addDaysYyyymmdd(todayYmd, 14);
 	const client = convexHttp();
 
-	const [currentGroups, timetable, nextWeekTimetable, meals, events] = await Promise.all([
+	// One query for both the display day and the events around it — they come
+	// out of the same schedule scan on the server.
+	const [schedule, currentGroups, timetable, nextWeekTimetable, meals] = await Promise.all([
+		client.query(api.schedule.homeSchedule, displayClock).catch((err) => {
+			console.error('home schedule.homeSchedule', err);
+			return {
+				displayDay: displayClock.afterRollover ? addDaysYyyymmdd(todayYmd, 1) : todayYmd,
+				events: []
+			};
+		}),
 		client.query(api.notices.currentGroups, clock).catch((err) => {
 			console.error('home notices.currentGroups', err);
 			return [];
@@ -39,12 +56,19 @@ export const load = (async () => {
 		client.query(api.meals.getTwoWeeks, { weekStart }).catch((err) => {
 			console.error('home meals.getTwoWeeks', err);
 			return emptyMeals(weekStart);
-		}),
-		client.query(api.schedule.getEventsInRange, { start: todayYmd, end: rangeEnd }).catch((err) => {
-			console.error('home schedule.getEventsInRange', err);
-			return [];
 		})
 	]);
 
-	return { ...clock, weekStart, currentGroups, timetable, nextWeekTimetable, meals, events };
+	return {
+		...clock,
+		todayYmd,
+		afterDinner: isAtOrAfterDinnerEnd(now),
+		displayDay: schedule.displayDay,
+		weekStart,
+		currentGroups,
+		timetable,
+		nextWeekTimetable,
+		meals,
+		events: schedule.events
+	};
 }) satisfies PageLoad;

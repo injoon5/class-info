@@ -2,7 +2,14 @@
 import { useQuery } from 'convex-svelte';
 import { api } from "@class-info/backend/convex/_generated/api";
 import NoticeCard from '$lib/components/notices/NoticeCard.svelte';
-import { getNowInKst, yyyymmdd, WEEKDAYS_KR } from '$lib/date';
+import {
+	addDaysYyyymmdd,
+	parseYyyymmdd,
+	weekdayKrUtc,
+	relativeDayLabel,
+	weekOffsetBetween,
+	ymdWeekday
+} from '$lib/date';
 import { eventChrome } from '$lib/eventChrome';
 import type { DayGroup, MinimalNotice } from '$lib/notices';
 import type { PublicEvent } from '@class-info/backend/convex/validators';
@@ -19,78 +26,86 @@ const noticesQuery = useQuery(
 	})
 );
 
-// ── Date helpers ──────────────────────────────────────────────────────────────
-function getMondayTime(d: Date): number {
-	const copy = new Date(d);
-	const day = copy.getDay();
-	copy.setDate(copy.getDate() - (day === 0 ? 6 : day - 1));
-	copy.setHours(0, 0, 0, 0);
-	return copy.getTime();
-}
-
-const kst = getNowInKst();
-const todayYyyymmdd = yyyymmdd(kst);
-const todayMonth = kst.getMonth() + 1;
-const todayDate = kst.getDate();
-const todayWeekday = WEEKDAYS_KR[kst.getDay()];
-
-// ── School-day logic ──────────────────────────────────────────────────────────
-function isHoliday(dateStr: string): boolean {
-	return (data.events ?? []).some((e) =>
-		e.date === dateStr &&
-		(e.eventType === '공휴일' || e.eventType === '휴업일' || e.eventType === '재량휴업일')
-	);
-}
-
-function isSchoolDay(d: Date): boolean {
-	const day = d.getDay();
-	return day >= 1 && day <= 5 && !isHoliday(yyyymmdd(d));
-}
-
-function findNextSchoolDay(): Date {
-	const d = new Date(kst);
-	for (let i = 0; i < 14; i++) {
-		d.setDate(d.getDate() + 1);
-		if (isSchoolDay(d)) return new Date(d);
-	}
-	return d;
-}
-
-// The day whose timetable + meal we display
-const displayDay = isSchoolDay(kst) ? kst : findNextSchoolDay();
-const displayDayStr = yyyymmdd(displayDay);
-const displayDayIndex = displayDay.getDay() - 1; // 0=Mon…4=Fri
+const displayDay = $derived(data.displayDay);
+const todayYmd = $derived(data.todayYmd);
+const isTomorrow = $derived(displayDay === addDaysYyyymmdd(todayYmd, 1));
+const parsedDisplay = $derived(parseYyyymmdd(displayDay));
+const displayMonth = $derived(parsedDisplay?.m ?? 0);
+const displayDate = $derived(parsedDisplay?.d ?? 0);
+const displayWeekday = $derived(
+	parsedDisplay ? weekdayKrUtc(parsedDisplay.y, parsedDisplay.m, parsedDisplay.d) : ''
+);
+// ymdWeekday/weekOffsetBetween throw on a malformed date, so gate them on the
+// same parse the labels above already degrade through.
+const displayDayIndex = $derived(parsedDisplay ? ymdWeekday(displayDay) - 1 : -1); // 0=Mon…4=Fri
 
 // Which week's timetable to use. We only hold this-week and next-week data, so
 // map by whole-week offset; anything further out has no timetable to show.
-const weekOffset = Math.round((getMondayTime(displayDay) - getMondayTime(kst)) / (7 * 24 * 60 * 60 * 1000));
-const displayTimetableData =
-	weekOffset === 0 ? data.timetable : weekOffset === 1 ? data.nextWeekTimetable : undefined;
-const displaySchedule = (
-	displayDayIndex >= 0 && displayDayIndex <= 4
+const weekOffset = $derived(parsedDisplay ? weekOffsetBetween(todayYmd, displayDay) : -1);
+const displayTimetableData = $derived(
+	weekOffset === 0 ? data.timetable : weekOffset === 1 ? data.nextWeekTimetable : undefined
+);
+const displaySchedule = $derived(
+	(displayDayIndex >= 0 && displayDayIndex <= 4
 		? (displayTimetableData?.timetable?.[displayDayIndex] ?? [])
-		: []
-) as Array<{ period: number; subject: string; teacher: string; replaced: boolean }>;
+		: []) as Array<{ period: number; subject: string; teacher: string; replaced: boolean }>
+);
 
-// Which meal day to show
-const allMealDays = [...(data.meals?.thisWeek?.days ?? []), ...(data.meals?.nextWeek?.days ?? [])];
-const displayMealDay = allMealDays.find((d) => d.date === displayDayStr) ?? null;
-const displayLunch = displayMealDay?.lunch ?? null;
-const displayDinner = displayMealDay?.dinner ?? null;
+const allMealDays = $derived([
+	...(data.meals?.thisWeek?.days ?? []),
+	...(data.meals?.nextWeek?.days ?? [])
+]);
+const displayMealDay = $derived(allMealDays.find((d) => d.date === displayDay) ?? null);
+const displayLunch = $derived(displayMealDay?.lunch ?? null);
+const displayDinner = $derived(displayMealDay?.dinner ?? null);
 
-// Card title prefix: "" | "내일 " | "5월 3일 "
-const tomorrowStr = yyyymmdd(new Date(kst.getTime() + 24 * 60 * 60 * 1000));
-const displayWeekday = WEEKDAYS_KR[displayDay.getDay()];
-const cardDayLabel = (() => {
-	if (displayDayStr === todayYyyymmdd) return '';
-	if (displayDayStr === tomorrowStr) return `내일 (${displayWeekday}) `;
-	const m = Number(displayDayStr.slice(4, 6));
-	const d = Number(displayDayStr.slice(6, 8));
-	return `${m}월 ${d}일 (${displayWeekday}) `;
-})();
+// Between the 4pm rollover and DINNER_END_HOUR_KST the page has moved on to
+// tomorrow, but tonight's 석식 has not been served yet — so it leads the card,
+// ahead of tomorrow's 중식. After that hour it drops out and only the display
+// day's meals remain.
+const todayMealDay = $derived(allMealDays.find((d) => d.date === todayYmd) ?? null);
+const pendingTodayDinner = $derived(
+	displayDay !== todayYmd && !data.afterDinner ? (todayMealDay?.dinner ?? null) : null
+);
 
-// ── Events ────────────────────────────────────────────────────────────────────
-const in7days = yyyymmdd(new Date(kst.getTime() + 7 * 24 * 60 * 60 * 1000));
+const mealSlots = $derived([
+	...(pendingTodayDinner
+		? [{ key: 'today-dinner', type: '석식', day: todayYmd, meal: pendingTodayDinner }]
+		: []),
+	{ key: 'display-lunch', type: '중식', day: displayDay, meal: displayLunch },
+	...(displayDinner
+		? [{ key: 'display-dinner', type: '석식', day: displayDay, meal: displayDinner }]
+		: [])
+]);
+
+// Only worth naming the day when the card straddles two of them.
+const mealSpansDays = $derived(pendingTodayDinner !== null);
+// Three dish lists side by side are unreadable on a phone, so that case stacks.
+const mealStacked = $derived(mealSlots.length > 2);
+const mealGridClass = $derived(
+	mealSlots.length === 1
+		? 'grid-cols-1'
+		: mealSlots.length === 2
+			? 'grid-cols-2'
+			: 'grid-cols-1 sm:grid-cols-3'
+);
+
+// Symmetric padding either side of each divider keeps it on the exact fraction
+// of the card's width, at any column count.
+function mealSlotClass(i: number, count: number, stacked: boolean): string {
+	if (stacked) {
+		return [
+			i > 0
+				? 'border-t border-border pt-3 mt-3 sm:border-t-0 sm:pt-0 sm:mt-0 sm:border-l sm:pl-6'
+				: '',
+			i < count - 1 ? 'sm:pr-6' : ''
+		].join(' ');
+	}
+	return [
+		i > 0 ? 'border-l border-border pl-4 sm:pl-6' : '',
+		i < count - 1 ? 'pr-4 sm:pr-6' : ''
+	].join(' ');
+}
 
 const allEvents = $derived(
 	[...(data.events ?? [])]
@@ -98,11 +113,13 @@ const allEvents = $derived(
 		.sort((a, b) => a.date.localeCompare(b.date))
 );
 
-const todayEvents = $derived(allEvents.filter((e) => e.date === todayYyyymmdd));
+const displayDayEvents = $derived(allEvents.filter((e) => e.date === displayDay));
 
-const upcomingEvents = $derived(
-	allEvents.filter((e) => e.date >= todayYyyymmdd && e.date <= in7days)
-);
+// Spans from today, not from the display day: an event still happening today
+// shouldn't vanish from the list at 4pm just because the timetable rolled over.
+// The display day is emphasised within the list instead. The far end is the
+// server's window (display day + a week), so there's nothing to re-bound here.
+const upcomingEvents = $derived(allEvents.filter((e) => e.date >= todayYmd));
 
 // ── Notices ───────────────────────────────────────────────────────────────────
 const PREVIEW_NOTICE_LIMIT = 4;
@@ -141,11 +158,9 @@ const peekNotice = $derived.by((): MinimalNotice | null => {
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 function formatEventDate(dateStr: string): string {
-	const y = Number(dateStr.slice(0, 4));
-	const m = Number(dateStr.slice(4, 6));
-	const d = Number(dateStr.slice(6, 8));
-	const date = new Date(y, m - 1, d);
-	return `${m}/${d}(${WEEKDAYS_KR[date.getDay()]})`;
+	const parsed = parseYyyymmdd(dateStr);
+	if (!parsed) return dateStr;
+	return `${parsed.m}/${parsed.d}(${weekdayKrUtc(parsed.y, parsed.m, parsed.d)})`;
 }
 
 function eventTypeLabel(event: PublicEvent): string {
@@ -153,8 +168,14 @@ function eventTypeLabel(event: PublicEvent): string {
 	return event.eventType;
 }
 
-function isToday(dateStr: string): boolean {
-	return dateStr === todayYyyymmdd;
+// Relative only where it is actually true. The display day can be several days
+// out (a weekend, a holiday, a break), and calling that "오늘" is a lie.
+function eventDateLabel(dateStr: string): string {
+	return relativeDayLabel(dateStr, todayYmd) || formatEventDate(dateStr);
+}
+
+function isDisplayDayEvent(dateStr: string): boolean {
+	return dateStr === displayDay;
 }
 </script>
 
@@ -175,13 +196,16 @@ function isToday(dateStr: string): boolean {
 
 	<!-- ── Date hero ───────────────────────────────────────────────────────── -->
 	<header class="flex flex-wrap items-baseline justify-between gap-x-6 gap-y-1.5 mb-6 sm:mb-8">
-		<h1 class="flex items-baseline gap-2">
-			<span class="text-2xl sm:text-3xl font-bold text-foreground">{todayMonth}월 {todayDate}일</span>
-			<span class="text-base sm:text-lg text-muted-foreground">{todayWeekday}요일</span>
+		<h1 class="flex flex-wrap items-baseline gap-x-2.5 sm:gap-x-3">
+			{#if isTomorrow}
+				<span class="text-2xl sm:text-3xl font-bold text-amber-700 dark:text-amber-400 whitespace-nowrap">내일</span>
+			{/if}
+			<span class="text-2xl sm:text-3xl font-bold text-foreground whitespace-nowrap">{displayMonth}월 {displayDate}일</span>
+			<span class="text-base sm:text-lg text-muted-foreground whitespace-nowrap">{displayWeekday}요일</span>
 		</h1>
-		{#if todayEvents.length > 0}
+		{#if displayDayEvents.length > 0}
 			<div class="flex flex-wrap items-baseline gap-x-4 gap-y-1 text-base sm:text-lg">
-				{#each todayEvents as event}
+				{#each displayDayEvents as event (event._id)}
 					<span class="inline-flex items-baseline gap-1.5">
 						<span class="font-semibold text-foreground">{event.title}</span>
 						{#if eventTypeLabel(event)}
@@ -199,7 +223,7 @@ function isToday(dateStr: string): boolean {
 		<!-- Timetable -->
 		<section class="sm:col-span-1">
 			<div class="flex items-baseline justify-between mb-2.5">
-				<h2 class="font-semibold text-muted-foreground">{cardDayLabel}시간표</h2>
+				<h2 class="font-semibold text-muted-foreground">시간표</h2>
 				<a href="/timetable" aria-label="시간표 모두 보기" class="text-sm font-semibold text-muted-foreground transition-colors duration-150 pointer:hover:text-foreground">모두 보기 <span aria-hidden="true">→</span></a>
 			</div>
 			<div class="bg-card border border-border rounded-2xl p-4">
@@ -226,42 +250,34 @@ function isToday(dateStr: string): boolean {
 		<!-- Meal -->
 		<section class="sm:col-span-2">
 			<div class="flex items-baseline justify-between mb-2.5">
-				<h2 class="font-semibold text-muted-foreground">{cardDayLabel}급식</h2>
+				<h2 class="font-semibold text-muted-foreground">급식</h2>
 				<a href="/meals" aria-label="급식 모두 보기" class="text-sm font-semibold text-muted-foreground transition-colors duration-150 pointer:hover:text-foreground">모두 보기 <span aria-hidden="true">→</span></a>
 			</div>
 			<div class="bg-card border border-border rounded-2xl p-4">
-				<!-- gap-0 + symmetric padding keeps the divider on the card's exact center at every width -->
-				<div class="grid {displayDinner ? 'grid-cols-2' : 'grid-cols-1'}">
-					<!-- Lunch -->
-					<div class="flex flex-col {displayDinner ? 'pr-4 sm:pr-6' : ''}">
-						<p class="text-sm font-semibold text-muted-foreground mb-2">중식</p>
-						{#if !displayLunch}
-							<p class="text-sm text-muted-foreground">급식 정보가 없어요</p>
-						{:else}
-							<ul class="space-y-1.5">
-								{#each displayLunch.dishes as dish}
-									<li class="text-list text-foreground leading-snug truncate max-w-full overflow-hidden whitespace-nowrap">{dish}</li>
-								{/each}
-							</ul>
-							{#if displayLunch.calories}
-								<p class="mt-auto pt-2.5 text-sm text-muted-foreground tabular-nums">{displayLunch.calories}</p>
-							{/if}
-						{/if}
-					</div>
-					<!-- Dinner -->
-					{#if displayDinner}
-						<div class="flex flex-col border-l border-border pl-4 sm:pl-6">
-							<p class="text-sm font-semibold text-muted-foreground mb-2">석식</p>
-							<ul class="space-y-1.5">
-								{#each displayDinner.dishes as dish}
-									<li class="text-list text-foreground leading-snug truncate max-w-full overflow-hidden whitespace-nowrap">{dish}</li>
-								{/each}
-							</ul>
-							{#if displayDinner.calories}
-								<p class="mt-auto pt-2.5 text-sm text-muted-foreground tabular-nums">{displayDinner.calories}</p>
+				<!-- Meals in the order they are served: tonight's 석식 leads until 7pm. -->
+				<div class="grid {mealGridClass}">
+					{#each mealSlots as slot, i (slot.key)}
+						<div class="flex flex-col {mealSlotClass(i, mealSlots.length, mealStacked)}">
+							<p class="text-sm font-semibold text-muted-foreground mb-2">
+								{#if mealSpansDays}
+									<span class={slot.day === todayYmd ? '' : 'text-amber-700 dark:text-amber-400'}>{eventDateLabel(slot.day)}</span>
+								{/if}
+								{slot.type}
+							</p>
+							{#if !slot.meal}
+								<p class="text-sm text-muted-foreground">급식 정보가 없어요</p>
+							{:else}
+								<ul class="space-y-1.5">
+									{#each slot.meal.dishes as dish}
+										<li class="text-list text-foreground leading-snug truncate max-w-full overflow-hidden whitespace-nowrap">{dish}</li>
+									{/each}
+								</ul>
+								{#if slot.meal.calories}
+									<p class="mt-auto pt-2.5 text-sm text-muted-foreground tabular-nums">{slot.meal.calories}</p>
+								{/if}
 							{/if}
 						</div>
-					{/if}
+					{/each}
 				</div>
 			</div>
 		</section>
@@ -343,8 +359,8 @@ function isToday(dateStr: string): boolean {
 						<div class="flex items-center gap-2.5 px-4 py-3">
 							<span class="w-2 h-2 rounded-full shrink-0 {eventChrome(event).dot}" aria-hidden="true"></span>
 							<span class="text-list text-foreground font-semibold flex-1 min-w-0 truncate">{event.title}</span>
-							<span class="text-sm tabular-nums shrink-0 text-right {isToday(event.date) ? 'font-semibold text-foreground' : 'text-muted-foreground'}">
-								{isToday(event.date) ? '오늘' : formatEventDate(event.date)}
+							<span class="text-sm tabular-nums shrink-0 text-right {isDisplayDayEvent(event.date) ? 'font-semibold text-foreground' : 'text-muted-foreground'}">
+								{eventDateLabel(event.date)}
 							</span>
 						</div>
 					{/each}

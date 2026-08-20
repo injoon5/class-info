@@ -1,10 +1,25 @@
-import { internalAction, internalMutation, mutation, query, type ActionCtx } from "./_generated/server";
+import {
+  internalAction,
+  internalMutation,
+  mutation,
+  query,
+  type ActionCtx,
+  type QueryCtx,
+} from "./_generated/server";
 import { v } from "convex/values";
 import { internal } from "./_generated/api";
 import { requireAdmin } from "./auth";
-import { assertYyyymmdd, getNowKst, parseYyyymmdd } from "./dates";
+import {
+  addDaysYyyymmdd,
+  assertYyyymmdd,
+  closedYmdsFromSchedule,
+  getNowKst,
+  parseYyyymmdd,
+  resolveSchoolDisplayYmd,
+  SCHOOL_DAY_LOOKAHEAD,
+} from "./dates";
 import { projectSchedule } from "./project";
-import { customEventColor, publicEvent } from "./validators";
+import { customEventColor, publicEvent, schoolClockArgs } from "./validators";
 
 type ExternalScheduleEvent = {
   AA_YMD: string; // YYYYMMDD
@@ -172,6 +187,59 @@ export const getEventsInRange = query({
       .withIndex("by_date", (q) => q.gte("date", start).lte("date", end))
       .collect();
     return rows.map(projectSchedule).filter((e): e is NonNullable<typeof e> => e !== null);
+  },
+});
+
+// How far past the display day the home page's event list reaches.
+const HOME_EVENT_WINDOW_DAYS = 7;
+
+// One indexed pass over the schedule, wide enough to answer both questions the
+// home page asks. It reaches a full lookahead *behind* today because a break
+// already under way is only marked on its first day — see closedYmdsFromSchedule
+// — and forward far enough to also cover the event window.
+async function scanSchoolDays(ctx: QueryCtx, today: string, afterRollover: boolean) {
+  assertYyyymmdd(today, "today");
+  const scanStart = addDaysYyyymmdd(today, -SCHOOL_DAY_LOOKAHEAD);
+  const scanEnd = addDaysYyyymmdd(today, SCHOOL_DAY_LOOKAHEAD + HOME_EVENT_WINDOW_DAYS);
+  const rows = await ctx.db
+    .query("schedules")
+    .withIndex("by_date", (q) => q.gte("date", scanStart).lte("date", scanEnd))
+    .collect();
+  const closed = closedYmdsFromSchedule(
+    rows.map((row) => ({
+      date: row.date,
+      title: row.title,
+      eventType: row.eventType,
+      source: row.source,
+    })),
+    scanStart,
+    scanEnd,
+  );
+  return { rows, displayDay: resolveSchoolDisplayYmd(today, afterRollover, closed) };
+}
+
+export const schoolDisplayDay = query({
+  args: schoolClockArgs,
+  returns: v.string(),
+  handler: async (ctx, { today, afterRollover }) => {
+    const { displayDay } = await scanSchoolDays(ctx, today, afterRollover);
+    return displayDay;
+  },
+});
+
+// Home needs the display day *and* the events around it. Both come out of the
+// same scan, so it costs one query and ships only the days actually rendered.
+export const homeSchedule = query({
+  args: schoolClockArgs,
+  returns: v.object({ displayDay: v.string(), events: v.array(publicEvent) }),
+  handler: async (ctx, { today, afterRollover }) => {
+    const { rows, displayDay } = await scanSchoolDays(ctx, today, afterRollover);
+    const windowEnd = addDaysYyyymmdd(displayDay, HOME_EVENT_WINDOW_DAYS);
+    const events = rows
+      .filter((row) => row.date >= today && row.date <= windowEnd)
+      .map(projectSchedule)
+      .filter((e): e is NonNullable<typeof e> => e !== null);
+    return { displayDay, events };
   },
 });
 

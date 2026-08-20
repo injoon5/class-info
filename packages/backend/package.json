@@ -3,14 +3,21 @@
   "version": "1.0.0",
   "scripts": {
     "dev": "convex dev",
-    "dev:setup": "convex dev --configure --until-success"
+    "dev:setup": "convex dev --configure --until-success",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "check-types": "tsc --noEmit -p convex/tsconfig.json"
   },
   "author": "",
   "license": "ISC",
   "description": "",
   "devDependencies": {
+    "@edge-runtime/vm": "^5.0.0",
     "@types/node": "^24.3.0",
-    "typescript": "^5.9.2"
+    "convex-test": "^0.0.56",
+    "typescript": "^5.9.2",
+    "vite": "^7.1.2",
+    "vitest": "^4.1.11"
   },
   "dependencies": {
     "@convex-dev/r2": "^0.10.2",
