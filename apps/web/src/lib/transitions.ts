@@ -48,6 +48,119 @@ export function reducedMotion(): boolean {
 	return prefersReducedMotion.current;
 }
 
+// ── Springs, for the one surface a finger drives ────────────────────────────
+// A sheet under a finger cannot use a fixed-duration tween. A tween ignores
+// the speed the finger let go at and always takes the same time, so the sheet
+// visibly *catches* at the release instead of carrying on — and it cannot be
+// grabbed mid-flight without a jump, because it interpolates from where the
+// animation began rather than from where the sheet actually is.
+//
+// Parameterised the way Apple's designers are given it (Designing Fluid
+// Interfaces, WWDC 2018) rather than as mass/stiffness/damping:
+//   damping  — 1 settles with no overshoot; below 1 overshoots and bounces.
+//   response — roughly how long, in seconds, it takes to arrive. Not a
+//              duration: the settle time falls out of the parameters.
+// Bounce is only for motion a gesture threw; a sheet that merely appeared
+// settles flat.
+
+export interface SpringOptions {
+	from: number;
+	to: number;
+	/** px per second, signed in screen coordinates. */
+	velocity?: number;
+	damping?: number;
+	response?: number;
+	onFrame: (value: number) => void;
+	onRest?: () => void;
+}
+
+/** Starts a spring and returns a stop handle. Under reduced motion it lands
+ *  immediately — the value still arrives, it just doesn't travel. */
+export function spring({
+	from,
+	to,
+	velocity = 0,
+	damping = 1,
+	response = 0.4,
+	onFrame,
+	onRest
+}: SpringOptions): () => void {
+	if (reducedMotion() || response <= 0) {
+		onFrame(to);
+		onRest?.();
+		return () => {};
+	}
+
+	const w = (2 * Math.PI) / response; // natural angular frequency
+	const z = damping;
+	const x0 = from - to; // displacement from rest
+	const v0 = velocity;
+
+	// Closed form, sampled against the wall clock every frame rather than
+	// integrated step by step: a dropped frame then changes what gets drawn,
+	// never where the spring has got to.
+	let displacement: (t: number) => number;
+	let speed: (t: number) => number;
+
+	if (z < 1) {
+		const wd = w * Math.sqrt(1 - z * z);
+		const a = x0;
+		const b = (v0 + z * w * x0) / wd;
+		displacement = (t) => Math.exp(-z * w * t) * (a * Math.cos(wd * t) + b * Math.sin(wd * t));
+		speed = (t) =>
+			Math.exp(-z * w * t) *
+			((b * wd - z * w * a) * Math.cos(wd * t) - (a * wd + z * w * b) * Math.sin(wd * t));
+	} else {
+		const a = x0;
+		const b = v0 + w * x0;
+		displacement = (t) => (a + b * t) * Math.exp(-w * t);
+		speed = (t) => (b - w * (a + b * t)) * Math.exp(-w * t);
+	}
+
+	const start = performance.now();
+	let frame = 0;
+	let stopped = false;
+
+	const step = (now: number) => {
+		if (stopped) return;
+		const t = (now - start) / 1000;
+		const d = displacement(t);
+		// Rest when it is both within half a pixel and no longer moving enough
+		// to cross one in the next few frames.
+		if (Math.abs(d) < 0.5 && Math.abs(speed(t)) < 10) {
+			onFrame(to);
+			stopped = true;
+			onRest?.();
+			return;
+		}
+		onFrame(to + d);
+		frame = requestAnimationFrame(step);
+	};
+	frame = requestAnimationFrame(step);
+
+	return () => {
+		stopped = true;
+		if (frame) cancelAnimationFrame(frame);
+	};
+}
+
+/**
+ * Where a flick would come to rest if left to decay on its own, so an outcome
+ * can be decided from where the gesture is *going* rather than from wherever
+ * the finger happened to lift. Apple's exponential-decay projection, not the
+ * textbook v²/2a. `velocity` in px/s, result in px.
+ */
+export function projectMomentum(velocity: number, deceleration = 0.998): number {
+	return ((velocity / 1000) * deceleration) / (1 - deceleration);
+}
+
+/** Sheet settling after a throw — a touch of overshoot, because the gesture
+ *  carried momentum into it. */
+export const SHEET_SETTLE = { damping: 0.82, response: 0.32 };
+/** Sheet arriving or leaving on a tap. No gesture, so no bounce. */
+export const SHEET_PRESENT = { damping: 1, response: 0.42 };
+export const SHEET_DISMISS = { damping: 1, response: 0.3 };
+
 export const fadeFast = {
 	get duration() { return ms(100); },
 	easing: cubicOut

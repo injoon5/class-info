@@ -1,7 +1,18 @@
 <script lang="ts">
 import type { Snippet } from 'svelte';
 import { Tween } from 'svelte/motion';
-import { PANEL_CLOSE_MS, reducedMotion, tweenFade, tweenPanel, tweenPanelClose } from '$lib/transitions';
+import {
+  PANEL_CLOSE_MS,
+  projectMomentum,
+  reducedMotion,
+  SHEET_DISMISS,
+  SHEET_PRESENT,
+  SHEET_SETTLE,
+  spring,
+  tweenFade,
+  tweenPanel,
+  tweenPanelClose
+} from '$lib/transitions';
 
 interface Props {
   open: boolean;
@@ -31,10 +42,44 @@ let dragY = 0;
 let isDragging = $state(false);
 let panelHeight = $state(800);
 
-const panelY = new Tween(0, tweenPanel);
+// The sheet's Y is the one value a finger drives, so it is a spring rather
+// than a tween: it starts from wherever the sheet actually is and carries the
+// speed the finger let go at. Desktop's scale/fade is not gesture-driven and
+// stays a tween — a dialog that merely appeared has no momentum to express.
+let panelY = $state(0);
+let panelResting = $state(true);
+let stopPanelSpring: (() => void) | null = null;
+
 const panelScale = new Tween(0.95, tweenPanel);
 const panelOpacity = new Tween(0, tweenFade);
 const scrimOpacity = new Tween(0, tweenPanel);
+
+function setPanelY(y: number) {
+  stopPanelSpring?.();
+  stopPanelSpring = null;
+  panelY = y;
+  panelResting = true;
+}
+
+function springPanelY(
+  to: number,
+  opts: { velocity?: number; damping?: number; response?: number },
+  onRest?: () => void
+) {
+  stopPanelSpring?.();
+  panelResting = false;
+  stopPanelSpring = spring({
+    from: panelY,
+    to,
+    ...opts,
+    onFrame: (v) => (panelY = v),
+    onRest: () => {
+      stopPanelSpring = null;
+      panelResting = true;
+      onRest?.();
+    }
+  });
+}
 
 let panelEl = $state<HTMLElement | undefined>();
 let contentEl = $state<HTMLElement | undefined>();
@@ -58,8 +103,20 @@ $effect(() => {
 
 // iOS Safari will not raise the keyboard for inputs inside a transformed
 // ancestor. Drop the transform once the sheet is parked.
+// A settling spring may overshoot through 0 on its way back. Parking the
+// transform the moment it crosses would drop the sheet a few pixels, so this
+// waits for the spring to actually stop.
 const sheetSettled = $derived(
-  !isDragging && isVisible && Math.abs(panelY.current) < 0.5
+  !isDragging && isVisible && panelResting && Math.abs(panelY) < 0.5
+);
+
+// On a phone the dim belongs to the sheet's position, not to a timer of its
+// own: however the sheet arrives or leaves — tapped, thrown, dragged halfway
+// and released — the scrim is exactly as far along as the sheet is.
+const scrimValue = $derived(
+  isMobile && panelHeight > 0
+    ? Math.max(0, Math.min(1, 1 - panelY / panelHeight))
+    : scrimOpacity.current
 );
 
 // `backdrop-filter` re-samples the whole page behind the scrim on every frame
@@ -67,7 +124,7 @@ const sheetSettled = $derived(
 // does on a phone. The tint alone carries the fade; the blur waits for the
 // scrim to land and then eases in on its own.
 const scrimSettled = $derived(
-  !isDragging && isVisible && scrimOpacity.current > 0.99
+  !isDragging && isVisible && scrimValue > 0.99
 );
 
 const panelStyle = $derived(
@@ -76,7 +133,7 @@ const panelStyle = $derived(
     : isMobile
       ? sheetSettled
         ? 'transform: none'
-        : `transform: translateY(${panelY.current}px)`
+        : `transform: translateY(${panelY}px)`
       : `transform: translateY(0px) scale(${panelScale.current}); opacity: ${panelOpacity.current}`
 );
 
@@ -100,20 +157,26 @@ function scheduleDragPaint() {
 
 // ── Open / close ─────────────────────────────────────────────────────────────
 
-function settleOpen() {
+/**
+ * Bring the sheet home. `velocity` is the speed the finger let go at, in px/s,
+ * and is what makes the release seamless: the sheet keeps moving at the speed
+ * it was already moving rather than restarting from nothing. A throw settles
+ * with a little overshoot because it carried momentum; a tap does not.
+ */
+function settleOpen(velocity = 0) {
   if (isMobile) {
-    panelY.set(0, tweenPanel);
+    springPanelY(0, velocity ? { ...SHEET_SETTLE, velocity } : SHEET_PRESENT);
     panelScale.set(1, { duration: 0 });
     panelOpacity.set(1, { duration: 0 });
   } else {
-    panelY.set(0, { duration: 0 });
+    setPanelY(0);
     panelScale.set(1, tweenPanel);
     panelOpacity.set(1, tweenFade);
+    scrimOpacity.set(1, tweenPanel);
   }
-  scrimOpacity.set(1, tweenPanel);
 }
 
-async function close() {
+async function close(velocity = 0) {
   if (isClosing) return;
   isClosing = true;
   isDragging = false;
@@ -125,13 +188,26 @@ async function close() {
   // add form sliding out), and closing by a height captured at open time left
   // the bottom of the sheet still on screen when it unmounted.
   if (panelEl) panelHeight = panelEl.offsetHeight;
-  if (isMobile) panelY.set(panelHeight, tweenPanelClose);
-  else {
+  if (isMobile) {
+    // A spring has no fixed duration, so the teardown waits on the sheet
+    // itself rather than on a clock that would have to guess. The timeout is
+    // only there so an interrupted spring can never strand the component.
+    await new Promise<void>((resolve) => {
+      let settled = false;
+      const finish = () => {
+        if (settled) return;
+        settled = true;
+        resolve();
+      };
+      springPanelY(panelHeight, { ...SHEET_DISMISS, velocity }, finish);
+      setTimeout(finish, 700);
+    });
+  } else {
     panelScale.set(0.95, tweenPanelClose);
     panelOpacity.set(0, tweenFade);
+    scrimOpacity.set(0, tweenPanelClose);
+    await new Promise<void>(r => setTimeout(r, closeDelay()));
   }
-  scrimOpacity.set(0, tweenPanelClose);
-  await new Promise<void>(r => setTimeout(r, closeDelay()));
   mounted = false;
   isClosing = false;
   onclose();
@@ -143,11 +219,11 @@ $effect(() => {
     requestAnimationFrame(() => requestAnimationFrame(() => {
       if (panelEl) panelHeight = panelEl.offsetHeight;
       if (isMobile) {
-        panelY.set(panelHeight, { duration: 0 });
+        setPanelY(panelHeight);
         panelScale.set(1, { duration: 0 });
         panelOpacity.set(1, { duration: 0 });
       } else {
-        panelY.set(0, { duration: 0 });
+        setPanelY(0);
         panelScale.set(0.95, { duration: 0 });
         panelOpacity.set(0, { duration: 0 });
       }
@@ -279,6 +355,9 @@ $effect(() => {
 // ── Shared drag state ────────────────────────────────────────────────────────
 
 let pointerStartY = 0;
+// Where the sheet already was when the finger landed, so the drag moves it
+// from there rather than from the top of the screen.
+let dragOffset = 0;
 let lastPointerY = 0;
 let lastPointerTime = 0;
 let pointerVelocity = 0;
@@ -321,15 +400,21 @@ function startDrag(y: number) {
   lastPointerY = y;
   lastPointerTime = performance.now();
   pointerVelocity = 0;
-  dragY = 0;
+  // Take over from wherever the sheet is right now. Grabbing one still on its
+  // way in used to restart tracking from zero, which snapped it home under the
+  // finger before the drag had moved at all.
+  stopPanelSpring?.();
+  stopPanelSpring = null;
+  dragOffset = panelY;
+  dragY = dragOffset;
   isDragging = true;
   // Hold the current pose on the node before Svelte drops the Tween style.
   if (panelEl) {
     panelEl.style.transform = isMobile
-      ? `translateY(${panelY.current}px)`
+      ? `translateY(${panelY}px)`
       : `translateY(0px) scale(1)`;
   }
-  if (backdropEl) backdropEl.style.opacity = String(scrimOpacity.current);
+  if (backdropEl) backdropEl.style.opacity = String(scrimValue);
   return true;
 }
 
@@ -354,7 +439,7 @@ function moveDrag(y: number) {
     return;
   }
 
-  const raw = y - pointerStartY;
+  const raw = dragOffset + (y - pointerStartY);
   dragY = raw >= 0 ? raw : contentCanScroll() ? 0 : rubberBand(raw);
   scheduleDragPaint();
 }
@@ -368,20 +453,26 @@ function endDrag() {
   // stopped — so a pointer that has been at rest is at rest.
   const velocity =
     performance.now() - lastPointerTime > VELOCITY_STALE_MS ? 0 : pointerVelocity;
-  const dismiss = dragY > panelHeight * 0.4 || velocity > 0.5;
+  const pxPerSecond = velocity * 1000;
   const y = dragY;
   dragY = 0;
+  dragOffset = 0;
   pointerVelocity = 0;
   if (panelEl) panelEl.style.transform = '';
   if (backdropEl) backdropEl.style.opacity = '';
   isDragging = false;
-  if (dismiss) {
-    panelY.set(y, { duration: 0 });
-    close();
-  } else {
-    panelY.set(y, { duration: 0 });
-    settleOpen();
-  }
+
+  // Decide on where the throw is heading, not on where the finger happened to
+  // stop. A flick that has barely moved the sheet still dismisses it, and a
+  // sheet dragged most of the way down but held there does not — which is the
+  // difference between a threshold the user has to learn and one they already
+  // know from every other sheet on the phone. Only downward momentum counts;
+  // an upward flick leaves the decision to position alone.
+  const projected = y + Math.max(0, projectMomentum(pxPerSecond));
+
+  setPanelY(y);
+  if (projected > panelHeight * 0.4) close(pxPerSecond);
+  else settleOpen(pxPerSecond);
 }
 
 // ── Touch drag (non-passive so we can preventDefault) ───────────────────────
@@ -560,9 +651,9 @@ function onPanelKeydown(e: KeyboardEvent) {
     class="fixed inset-0 bg-black/40 dark:bg-black/60 z-50
            transition-[backdrop-filter] duration-150 ease-out
            {scrimSettled ? 'backdrop-blur-sm' : 'will-change-[opacity]'}"
-    style={isDragging ? '' : `opacity: ${scrimOpacity.current}`}
+    style={isDragging ? '' : `opacity: ${scrimValue}`}
     role="presentation"
-    onclick={close}
+    onclick={() => close()}
   ></div>
 
   <!-- Wrapper -->
@@ -597,7 +688,7 @@ function onPanelKeydown(e: KeyboardEvent) {
           {@render header()}
         </div>
         <button
-          onclick={close}
+          onclick={() => close()}
           class="pressable-icon touch-target flex-shrink-0 flex items-center justify-center w-8 h-8 -mr-1.5 rounded-full text-muted-foreground pointer:hover:text-foreground pointer:hover:bg-muted transition-colors duration-150 mt-0.5"
           aria-label="닫기"
         >
