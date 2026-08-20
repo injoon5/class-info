@@ -34,15 +34,33 @@ const timetableQuery = useQuery(
 	})
 );
 
-const dayNames = ['월', '화', '수', '목', '금'];
+type Slot = { period: number; subject: string; teacher: string; replaced: boolean };
 
-function getMaxPeriods(): number {
-	const tt = (timetableQuery.data?.timetable || []) as Array<Array<{ period: number }>>;
-	return tt.reduce((max: number, day) => Math.max(max, day.length), 0);
-}
+// Saturday only ever appears when the timetable source published it, so the
+// column is grown from the data rather than always reserved.
+const dayNames = ['월', '화', '수', '목', '금', '토'];
 
-// "1교시(08:40~09:30)" → "08:40". The end time is the next period's start,
-// so it earns nothing in the app's narrowest column.
+// The merged grid can skip a period on one day and not another, so cells are
+// looked up by 교시 rather than by position in the day's array — a NEIS-filled
+// day that starts at 2교시 would otherwise shift every subject a row up.
+const grid = $derived.by(() => {
+	const rows = (timetableQuery.data?.timetable || []) as Slot[][];
+	const lastWithClasses = rows.reduce((last, day, i) => (day.length > 0 ? i + 1 : last), 0);
+	const days = Math.min(Math.max(lastWithClasses, 5), dayNames.length);
+	const byPeriod = Array.from(
+		{ length: days },
+		(_, i) => new Map((rows[i] ?? []).map((slot) => [slot.period, slot]))
+	);
+	const maxPeriod = rows.reduce(
+		(max, day) => day.reduce((m, slot) => Math.max(m, slot.period), max),
+		0
+	);
+	return { days, byPeriod, maxPeriod };
+});
+
+// NEIS publishes no bell times, so a week it alone covers has none to show.
+const hasBellTimes = $derived((timetableQuery.data?.day_time || []).length > 0);
+
 // Korean counts by code point here, not UTF-16 unit.
 function subjectSizeClass(subject: string): string {
 	const n = [...subject].length;
@@ -51,9 +69,10 @@ function subjectSizeClass(subject: string): string {
 	return 'text-xs sm:text-xl';
 }
 
+// "1교시(08:40~09:30)" → "08:40". The end time is the next period's start,
+// so it earns nothing in the app's narrowest column.
 function getPeriodLabel(period: number): string {
-	const times = timetableQuery.data?.day_time || [];
-	const label = times[period - 1];
+	const label = (timetableQuery.data?.day_time || [])[period - 1];
 	if (!label) return '';
 	const inParens = label.match(/\(([^)]+)\)/)?.[1] ?? label;
 	return inParens.split(/[~-]/)[0].trim();
@@ -103,7 +122,7 @@ function getPeriodLabel(period: number): string {
 		<LoadingState />
 	{:else if timetableQuery.error}
 		<ErrorState error={timetableQuery.error} />
-	{:else if !timetableQuery.data}
+	{:else if !timetableQuery.data || grid.maxPeriod === 0}
 		<EmptyState message="시간표가 없어요" />
 	{:else}
 		<HScroll blurred={blur.blurred}>
@@ -111,29 +130,36 @@ function getPeriodLabel(period: number): string {
 				<thead>
 					<tr class="bg-muted">
 						<th scope="col" class="px-1 py-3 border border-border"><span class="sr-only">교시</span></th>
-						{#each dayNames as name}
+						{#each dayNames.slice(0, grid.days) as name}
 							<th scope="col" class="px-1 py-2 text-center text-base font-semibold sm:text-lg text-foreground border border-border">{name}</th>
 						{/each}
 					</tr>
 				</thead>
 				<tbody>
-					{#each Array(getMaxPeriods()) as _, i}
+					{#each Array(grid.maxPeriod) as _, i}
+						{@const period = i + 1}
+						{@const periodLabel = getPeriodLabel(period)}
 						<tr>
 							<th scope="row" class="px-0.5 py-3 sm:py-6 border border-border text-center font-normal bg-muted">
-								<div class="text-sm sm:text-lg font-semibold text-foreground whitespace-nowrap">{i + 1}교시</div>
-								<div class="text-[11px] sm:text-base text-muted-foreground tabular-nums leading-tight">{getPeriodLabel(i + 1)}</div>
+								<div class="text-sm sm:text-lg font-semibold text-foreground whitespace-nowrap">{period}교시</div>
+								{#if hasBellTimes && periodLabel}
+									<div class="text-[11px] sm:text-base text-muted-foreground tabular-nums leading-tight">{periodLabel}</div>
+								{/if}
 							</th>
-							{#each (timetableQuery.data?.timetable || []) as day}
+							{#each grid.byPeriod as day}
+								{@const slot = day.get(period)}
 								<td
-									data-replaced={day[i]?.replaced ? '' : undefined}
-									class="border border-border py-3 sm:py-6 text-center {day[i]?.replaced ? 'bg-amber-100/70 dark:bg-amber-900/20' : 'bg-card'}"
+									data-replaced={slot?.replaced ? '' : undefined}
+									class="border border-border py-3 sm:py-6 text-center {slot?.replaced ? 'bg-amber-100/70 dark:bg-amber-900/20' : 'bg-card'}"
 								>
-									{#if day[i]}
+									{#if slot}
 										<div
-											class="truncate {subjectSizeClass(day[i].subject)} font-semibold {day[i].replaced ? 'text-amber-700 dark:text-amber-300' : 'text-foreground'}"
-											title={day[i].subject}
-										>{day[i].subject}</div>
-										<div class="truncate text-sm sm:text-base mt-0.5 text-muted-foreground">{day[i].teacher}</div>
+											class="truncate {subjectSizeClass(slot.subject)} font-semibold {slot.replaced ? 'text-amber-700 dark:text-amber-300' : 'text-foreground'}"
+											title={slot.subject}
+										>{slot.subject}</div>
+										{#if slot.teacher}
+											<div class="truncate text-sm sm:text-base mt-0.5 text-muted-foreground">{slot.teacher}</div>
+										{/if}
 									{:else}
 										<span class="text-muted-foreground/50 text-base sm:text-lg" aria-hidden="true">-</span>
 										<span class="sr-only">수업 없음</span>
