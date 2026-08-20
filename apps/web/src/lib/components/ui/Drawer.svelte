@@ -160,6 +160,58 @@ $effect(() => {
   }
 });
 
+// iOS Safari tints its own chrome — the status bar, and with the keyboard up
+// the strip its URL and accessory bars float in — with `theme-color`. The page
+// sets that to the page background, so under a sheet the band directly below
+// the sheet stayed page-dark and read as a gap in it. While a sheet is up the
+// nearest surface to that chrome is the sheet, so the chrome takes the sheet's
+// colour and the two read as one surface.
+//
+// Resolved through a canvas rather than hardcoded: `--card` is an oklch token,
+// and `theme-color` predates that syntax in Safari. Painting it and reading
+// the pixel back gives sRGB whatever the token is written in, and cannot drift
+// from the token the way a second copy of the value would.
+function resolveToHex(color: string): string | null {
+  const canvas = document.createElement('canvas');
+  canvas.width = canvas.height = 1;
+  const ctx = canvas.getContext('2d', { willReadFrequently: true });
+  if (!ctx) return null;
+  ctx.fillStyle = '#000';
+  ctx.fillStyle = color;
+  ctx.fillRect(0, 0, 1, 1);
+  const [r, g, b] = ctx.getImageData(0, 0, 1, 1).data;
+  return '#' + [r, g, b].map((n) => n.toString(16).padStart(2, '0')).join('');
+}
+
+$effect(() => {
+  if (!isVisible || !panelEl) return;
+  const el = panelEl;
+
+  const meta = document.createElement('meta');
+  meta.name = 'theme-color';
+  const paint = () => {
+    const hex = resolveToHex(getComputedStyle(el).backgroundColor);
+    if (hex) meta.content = hex;
+  };
+  paint();
+
+  // Inserted ahead of the page's own, media-scoped tags: the browser takes the
+  // first one whose media matches, so appending would never win.
+  document.head.insertBefore(meta, document.head.querySelector('meta[name="theme-color"]'));
+
+  // This tag carries one colour rather than a pair, so a sheet left open
+  // across a light/dark flip would hold the old one. Re-read on the next
+  // frame, once the class that drives the token has actually been swapped.
+  const mq = window.matchMedia('(prefers-color-scheme: dark)');
+  const repaint = () => requestAnimationFrame(paint);
+  mq.addEventListener('change', repaint);
+
+  return () => {
+    mq.removeEventListener('change', repaint);
+    meta.remove();
+  };
+});
+
 // Block body scroll while visible; release as soon as close animation begins
 $effect(() => {
   if (isVisible) {
@@ -184,8 +236,10 @@ $effect(() => {
     // What the keyboard covers at the bottom of the layout viewport.
     const covered = Math.max(0, window.innerHeight - vv.height - vv.offsetTop);
     if (covered > 0) {
+      // Height alone: it already ends where the keyboard begins, and padding
+      // on top of it comes out of the same box and squeezes the panel.
       wrapperEl.style.height = `${vv.height + vv.offsetTop}px`;
-      wrapperEl.style.paddingBottom = `${covered}px`;
+      wrapperEl.style.paddingBottom = '';
       // svh does not account for the keyboard, so cap the panel to what is
       // actually left above it.
       if (panelEl) panelEl.style.maxHeight = `${Math.max(160, vv.height - 24)}px`;
