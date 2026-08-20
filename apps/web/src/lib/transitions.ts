@@ -70,6 +70,10 @@ export interface SpringOptions {
 	velocity?: number;
 	damping?: number;
 	response?: number;
+	/** Ends the spring the moment this is true of the value. For motion whose
+	 *  target is off screen, where waiting out an oscillation nobody can see
+	 *  only holds the page hostage. */
+	until?: (value: number) => boolean;
 	onFrame: (value: number) => void;
 	onRest?: () => void;
 }
@@ -82,6 +86,7 @@ export function spring({
 	velocity = 0,
 	damping = 1,
 	response = 0.4,
+	until,
 	onFrame,
 	onRest
 }: SpringOptions): () => void {
@@ -125,6 +130,12 @@ export function spring({
 		if (stopped) return;
 		const t = (now - start) / 1000;
 		const d = displacement(t);
+		if (until?.(to + d)) {
+			onFrame(to + d);
+			stopped = true;
+			onRest?.();
+			return;
+		}
 		// Rest when it is both within half a pixel and no longer moving enough
 		// to cross one in the next few frames.
 		if (Math.abs(d) < 0.5 && Math.abs(speed(t)) < 10) {
@@ -157,9 +168,19 @@ export function projectMomentum(velocity: number, deceleration = 0.998): number 
 /** Sheet settling after a throw — a touch of overshoot, because the gesture
  *  carried momentum into it. */
 export const SHEET_SETTLE = { damping: 0.82, response: 0.32 };
-/** Sheet arriving or leaving on a tap. No gesture, so no bounce. */
-export const SHEET_PRESENT = { damping: 1, response: 0.42 };
-export const SHEET_DISMISS = { damping: 1, response: 0.3 };
+/**
+ * Sheet arriving on a tap. Under-damped, so it carries past its resting place
+ * and comes back — the skirt under the panel is what that overshoot uncovers,
+ * rather than a gap at the bottom of the screen.
+ */
+export const SHEET_PRESENT = { damping: 0.7, response: 0.34 };
+/**
+ * Sheet leaving. Under-damped again, which here buys speed rather than a
+ * visible bounce: the overshoot is past the bottom of the screen, so what
+ * shows is a sheet that leaves with more energy. The close ends at the screen
+ * edge instead of waiting for that off-screen oscillation to decay.
+ */
+export const SHEET_DISMISS = { damping: 0.75, response: 0.24 };
 
 export const fadeFast = {
 	get duration() { return ms(100); },

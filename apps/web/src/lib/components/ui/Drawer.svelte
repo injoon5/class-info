@@ -9,6 +9,7 @@ import {
   SHEET_PRESENT,
   SHEET_SETTLE,
   spring,
+  type SpringOptions,
   tweenFade,
   tweenPanel,
   tweenPanelClose
@@ -63,7 +64,7 @@ function setPanelY(y: number) {
 
 function springPanelY(
   to: number,
-  opts: { velocity?: number; damping?: number; response?: number },
+  opts: Omit<SpringOptions, 'from' | 'to' | 'onFrame' | 'onRest'>,
   onRest?: () => void
 ) {
   stopPanelSpring?.();
@@ -197,9 +198,22 @@ async function close(velocity = 0) {
       const finish = () => {
         if (settled) return;
         settled = true;
-        resolve();
+        // Hand the last position a frame to paint before the node is torn
+        // out. The spring's final step and the unmount can otherwise land in
+        // the same flush, and the sheet vanishes from wherever it was drawn
+        // last instead — a sliver of it still on screen, varying by a dozen
+        // pixels with the frame timing.
+        requestAnimationFrame(() => resolve());
       };
-      springPanelY(panelHeight, { ...SHEET_DISMISS, velocity }, finish);
+      springPanelY(
+        panelHeight,
+        // Off the bottom of the screen is gone. Without this the under-damped
+        // dismiss would keep oscillating about a target nobody can see, and
+        // the scrim — invisible at zero opacity but still taking taps — would
+        // sit over the page for the rest of it.
+        { ...SHEET_DISMISS, velocity, until: (y) => y >= panelHeight },
+        finish
+      );
       setTimeout(finish, 700);
     });
   } else {
@@ -672,11 +686,21 @@ function onPanelKeydown(e: KeyboardEvent) {
              shadow-2xl flex flex-col
              max-h-[88svh] sm:max-h-[80svh]
              border-x border-t border-border sm:border
-             outline-none {sheetSettled ? '' : 'will-change-transform'}"
+             outline-none relative {sheetSettled ? '' : 'will-change-transform'}"
       style={panelStyle}
       onclick={(e) => e.stopPropagation()}
       onkeydown={onPanelKeydown}
     >
+      <!-- The entrance overshoots its resting place, which on a sheet pinned
+           to the bottom edge would lift it and show a band of scrim underneath.
+           This hangs the sheet's own surface below the screen so the overshoot
+           uncovers more sheet instead. Absolute, so it adds nothing to the
+           panel's height and nothing to the distance a dismiss has to travel. -->
+      <div
+        class="sm:hidden absolute inset-x-0 top-full h-14 bg-card border-x border-border"
+        aria-hidden="true"
+      ></div>
+
       <!-- Drag handle (mobile only) -->
       <div class="sm:hidden flex justify-center pt-3 pb-1 flex-shrink-0 touch-none select-none cursor-grab active:cursor-grabbing">
         <div class="w-10 h-1 rounded-full bg-border"></div>
