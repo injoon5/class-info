@@ -90,19 +90,12 @@ afterEach(() => {
 });
 
 describe("timetable.fetchAndSave — source", () => {
-  test("asks for the merged grid by default rather than trusting the API's default", async () => {
+  test("always asks for the merged grid rather than trusting the API's default", async () => {
     const t = convexTest(schema, modules);
     const urls = stubFetch(jsonResponse(COMCIGAN));
     await t.action(internal.timetable.fetchAndSave, ARGS);
     expect(urls[0]).toContain("source=auto");
     expect(urls[0]).toContain("schoolcode=7010208");
-  });
-
-  test("pins Comcigan when asked for it", async () => {
-    const t = convexTest(schema, modules);
-    const urls = stubFetch(jsonResponse(COMCIGAN));
-    await t.action(internal.timetable.fetchAndSave, { ...ARGS, source: "comcigan" });
-    expect(urls[0]).toContain("source=comcigan");
   });
 });
 
@@ -141,6 +134,8 @@ describe("timetable.fetchAndSave — NEIS-only weeks", () => {
 });
 
 describe("timetable.fetchAndSave — errors", () => {
+  // 외대부고 (7531146) answers this way year-round: valid in NEIS, but it
+  // publishes no timetable to either source. A 방학 looks identical.
   test("treats an empty week as nothing to store, not a failure", async () => {
     const t = convexTest(schema, modules);
     await seedWeek(t, 0);
@@ -153,12 +148,12 @@ describe("timetable.fetchAndSave — errors", () => {
     expect(stored!.timetable.flat()).toHaveLength(3);
   });
 
-  test("surfaces the error code for a school neither source knows", async () => {
+  test("surfaces the error code when the school itself does not resolve", async () => {
     const t = convexTest(schema, modules);
-    stubFetch(apiError("TIMETABLE_SCHOOL_NOT_FOUND", 404, "No school matched."));
-    await expect(
-      t.action(internal.timetable.fetchAndSave, { ...ARGS, schoolcode: "7531146" })
-    ).rejects.toThrow(/TIMETABLE_SCHOOL_NOT_FOUND/);
+    stubFetch(apiError("TIMETABLE_SCHOOL_NOT_FOUND", 404, "No school matched this name."));
+    await expect(t.action(internal.timetable.fetchAndSave, ARGS)).rejects.toThrow(
+      /TIMETABLE_SCHOOL_NOT_FOUND/
+    );
   });
 
   test("surfaces a NEIS upstream failure as a 502", async () => {

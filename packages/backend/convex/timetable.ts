@@ -7,16 +7,12 @@ import { timetableDoc, timetableSlot } from "./validators";
 
 type Slot = Infer<typeof timetableSlot>;
 
-// `/timetable` merges Comcigan and NEIS. `auto` is the upstream default, but we
-// send it anyway so a future change to that default can't silently reshape the
-// grid: `auto` is the source this app wants. Comcigan supplies bell times,
-// teachers and the short subject nicknames; NEIS fills days and periods
-// Comcigan never published. `comcigan` pins the pre-merge behaviour.
-const timetableSource = v.union(
-  v.literal("auto"),
-  v.literal("comcigan"),
-  v.literal("neis")
-);
+// `/timetable` merges Comcigan and NEIS. `auto` is both the upstream default
+// and the only source this app wants — Comcigan supplies bell times, teachers
+// and the short subject nicknames, NEIS fills days and periods Comcigan never
+// published — but it is sent explicitly so a later change to that default
+// can't silently reshape the grid.
+const SOURCE = "auto";
 
 // A NEIS-only week carries the same keys with empty values: no teachers, no
 // bell times, no LOAD_DTM, and never a replacement. Everything below treats
@@ -115,7 +111,6 @@ export const fetchAndSave = internalAction({
     classno: v.number(),
     week: v.number(),
     schoolcode: v.string(),
-    source: v.optional(timetableSource),
   },
   // Null when the week has nothing to store — a break, or a payload that came
   // back structurally fine but empty. Blanking a good week over either would
@@ -123,22 +118,23 @@ export const fetchAndSave = internalAction({
   returns: v.union(v.id("timetables"), v.null()),
   handler: async (
     ctx,
-    { grade, classno, week, schoolcode, source = "auto" }
+    { grade, classno, week, schoolcode }
   ): Promise<Id<"timetables"> | null> => {
     const url = `https://api.timefor.school/timetable?grade=${encodeURIComponent(
       String(grade)
     )}&classno=${encodeURIComponent(String(classno))}&week=${encodeURIComponent(
       String(week)
-    )}&schoolcode=${encodeURIComponent(schoolcode)}&source=${encodeURIComponent(source)}`;
+    )}&schoolcode=${encodeURIComponent(schoolcode)}&source=${SOURCE}`;
 
     const res = await fetch(url, { headers: { Accept: "application/json" } });
     if (!res.ok) {
       const { code, message } = await readError(res);
-      // Neither source published this week — a school break, most often. That
-      // is an ordinary answer, not a fault worth failing the cron over.
+      // Neither source has rows for this week: a break, or a school that
+      // publishes no timetable to Comcigan or NEIS at all. Both are ordinary
+      // answers, not faults worth failing the cron over.
       if (code === "NEIS_DATA_NOT_FOUND") {
         console.log(
-          `[timetable.fetchAndSave] no rows for week=${week} source=${source} (${message})`
+          `[timetable.fetchAndSave] no rows for week=${week} (${message})`
         );
         return null;
       }
@@ -161,12 +157,12 @@ export const fetchAndSave = internalAction({
     const timetable = normalizeWeek(data.timetable);
     const periods = timetable.reduce((total, day) => total + day.length, 0);
     if (periods === 0) {
-      console.warn(`[timetable.fetchAndSave] empty grid for week=${week} source=${source}; keeping stored week`);
+      console.warn(`[timetable.fetchAndSave] empty grid for week=${week}; keeping stored week`);
       return null;
     }
 
     console.log(
-      `[timetable.fetchAndSave] grade=${grade} class=${classno} week=${week} source=${source} days=${timetable.length} periods=${periods}`
+      `[timetable.fetchAndSave] grade=${grade} class=${classno} week=${week} days=${timetable.length} periods=${periods}`
     );
     return await ctx.runMutation(internal.timetable.upsert, {
       week,

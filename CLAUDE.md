@@ -69,7 +69,7 @@ with more than one dot, so they are never pushed as functions. Vitest runs them
 in the `edge-runtime` environment, and `convex-test` executes real queries
 against an in-memory database, so `schedule.test.ts` exercises the same index
 reads and validators as production. `timetable.test.ts` drives the fetch action
-with a stubbed `fetch`, covering the `/timetable` source pin, NEIS-only weeks,
+with a stubbed `fetch`, covering the pinned `source=auto`, NEIS-only weeks,
 and each upstream error code. Pure calendar logic is covered directly in
 `dates.test.ts`.
 
