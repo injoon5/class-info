@@ -1,7 +1,13 @@
 import type { PageLoad } from './$types.js';
 import { api } from '@class-info/backend/convex/_generated/api';
 import { convexHttp } from '$lib/convex';
-import { addDaysYyyymmdd, getNowInKst, schoolDisplayClock, thisMondayYyyymmdd } from '$lib/date';
+import {
+	addDaysYyyymmdd,
+	getNowInKst,
+	isAtOrAfterDinnerEnd,
+	schoolDisplayClock,
+	thisMondayYyyymmdd
+} from '$lib/date';
 
 export const load = (async () => {
 	const now = getNowInKst();
@@ -22,5 +28,11 @@ export const load = (async () => {
 		})
 	]);
 
-	return { weekStart, twoWeeks, displayDay, todayYmd: displayClock.today };
+	return {
+		weekStart,
+		twoWeeks,
+		displayDay,
+		todayYmd: displayClock.today,
+		afterDinner: isAtOrAfterDinnerEnd(now)
+	};
 }) satisfies PageLoad;

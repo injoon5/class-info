@@ -2,6 +2,8 @@ import { describe, expect, test } from "vitest";
 import {
   addDaysYyyymmdd,
   closedYmdsFromSchedule,
+  daysBetweenYmd,
+  ddayLabel,
   DAY_ROLLOVER_HOUR_KST,
   DINNER_END_HOUR_KST,
   isAtOrAfterDayRollover,
@@ -171,5 +173,31 @@ describe("vacation handling", () => {
     expect(isSchoolYmd(NEXT_MON, closed)).toBe(false);
     expect(isSchoolYmd("20261231", closed)).toBe(false);
     expect(isSchoolYmd(FRI, closed)).toBe(true);
+  });
+});
+
+describe("ddayLabel", () => {
+  test("counts whole calendar days ahead", () => {
+    expect(ddayLabel(FRI, THU)).toBe("D-1");
+    expect(ddayLabel(NEXT_MON, THU)).toBe("D-4");
+    expect(ddayLabel("20260920", THU)).toBe("D-31");
+  });
+
+  test("the day itself is D-DAY, never D-0", () => {
+    expect(ddayLabel(THU, THU)).toBe("D-DAY");
+  });
+
+  test("a date already gone counts up", () => {
+    expect(ddayLabel(MON, THU)).toBe("D+3");
+  });
+
+  test("crosses month and year boundaries by real days, not arithmetic on parts", () => {
+    expect(daysBetweenYmd("20261231", "20270101")).toBe(1);
+    expect(daysBetweenYmd("20260228", "20260301")).toBe(1); // 2026 is not a leap year
+    expect(ddayLabel("20270101", "20261225")).toBe("D-7");
+  });
+
+  test("rejects a malformed date rather than counting nonsense", () => {
+    expect(() => ddayLabel("2026-08-20", THU)).toThrow();
   });
 });

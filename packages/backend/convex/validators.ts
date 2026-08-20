@@ -73,6 +73,21 @@ export const timetableDoc = v.object({
   editedAt: v.number(),
 });
 
+// The standing timetable carries no substitution data — it *is* the baseline
+// a substitution is measured against.
+export const fullTimetableSlot = v.object({
+  subject: v.string(),
+  teacher: v.string(),
+});
+
+export const fullTimetableDoc = v.object({
+  _id: v.id("fullTimetable"),
+  _creationTime: v.number(),
+  day_time: v.array(v.string()),
+  timetable: v.array(v.array(fullTimetableSlot)),
+  updatedAt: v.number(),
+});
+
 export const publicMeal = v.object({
   date: v.string(),
   mealType: v.string(),
@@ -110,6 +125,7 @@ export const publicEvent = v.object({
   source: v.union(v.literal("school"), v.literal("custom")),
   eventType: v.optional(v.string()),
   color: v.optional(customEventColor),
+  dday: v.optional(v.boolean()),
 });
 
 export const fileDoc = v.object({
@@ -143,3 +159,5 @@ export type MonthSummary = Infer<typeof monthSummary>;
 export type PublicMeal = Infer<typeof publicMeal>;
 export type MealDay = Infer<typeof mealDay>;
 export type PublicEvent = Infer<typeof publicEvent>;
+export type FullTimetableSlot = Infer<typeof fullTimetableSlot>;
+export type FullTimetableDoc = Infer<typeof fullTimetableDoc>;

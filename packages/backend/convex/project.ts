@@ -1,6 +1,12 @@
 import type { Doc } from "./_generated/dataModel";
 import type { Infer } from "convex/values";
-import { publicEvent, publicMeal, timetableDoc, timetableSlot } from "./validators";
+import {
+  fullTimetableDoc,
+  publicEvent,
+  publicMeal,
+  timetableDoc,
+  timetableSlot,
+} from "./validators";
 
 // Never return raw DB documents from public queries. `returns` validators
 // reject extra fields, missing required fields, and `undefined` values.
@@ -57,6 +63,7 @@ export function projectSchedule(e: Doc<"schedules">): Infer<typeof publicEvent> 
   ) {
     out.color = e.color;
   }
+  if (e.dday === true) out.dday = true;
   return out;
 }
 
@@ -89,5 +96,27 @@ export function projectTimetable(t: Doc<"timetables">): Infer<typeof timetableDo
     update_date: str(t.update_date),
     week: n(t.week, 0),
     editedAt: n(t.editedAt, t._creationTime),
+  };
+}
+
+// Mon–Fri, always five columns: the grid renders one per day, and a row that
+// predates a day being added would otherwise render four.
+export const FULL_TIMETABLE_DAYS = 5;
+
+export function projectFullTimetable(t: Doc<"fullTimetable">): Infer<typeof fullTimetableDoc> {
+  const days = Array.isArray(t.timetable) ? t.timetable : [];
+  return {
+    _id: t._id,
+    _creationTime: t._creationTime,
+    day_time: Array.isArray(t.day_time) ? t.day_time.filter((s) => typeof s === "string") : [],
+    timetable: Array.from({ length: FULL_TIMETABLE_DAYS }, (_, i) => {
+      const day = days[i];
+      if (!Array.isArray(day)) return [];
+      return day.map((slot) => ({
+        subject: str(slot?.subject),
+        teacher: str(slot?.teacher),
+      }));
+    }),
+    updatedAt: n(t.updatedAt, t._creationTime),
   };
 }
