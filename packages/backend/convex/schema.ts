@@ -112,5 +112,10 @@ export default defineSchema({
     createdAt: v.number(),
     updatedAt: v.number(),
   })
-    .index("by_date", ["date"]),
+    .index("by_date", ["date"])
+    // Countdowns are read forward from today with no far end — a D-day is
+    // routinely months out, past anything the home page's day scan covers.
+    // Binding `dday` first turns that into a bounded `.take()` over flagged
+    // rows in date order, rather than a scan of every day in between.
+    .index("by_dday_date", ["dday", "date"]),
 });

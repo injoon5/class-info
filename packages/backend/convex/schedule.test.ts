@@ -133,6 +133,40 @@ describe("schedule D-days", () => {
     expect(events.map((e) => e.title)).toEqual(["수행평가"]);
   });
 
+  // The regression this exists for: countdowns used to be filtered out of the
+  // school-day scan, which stops a fixed lookahead past today. Anything further
+  // out — a 수능 or a 졸업식, which is most of what gets pinned — was silently
+  // absent from home while still showing as flagged on the calendar.
+  test("a countdown months out still reaches home", async () => {
+    const t = await withSchedule([
+      { date: "20261119", title: "수능", dday: true }, // ~3 months out
+      { date: "20270216", title: "졸업식", dday: true }, // ~6 months out
+    ]);
+    const { ddays } = await t.query(api.schedule.homeSchedule, {
+      today: THU,
+      afterRollover: false,
+    });
+    expect(ddays.map((e) => e.title)).toEqual(["수능", "졸업식"]);
+  });
+
+  // Un-flagging patches `dday: false` rather than removing the key, so `false`
+  // rows sit in the same index as the `true` ones and must not be read back.
+  test("an un-flagged event drops off home", async () => {
+    const t = await withSchedule([{ date: NEXT_MON, title: "수행평가", dday: true }]);
+    const clock = { today: THU, afterRollover: false };
+
+    const before = await t.query(api.schedule.homeSchedule, clock);
+    expect(before.ddays.map((e) => e.title)).toEqual(["수행평가"]);
+
+    const id = before.ddays[0]!._id;
+    await t.run(async (ctx) => {
+      await ctx.db.patch(id, { dday: false });
+    });
+
+    const after = await t.query(api.schedule.homeSchedule, clock);
+    expect(after.ddays).toEqual([]);
+  });
+
   test("countdowns are capped, nearest first", async () => {
     const t = await withSchedule(
       ["20260901", "20260825", "20260910", "20260830"].map((date) => ({

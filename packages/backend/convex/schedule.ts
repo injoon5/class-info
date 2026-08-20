@@ -262,10 +262,17 @@ export const homeSchedule = query({
       .filter((e): e is NonNullable<typeof e> => e !== null);
     // Countdowns reach past the event window — that is the point of them — but
     // only forward: a date already gone is no longer being counted down to.
-    const ddays = rows
-      .filter((row) => row.dday === true && row.date >= today)
-      .sort((a, b) => a.date.localeCompare(b.date))
-      .slice(0, HOME_DDAY_LIMIT)
+    //
+    // Read on their own index rather than out of `rows`. The day scan ends a
+    // fixed lookahead past today, so filtering it silently dropped every
+    // countdown further out than that — which is most of the ones worth
+    // pinning (수능, 기말고사, 졸업식). `by_dday_date` is already in date
+    // order, so this is a bounded read of exactly the rows that render.
+    const ddayRows = await ctx.db
+      .query("schedules")
+      .withIndex("by_dday_date", (q) => q.eq("dday", true).gte("date", today))
+      .take(HOME_DDAY_LIMIT);
+    const ddays = ddayRows
       .map(projectSchedule)
       .filter((e): e is NonNullable<typeof e> => e !== null);
     return { displayDay, events, ddays };
