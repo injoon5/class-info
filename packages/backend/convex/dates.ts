@@ -137,6 +137,15 @@ export function schoolDisplayClock(now: Date = getNowKst()): {
   return { today: toYyyymmdd(now), afterRollover: isAtOrAfterDayRollover(now) };
 }
 
+// "오늘" / "내일" relative to the real today, or "" when the date is neither.
+// Deliberately not relative to the *display* day: after the rollover the page
+// shows a future day, and labelling that "오늘" is what this replaces.
+export function relativeDayLabel(ymd: string, todayYmd: string): string {
+  if (ymd === todayYmd) return "오늘";
+  if (ymd === addDaysYyyymmdd(todayYmd, 1)) return "내일";
+  return "";
+}
+
 export function ymdWeekday(s: string): number {
   const { y, m, d } = assertYyyymmdd(s);
   return new Date(Date.UTC(y, m - 1, d)).getUTCDay();

@@ -8,7 +8,7 @@ import Drawer from '$lib/components/ui/Drawer.svelte';
 import HScroll from '$lib/components/ui/HScroll.svelte';
 import SegmentedControl from '$lib/components/ui/SegmentedControl.svelte';
 import { createBlurPulse } from '$lib/blurPulse.svelte';
-import { addDaysYyyymmdd } from '$lib/date';
+import { relativeDayLabel } from '$lib/date';
 import type { MealDay, PublicMeal } from '@class-info/backend/convex/validators';
 import type { PageData } from './$types.js';
 
@@ -17,13 +17,6 @@ const { data }: { data: PageData } = $props();
 // school day. Labelled in the header so the highlight is never unexplained.
 const displayDay = $derived(data.displayDay);
 const todayYmd = $derived(data.todayYmd);
-const tomorrowYmd = $derived(addDaysYyyymmdd(todayYmd, 1));
-
-function relativeDayLabel(date: string): string {
-  if (date === todayYmd) return '오늘';
-  if (date === tomorrowYmd) return '내일';
-  return '';
-}
 
 let selectedMealType = $state("중식");
 
@@ -125,7 +118,7 @@ function openMealDrawer(day: MealDay) {
             {@const meal = mealFor(day, selectedMealType)}
             {@const hasMeal = !!meal}
             {@const isDisplayCol = day.date === displayDay}
-            {@const dayLabel = relativeDayLabel(day.date)}
+            {@const dayLabel = relativeDayLabel(day.date, todayYmd)}
             <button
               type="button"
               onclick={() => openMealDrawer(day)}

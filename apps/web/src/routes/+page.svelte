@@ -6,6 +6,7 @@ import {
 	addDaysYyyymmdd,
 	parseYyyymmdd,
 	weekdayKrUtc,
+	relativeDayLabel,
 	weekOffsetBetween,
 	ymdWeekday
 } from '$lib/date';
@@ -27,8 +28,7 @@ const noticesQuery = useQuery(
 
 const displayDay = $derived(data.displayDay);
 const todayYmd = $derived(data.todayYmd);
-const tomorrowYmd = $derived(addDaysYyyymmdd(todayYmd, 1));
-const isTomorrow = $derived(displayDay === tomorrowYmd);
+const isTomorrow = $derived(displayDay === addDaysYyyymmdd(todayYmd, 1));
 const parsedDisplay = $derived(parseYyyymmdd(displayDay));
 const displayMonth = $derived(parsedDisplay?.m ?? 0);
 const displayDate = $derived(parsedDisplay?.d ?? 0);
@@ -123,9 +123,7 @@ function eventTypeLabel(event: PublicEvent): string {
 // Relative only where it is actually true. The display day can be several days
 // out (a weekend, a holiday, a break), and calling that "오늘" is a lie.
 function eventDateLabel(dateStr: string): string {
-	if (dateStr === todayYmd) return '오늘';
-	if (dateStr === tomorrowYmd) return '내일';
-	return formatEventDate(dateStr);
+	return relativeDayLabel(dateStr, todayYmd) || formatEventDate(dateStr);
 }
 
 function isDisplayDayEvent(dateStr: string): boolean {

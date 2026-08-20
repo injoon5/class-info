@@ -14,6 +14,7 @@ import {
 	weekdayKrUtc,
 	ymdWeekday,
 	weekOffsetBetween,
+	relativeDayLabel,
 	noticeClock,
 	schoolDisplayClock,
 } from '@class-info/backend/convex/dates';
@@ -30,6 +31,7 @@ export {
 	weekdayKrUtc,
 	ymdWeekday,
 	weekOffsetBetween,
+	relativeDayLabel,
 	noticeClock,
 	schoolDisplayClock,
 };

@@ -50,6 +50,29 @@ pnpm check-types
 cd apps/web && pnpm check
 ```
 
+Type checking the web app reads `PUBLIC_CONVEX_URL` from the environment, so
+copy `apps/web/.env.example` to `.env` first (any URL-shaped value will do —
+the checks make no network calls).
+
+### Tests
+
+```bash
+# Run every suite
+pnpm test
+
+# Backend only, in watch mode
+cd packages/backend && pnpm test:watch
+```
+
+Tests live beside the code as `convex/*.test.ts` — Convex skips any filename
+with more than one dot, so they are never pushed as functions. Vitest runs them
+in the `edge-runtime` environment, and `convex-test` executes real queries
+against an in-memory database, so `schedule.test.ts` exercises the same index
+reads and validators as production. Pure calendar logic is covered directly in
+`dates.test.ts`.
+
+Both commands run in CI on every pull request (`.github/workflows/ci.yml`).
+
 ## Convex Backend
 
 The backend uses Convex for real-time data and serverless functions. Key files:
