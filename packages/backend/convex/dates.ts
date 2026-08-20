@@ -1,10 +1,11 @@
-// Shared KST (UTC+9) date helpers. Convex runs in UTC, so we shift a UTC
-// instant by +9h and then read its UTC-based fields as if they were KST.
-//
-// Calendar dates (YYYY-MM-DD / YYYYMMDD) are always parsed via Date.UTC so
-// grouping and weekday never depend on the isolate's timezone.
+// Shared timezone date helpers. Convex runs in UTC, so we shift a UTC instant
+// by CLASS.timezoneOffsetHours (KST = +9) and then read its UTC-based fields
+// as if they were local. Calendar dates (YYYY-MM-DD / YYYYMMDD) are always
+// parsed via Date.UTC so grouping and weekday never depend on the isolate.
 
-const KST_OFFSET_MS = 9 * 60 * 60_000;
+import { CLASS } from "./class";
+
+const KST_OFFSET_MS = CLASS.timezoneOffsetHours * 60 * 60_000;
 
 export const WEEKDAYS_KR = ['일', '월', '화', '수', '목', '금', '토'] as const;
 
@@ -21,13 +22,14 @@ export function getNowKst(): Date {
   return new Date(utc + KST_OFFSET_MS);
 }
 
-// Home timetable/meals and notice "past" both flip at this KST hour.
-export const DAY_ROLLOVER_HOUR_KST = 16;
+// Home timetable/meals and notice "past" both flip at this hour (KST).
+// Sourced from CLASS.hours so a fork edits one file.
+export const DAY_ROLLOVER_HOUR_KST = CLASS.hours.dayRollover;
 
-// Today's 석식 is still ahead of the reader until this KST hour. Between the
+// Today's 석식 is still ahead of the reader until this hour. Between the
 // rollover and this hour home shows tomorrow, so tonight's dinner is listed
 // first — it is served before tomorrow's lunch.
-export const DINNER_END_HOUR_KST = 19;
+export const DINNER_END_HOUR_KST = CLASS.hours.dinnerEnd;
 
 export function calendarDate(date: Date): Date {
   return new Date(date.getFullYear(), date.getMonth(), date.getDate());

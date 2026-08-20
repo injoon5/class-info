@@ -2,6 +2,7 @@ import { internalAction, internalMutation, query, type ActionCtx } from "./_gene
 import { v } from "convex/values";
 import { internal } from "./_generated/api";
 import { addDaysYyyymmdd, getWeekRangeKst, parseYyyymmdd, toYyyymmdd } from "./dates";
+import { schoolDataUrl } from "./class";
 import { projectMeal } from "./project";
 import { mealWeek } from "./validators";
 
@@ -82,7 +83,7 @@ async function pullMeals(
   enddate: string,
   schoolcode: string
 ): Promise<void> {
-  const url = `https://api.timefor.school/lunch?startdate=${encodeURIComponent(startdate)}&enddate=${encodeURIComponent(enddate)}&schoolcode=${encodeURIComponent(schoolcode)}`;
+  const url = schoolDataUrl("/lunch", { startdate, enddate, schoolcode });
 
   const res = await fetch(url, { headers: { Accept: "application/json" } });
   if (!res.ok) {

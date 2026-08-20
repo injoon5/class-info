@@ -4,6 +4,7 @@ import { R2 } from "@convex-dev/r2";
 import { components } from "./_generated/api";
 import type { Id } from "./_generated/dataModel";
 import { requireAdmin } from "./auth";
+import { publicFileUrl } from "./class";
 import { fileDoc } from "./validators";
 
 const MAX_FILE_BYTES = 10 * 1024 * 1024;
@@ -27,9 +28,6 @@ function assertStorageId(storageId: string): void {
   }
 }
 
-function publicFileUrl(key: string): string {
-  return `https://files.timefor.school/${key}`;
-}
 
 /**
  * Admin-only signed PUT URL. The R2 clientApi `generateUploadUrl` mutation

@@ -9,6 +9,7 @@ import {
 import { v } from "convex/values";
 import { internal } from "./_generated/api";
 import { requireAdmin } from "./auth";
+import { schoolDataUrl } from "./class";
 import {
   addDaysYyyymmdd,
   assertYyyymmdd,
@@ -101,7 +102,7 @@ async function pullSchoolSchedule(
   enddate: string,
   schoolcode: string
 ): Promise<void> {
-  const url = `https://api.timefor.school/schedule?startdate=${encodeURIComponent(startdate)}&enddate=${encodeURIComponent(enddate)}&schoolcode=${encodeURIComponent(schoolcode)}`;
+  const url = schoolDataUrl("/schedule", { startdate, enddate, schoolcode });
 
   const res = await fetch(url, { headers: { Accept: "application/json" } });
   if (!res.ok) {

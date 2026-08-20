@@ -9,6 +9,7 @@ import { v } from "convex/values";
 import { internal } from "./_generated/api";
 import type { Doc, Id } from "./_generated/dataModel";
 import { requireAdmin } from "./auth";
+import { schoolDataUrl } from "./class";
 import { FULL_TIMETABLE_DAYS, projectFullTimetable, projectTimetable } from "./project";
 import { fullTimetableDoc, timetableDoc, timetableSlot } from "./validators";
 
@@ -54,11 +55,12 @@ export const fetchAndSave = internalAction({
     ctx,
     { grade, classno, week, schoolcode }
   ): Promise<Id<"timetables">> => {
-    const url = `https://api.timefor.school/timetable?grade=${encodeURIComponent(
-      String(grade)
-    )}&classno=${encodeURIComponent(String(classno))}&week=${encodeURIComponent(
-      String(week)
-    )}&schoolcode=${encodeURIComponent(schoolcode)}`;
+    const url = schoolDataUrl("/timetable", {
+      grade,
+      classno,
+      week,
+      schoolcode,
+    });
 
     const res = await fetch(url, { headers: { Accept: "application/json" } });
     if (!res.ok) {

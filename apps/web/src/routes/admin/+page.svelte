@@ -13,6 +13,8 @@ import AdminPastMonthDetails from './AdminPastMonthDetails.svelte';
 import Disclosure from '$lib/components/ui/Disclosure.svelte';
 import { autosize } from '$lib/actions/autosize';
 import { tick } from 'svelte';
+import PageMeta from '$lib/components/PageMeta.svelte';
+import { CLASS } from '$lib/site';
 import { SvelteSet } from 'svelte/reactivity';
 import { fade, slide } from 'svelte/transition';
 import { fadeOut, reveal, slideNone, slideY, slideYOut } from '$lib/transitions';
@@ -208,24 +210,11 @@ const lastUpdatedTs = $derived.by(() => {
 });
 </script>
 
-<svelte:head>
-	<title>관리자 페이지 - 1학년 3반 공지</title>
-	<meta name="description" content="1학년 3반 공지 관리자 페이지입니다. " />
-
-	<!-- Open Graph -->
-	<meta property="og:title" content="관리자 페이지 - 1학년 3반 공지" />
-	<meta property="og:description" content="1학년 3반 공지 관리자 페이지입니다. " />
-	<meta property="og:type" content="website" />
-	<meta property="og:site_name" content="TimeforSchool" />
-	
-	<!-- Twitter Card -->
-	<meta name="twitter:card" content="summary_large_image" />
-	<meta name="twitter:title" content="관리자 페이지 - 1학년 3반 공지" />
-	<meta name="twitter:description" content="1학년 3반 공지 관리자 페이지입니다. " />
-	
-	<!-- Additional meta tags -->	
-	<meta name="robots" content="noindex, nofollow" />
-</svelte:head>
+<PageMeta
+	title={`관리자 페이지 - ${CLASS.site.label} 공지`}
+	description={`${CLASS.site.label} 공지 관리자 페이지입니다. `}
+	robots="noindex, nofollow"
+/>
 
 {#snippet noticeEditor()}
 	<div id="notice-editor" in:slide={slideY} out:slide={slideYOut}>

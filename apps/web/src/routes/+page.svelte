@@ -14,6 +14,8 @@ import {
 import { eventChrome } from '$lib/eventChrome';
 import type { DayGroup, MinimalNotice } from '$lib/notices';
 import type { PublicEvent } from '@class-info/backend/convex/validators';
+import PageMeta from '$lib/components/PageMeta.svelte';
+import { pageTitle } from '$lib/site';
 import type { PageData } from './$types.js';
 
 const { data }: { data: PageData } = $props();
@@ -60,10 +62,10 @@ const displayMealDay = $derived(allMealDays.find((d) => d.date === displayDay) ?
 const displayLunch = $derived(displayMealDay?.lunch ?? null);
 const displayDinner = $derived(displayMealDay?.dinner ?? null);
 
-// Between the 4pm rollover and DINNER_END_HOUR_KST the page has moved on to
-// tomorrow, but tonight's 석식 has not been served yet — so it leads the card,
-// ahead of tomorrow's 중식. After that hour it drops out and only the display
-// day's meals remain.
+// Between the day-rollover hour and dinner-end (CLASS.hours) the page has
+// moved on to tomorrow, but tonight's 석식 has not been served yet — so it
+// leads the card, ahead of tomorrow's 중식. After dinner-end it drops out
+// and only the display day's meals remain.
 const todayMealDay = $derived(allMealDays.find((d) => d.date === todayYmd) ?? null);
 const pendingTodayDinner = $derived(
 	displayDay !== todayYmd && !data.afterDinner ? (todayMealDay?.dinner ?? null) : null
@@ -108,11 +110,11 @@ const displayDayEvents = $derived(allEvents.filter((e) => e.date === displayDay)
 
 // Countdowns an admin pinned, already filtered to today-onward and capped by
 // the server. Counted from the real today, never the display day — a countdown
-// that jumped a day at 4pm would be wrong for the rest of the afternoon.
+// that jumped a day at rollover would be wrong for the rest of the afternoon.
 const ddayEvents = $derived(data.ddays ?? []);
 
 // Spans from today, not from the display day: an event still happening today
-// shouldn't vanish from the list at 4pm just because the timetable rolled over.
+// shouldn't vanish from the list at rollover just because the timetable moved on.
 // The display day is emphasised within the list instead. The far end is the
 // server's window (display day + a week), so there's nothing to re-bound here.
 const upcomingEvents = $derived(allEvents.filter((e) => e.date >= todayYmd));
@@ -175,18 +177,11 @@ function isDisplayDayEvent(dateStr: string): boolean {
 }
 </script>
 
-<svelte:head>
-	<title>오늘 - 1학년 3반</title>
-	<meta name="description" content="오늘의 시간표, 급식, 공지를 한눈에 확인하세요." />
-	<meta property="og:title" content="오늘 - 1학년 3반" />
-	<meta property="og:description" content="오늘의 시간표, 급식, 공지를 한눈에 확인하세요." />
-	<meta property="og:url" content="https://timefor.school" />
-	<meta property="og:type" content="website" />
-	<meta property="og:site_name" content="TimeforSchool" />
-	<meta name="twitter:card" content="summary_large_image" />
-	<meta name="twitter:title" content="오늘 - 1학년 3반" />
-	<meta name="twitter:description" content="오늘의 시간표, 급식, 공지를 한눈에 확인하세요." />
-</svelte:head>
+<PageMeta
+	title={pageTitle('오늘')}
+	description="오늘의 시간표, 급식, 공지를 한눈에 확인하세요."
+	path="/"
+/>
 
 <div class="max-w-4xl mx-auto px-4 pt-6 pb-16 sm:pt-8">
 
@@ -266,7 +261,7 @@ function isDisplayDayEvent(dateStr: string): boolean {
 				<a href="/meals" aria-label="급식 모두 보기" class="text-sm font-semibold text-muted-foreground transition-colors duration-150 pointer:hover:text-foreground">모두 보기 <span aria-hidden="true">→</span></a>
 			</div>
 			<div class="bg-card border border-border rounded-2xl p-4">
-				<!-- Meals in the order they are served: tonight's 석식 leads until 7pm. -->
+				<!-- Meals in serving order. Tonight's 석식 leads until CLASS.hours.dinnerEnd. -->
 				<div class="grid {mealGridClass}">
 					{#each mealSlots as slot, i (slot.key)}
 						<div class="flex flex-col {mealSlotClass(i, mealSlots.length)}">

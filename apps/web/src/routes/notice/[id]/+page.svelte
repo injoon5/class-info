@@ -9,6 +9,8 @@ import { formatFileSize } from '$lib/format';
 import LoadingState from '$lib/components/ui/LoadingState.svelte';
 import PillButton from '$lib/components/ui/PillButton.svelte';
 import ErrorState from '$lib/components/ui/ErrorState.svelte';
+import PageMeta from '$lib/components/PageMeta.svelte';
+import { CLASS, noticeTitle } from '$lib/site';
 import type { PageData } from './$types.js';
 
 const { data }: { data: PageData } = $props();
@@ -32,30 +34,25 @@ $effect(() => {
 	if (typeof requestIdleCallback !== 'undefined') requestIdleCallback(run);
 	else setTimeout(run, 0);
 });
+
+const meta = $derived.by(() => {
+	const notice = detail.data?.notice;
+	if (notice) {
+		return {
+			title: noticeTitle(notice.subject, notice.title),
+			description: getFirstLine(notice.description) || '공지 내용을 확인하세요!',
+			ogType: 'article' as const
+		};
+	}
+	return {
+		title: `공지 상세 - ${CLASS.site.shortLabel} 학급 공지`,
+		description: '학급 공지의 상세 내용을 확인하세요.',
+		ogType: 'website' as const
+	};
+});
 </script>
 
-<svelte:head>
-	{#if detail.data?.notice}
-		<title>{detail.data.notice.subject} {detail.data.notice.title} | 1-3 학급 공지</title>
-		<meta name="description" content="{getFirstLine(detail.data.notice.description) || '공지 내용을 확인하세요!'}" />
-
-		<!-- Open Graph -->
-		<meta property="og:title" content="{detail.data.notice.subject} {detail.data.notice.title} | 1-3 학급 공지" />
-		<meta property="og:description" content="{getFirstLine(detail.data.notice.description) || '공지 내용을 확인하세요!'}" />
-		<meta property="og:type" content="article" />
-		<meta property="og:site_name" content="TimeforSchool" />
-
-		<!-- Twitter Card -->
-		<meta name="twitter:card" content="summary_large_image" />
-		<meta name="twitter:title" content="{detail.data.notice.subject} {detail.data.notice.title} | 1-3 학급 공지" />
-		<meta name="twitter:description" content="{getFirstLine(detail.data.notice.description) || '공지 내용을 확인하세요!'}" />
-	{:else}
-		<title>공지 상세 - 1-3 학급 공지</title>
-		<meta name="description" content="학급 공지의 상세 내용을 확인하세요." />
-		<meta property="og:title" content="공지 상세 - 학급 공지" />
-		<meta property="og:description" content="학급 공지의 상세 내용을 확인하세요." />
-	{/if}
-</svelte:head>
+<PageMeta title={meta.title} description={meta.description} ogType={meta.ogType} />
 
 
 <div class="min-h-screen">

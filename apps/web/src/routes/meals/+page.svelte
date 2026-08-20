@@ -7,13 +7,15 @@ import EmptyState from '$lib/components/ui/EmptyState.svelte';
 import Drawer from '$lib/components/ui/Drawer.svelte';
 import HScroll from '$lib/components/ui/HScroll.svelte';
 import SegmentedControl from '$lib/components/ui/SegmentedControl.svelte';
+import PageMeta from '$lib/components/PageMeta.svelte';
 import { createBlurPulse } from '$lib/blurPulse.svelte';
 import { relativeDayLabel } from '$lib/date';
+import { pageTitle } from '$lib/site';
 import type { MealDay, PublicMeal } from '@class-info/backend/convex/validators';
 import type { PageData } from './$types.js';
 
 const { data }: { data: PageData } = $props();
-// The column the grid highlights: today until the 4pm rollover, then the next
+// The column the grid highlights: today until the day-rollover hour, then the next
 // school day. Labelled in the header so the highlight is never unexplained.
 const displayDay = $derived(data.displayDay);
 const todayYmd = $derived(data.todayYmd);
@@ -48,8 +50,8 @@ function mealFor(day: MealDay, type: string): PublicMeal | null {
   return type === '중식' ? day.lunch : day.dinner;
 }
 
-// Between the 4pm rollover and 7pm the grid has moved on to the next school
-// day, but tonight's 석식 has not been served yet — so on the 석식 tab the
+// Between the day-rollover hour and dinner-end the grid has moved on to the next
+// school day, but tonight's 석식 has not been served yet — so on the 석식 tab the
 // highlight stays on today until it has been. Only when today actually has a
 // dinner to show: on a Saturday, today isn't even a column.
 const todayDinner = $derived(
@@ -87,19 +89,12 @@ function openMealDrawer(day: MealDay) {
 }
 </script>
 
-<svelte:head>
-  <title>급식 - 1학년 3반</title>
-  <meta name="description" content="정확한 급식을 한 눈에 확인하세요. " />
-  <meta property="og:title" content="급식 - 1학년 3반" />
-  <meta property="og:description" content="정확한 급식을 한 눈에 확인하세요. " />
-  <meta property="og:url" content="https://timefor.school/meals" />
-  <meta property="og:type" content="website" />
-  <meta property="og:site_name" content="TimeforSchool" />
-  <meta name="twitter:card" content="summary_large_image" />
-  <meta name="twitter:title" content="급식 - 1학년 3반" />
-  <meta name="twitter:description" content="정확한 급식을 한 눈에 확인하세요. " />
-  <meta name="robots" content="noindex" />
-</svelte:head>
+<PageMeta
+  title={pageTitle('급식')}
+  description="정확한 급식을 한 눈에 확인하세요. "
+  path="/meals"
+  robots="noindex"
+/>
 
 <div class="max-w-4xl mx-auto px-4 pt-4 pb-2 sm:pt-5">
   <h1 class="sr-only">급식</h1>

@@ -2,6 +2,16 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## Class settings
+
+Fork-specific values live in **one file**: `packages/backend/convex/class.ts`.
+
+School code / grade / class, site name and URL, the 4pm day-rollover and 7pm
+dinner-end hours, timezone offset, and API hosts are all there. Branding, crons,
+and Open Graph tags read from it — do not hardcode the same values in pages.
+
+Humans: see `README.md`. Agents setting up a fork: see `AGENTS.md`.
+
 ## Project Architecture
 
 This is a TypeScript monorepo built with Turborepo, featuring a SvelteKit frontend and Convex backend-as-a-service. The project structure is:

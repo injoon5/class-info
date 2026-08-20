@@ -1,6 +1,6 @@
 import { cronJobs } from "convex/server";
 import { internal } from "./_generated/api";
-import { SCHOOL } from "./school";
+import { SCHOOL } from "./class";
 
 const crons = cronJobs();
 

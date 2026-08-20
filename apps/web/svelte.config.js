@@ -31,6 +31,7 @@ const config = {
 					'wss://*.convex.cloud',
 					'https://*.convex.site',
 					'https://collector.onedollarstats.com',
+					// Keep in sync with CLASS.apis.files (packages/backend/convex/class.ts).
 					'https://files.timefor.school',
 					'https://*.r2.cloudflarestorage.com'
 				],

@@ -12,6 +12,8 @@ import { createBlurPulse } from '$lib/blurPulse.svelte';
 import { focusOnElement } from '$lib/actions/focus';
 import { formatAbsolute, formatRelative } from '$lib/date';
 import { onMount } from 'svelte';
+import PageMeta from '$lib/components/PageMeta.svelte';
+import { CLASS, pageTitle } from '$lib/site';
 import type { PageData } from './$types.js';
 
 const { data }: { data: PageData } = $props();
@@ -192,23 +194,12 @@ async function writeSlot(subject: string, teacher: string) {
 </script>
 
 
-<svelte:head>
-	<title>시간표 - 1학년 3반</title>
-	<meta name="description" content="정확한 시간표를 변경사항까지 한 번에 확인하세요. " />
-
-	<!-- Open Graph -->
-	<meta property="og:title" content="시간표 - 1학년 3반" />
-	<meta property="og:description" content="정확한 시간표를 변경사항까지 한 번에 확인하세요. " />
-	<meta property="og:url" content="https://timefor.school/timetable" />
-	<meta property="og:type" content="website" />
-	<meta property="og:site_name" content="TimeforSchool" />
-
-	<!-- Twitter Card -->
-	<meta name="twitter:card" content="summary_large_image" />
-	<meta name="twitter:title" content="시간표 - 1학년 3반" />
-	<meta name="twitter:description" content="정확한 시간표를 변경사항까지 한 번에 확인하세요. " />
-	<meta name="robots" content="noindex" />
-</svelte:head>
+<PageMeta
+	title={pageTitle('시간표')}
+	description="정확한 시간표를 변경사항까지 한 번에 확인하세요. "
+	path="/timetable"
+	robots="noindex"
+/>
 
 {#snippet cell(slot: Cell | undefined)}
 	{#if slot && slot.subject}
@@ -229,7 +220,7 @@ async function writeSlot(subject: string, teacher: string) {
 	<!-- Printed heading. Screen readers already have the h1 above, and on paper
 	     this is the only thing identifying the sheet. -->
 	<h1 class="hidden print:block mb-5 text-center text-2xl font-bold tracking-tight text-foreground">
-		1학년 3반 시간표
+		{CLASS.site.label} 시간표
 	</h1>
 
 	<!-- Header: week / standing selector -->

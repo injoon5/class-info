@@ -17,6 +17,8 @@ import PillButton from '$lib/components/ui/PillButton.svelte';
 import Spinner from '$lib/components/ui/Spinner.svelte';
 import { fade, slide } from 'svelte/transition';
 import { fadeFast, fadeInAfter, fadeOut, reveal, slideYBoth } from '$lib/transitions';
+import PageMeta from '$lib/components/PageMeta.svelte';
+import { pageTitle } from '$lib/site';
 import type { PageData } from './$types.js';
 
 const { data }: { data: PageData } = $props();
@@ -213,19 +215,12 @@ const monthNames = ['1월','2월','3월','4월','5월','6월','7월','8월','9�
 const dayNames = ['일','월','화','수','목','금','토'];
 </script>
 
-<svelte:head>
-  <title>일정 - 1학년 3반</title>
-  <meta name="description" content="학교 행사와 학사 일정을 한눈에 확인하세요." />
-  <meta property="og:title" content="일정 - 1학년 3반" />
-  <meta property="og:description" content="학교 행사와 학사 일정을 한눈에 확인하세요." />
-  <meta property="og:url" content="https://timefor.school/calendar" />
-  <meta property="og:type" content="website" />
-  <meta property="og:site_name" content="TimeforSchool" />
-  <meta name="twitter:card" content="summary_large_image" />
-  <meta name="twitter:title" content="일정 - 1학년 3반" />
-  <meta name="twitter:description" content="학교 행사와 학사 일정을 한눈에 확인하세요." />
-  <meta name="robots" content="noindex" />
-</svelte:head>
+<PageMeta
+  title={pageTitle('일정')}
+  description="학교 행사와 학사 일정을 한눈에 확인하세요."
+  path="/calendar"
+  robots="noindex"
+/>
 
 <div class="max-w-4xl mx-auto px-4 pt-4 pb-4">
   <!-- Month navigation -->
