@@ -87,7 +87,7 @@ function openMealDrawer(day: MealDay) {
 <div class="max-w-4xl mx-auto px-4 pt-4 pb-2 sm:pt-5">
   <h1 class="sr-only">급식</h1>
   {#if mealsQuery.isLoading}
-    <LoadingState variant="meals" weekStart={data.weekStart} />
+    <LoadingState />
   {:else if mealsQuery.error}
     <ErrorState error={mealsQuery.error} />
   {:else if !mealsQuery.data || availableMealTypes.length === 0}
@@ -118,7 +118,7 @@ function openMealDrawer(day: MealDay) {
               type="button"
               onclick={() => openMealDrawer(day)}
               disabled={!hasMeal}
-              class="relative p-2.5 sm:px-3 sm:py-3 flex flex-col justify-between min-h-[15rem] text-left w-full transition-colors
+              class="relative p-2.5 sm:px-3 sm:py-3 flex flex-col justify-between min-h-[15rem] text-left w-full transition-colors duration-150
                 {isTodayCol ? 'bg-muted/60' : 'bg-card'}
                 {hasMeal ? 'cursor-pointer pointer:hover:bg-muted' : 'cursor-default'}"
             >
@@ -162,7 +162,7 @@ function openMealDrawer(day: MealDay) {
         {selectedMeal.dateInfo.year}년
       </p>
       <div class="flex items-baseline gap-2 flex-wrap">
-        <h2 class="text-2xl font-bold tracking-tight leading-tight text-foreground">
+        <h2 class="text-2xl font-bold leading-tight text-foreground">
           {selectedMeal.dateInfo.month}월 {selectedMeal.dateInfo.day}일
         </h2>
         <span class="text-base text-muted-foreground leading-tight">{selectedMeal.dateInfo.weekday}요일</span>

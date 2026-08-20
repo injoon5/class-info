@@ -138,7 +138,7 @@ $effect(() => {
 										target="_blank"
 										role="button"
 										rel="noopener noreferrer"
-										class="shrink-0 px-4 py-2 text-sm border border-border pointer:hover:bg-muted text-foreground font-semibold inline-flex items-center justify-center rounded-lg pressable transition-colors"
+										class="shrink-0 px-4 py-2 text-sm border border-border pointer:hover:bg-muted text-foreground font-semibold inline-flex items-center justify-center rounded-lg pressable transition-colors duration-150"
 										data-s-event="Open File"
 									>
 										열기

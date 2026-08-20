@@ -3,8 +3,9 @@ import { useConvexClient } from 'convex-svelte';
 import { api } from "@class-info/backend/convex/_generated/api";
 import type { Id } from "@class-info/backend/convex/_generated/dataModel";
 import { fly } from 'svelte/transition';
-import { flyHelper } from '$lib/transitions';
+import { flyHelper, flyHelperOut } from '$lib/transitions';
 import PillButton from '$lib/components/ui/PillButton.svelte';
+import Spinner from '$lib/components/ui/Spinner.svelte';
 import { formatFileSize } from '$lib/format';
 
 const {
@@ -126,7 +127,14 @@ function copyMarkdownToClipboard(file: UploadedFile) {
   const markdown = file.type.startsWith('image/') 
     ? `![${file.name}](${file.url})`
     : `[${file.name}](${file.url})`;
-  
+
+  // No clipboard outside a secure context, and reaching through the missing
+  // object threw past the catch below instead of showing the error.
+  if (!navigator.clipboard || !window.isSecureContext) {
+    uploadError = '복사하지 못했습니다.';
+    return;
+  }
+
   navigator.clipboard.writeText(markdown).then(() => {
     const stamp = Date.now();
     lastCopied = stamp;
@@ -185,7 +193,7 @@ function handleDrop(e: DragEvent) {
 
     {#if isUploading}
       <div class="flex items-center justify-center gap-2.5 text-sm text-muted-foreground" role="status" aria-live="polite">
-        <span class="w-4 h-4 rounded-full border-2 border-border border-t-foreground animate-spin" aria-hidden="true"></span>
+        <Spinner size="md" />
         <span>파일 업로드 중…</span>
       </div>
     {:else}
@@ -238,7 +246,13 @@ function handleDrop(e: DragEvent) {
               >
                 <span class="relative inline-flex h-4 min-w-[2.5rem] items-center justify-center">
                   {#key copiedFileId === file._id}
-                    <span class="absolute inset-0 flex items-center justify-center" in:fly={flyHelper}>
+                    <!-- Both directions: with only an intro the outgoing word
+                         was cut on the frame the new one started moving. -->
+                    <span
+                      class="absolute inset-0 flex items-center justify-center"
+                      in:fly={flyHelper}
+                      out:fly={flyHelperOut}
+                    >
                       {copiedFileId === file._id ? '복사됨' : '복사'}
                     </span>
                   {/key}
@@ -247,7 +261,7 @@ function handleDrop(e: DragEvent) {
               <button
                 type="button"
                 onclick={() => removeFile(file._id)}
-                class="pressable rounded-lg px-2.5 py-1.5 text-sm font-semibold border border-border text-destructive transition-colors pointer:hover:bg-destructive/10"
+                class="pressable rounded-lg px-2.5 py-1.5 text-sm font-semibold border border-border text-destructive transition-colors duration-150 pointer:hover:bg-destructive/10"
                 title="파일 삭제"
               >
                 삭제

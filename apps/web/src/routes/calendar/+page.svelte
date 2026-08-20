@@ -14,8 +14,9 @@ import {
 import type { PublicEvent } from '@class-info/backend/convex/validators';
 import { focusOnElement } from '$lib/actions/focus';
 import PillButton from '$lib/components/ui/PillButton.svelte';
+import Spinner from '$lib/components/ui/Spinner.svelte';
 import { fade, slide } from 'svelte/transition';
-import { fadeFast, fadeIn, fadeOut, slideY } from '$lib/transitions';
+import { fadeFast, fadeIn, fadeInAfter, fadeOut, slideYBoth } from '$lib/transitions';
 import type { PageData } from './$types.js';
 
 const { data }: { data: PageData } = $props();
@@ -224,8 +225,13 @@ const dayNames = ['일','월','화','수','목','금','토'];
       </svg>
     </button>
 
-    <h1 class="text-base sm:text-lg font-semibold text-foreground tabular-nums">
+    <h1 class="relative whitespace-nowrap text-base sm:text-lg font-semibold text-foreground tabular-nums">
       {displayYear}년 {monthNames[displayMonth]}
+      {#if eventsPending}
+        <span class="absolute left-full top-1/2 ml-2.5 -translate-y-1/2 text-foreground">
+          <Spinner size="sm" />
+        </span>
+      {/if}
     </h1>
 
     <button
@@ -318,14 +324,9 @@ const dayNames = ['일','월','화','수','목','금','토'];
                     {/if}
                   </div>
 
-                  {#if eventsPending}
-                    <div class="skeleton h-3.5 w-[88%] rounded mt-0.5"></div>
-                    <div class="skeleton h-3.5 w-[60%] rounded mt-0.5" style="animation-delay: 80ms"></div>
-                  {:else}
-                    {#each cellEvents as event (event.id)}
-                      <div class="text-xs rounded px-1 py-0.5 mb-0.5 truncate leading-tight {event.chipClass}" title={event.title}>{event.title}</div>
-                    {/each}
-                  {/if}
+                  {#each cellEvents as event (event.id)}
+                    <div class="text-xs rounded px-1 py-0.5 mb-0.5 truncate leading-tight {event.chipClass}" title={event.title}>{event.title}</div>
+                  {/each}
                 {/if}
               </div>
             {/each}
@@ -354,7 +355,9 @@ const dayNames = ['일','월','화','수','목','금','토'];
 
   <div class="grid">
   {#if !popupAddMode}
-    <div class="col-start-1 row-start-1" out:fade={fadeFast}>
+    <!-- The two states share one grid cell, so the button has to wait for the
+         form to finish collapsing underneath it instead of painting on top. -->
+    <div class="col-start-1 row-start-1" in:fade={fadeInAfter} out:fade={fadeFast}>
       <PillButton variant="secondary" class="w-full" onclick={() => { popupAddMode = true; saveError = null; }}>
         <svg viewBox="0 0 20 20" fill="currentColor" class="w-4 h-4 flex-shrink-0" aria-hidden="true">
           <path fill-rule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clip-rule="evenodd"/>
@@ -364,14 +367,15 @@ const dayNames = ['일','월','화','수','목','금','토'];
     </div>
   {:else}
     <!-- Height only — no fly. A transform on this node plus the keyboard
-         is what froze the sheet on iOS. -->
-    <div class="col-start-1 row-start-1" transition:slide={slideY}>
+         is what froze the sheet on iOS. Bidirectional, so `cubicOut`: one
+         easing has to read as motion opening and closing alike. -->
+    <div class="col-start-1 row-start-1" transition:slide={slideYBoth}>
     <div class="space-y-5 pt-1" in:fade={fadeIn} out:fade={fadeOut}>
       <div class="space-y-3.5">
         <input
           type="text"
           bind:value={newEventTitle}
-          use:focusOnElement={0}
+          use:focusOnElement={320}
           aria-label="일정 제목"
           placeholder="예: 반티 주문 마감"
           class="w-full h-11 px-3.5 rounded-lg bg-muted text-base text-foreground placeholder:text-muted-foreground"
@@ -448,7 +452,7 @@ const dayNames = ['일','월','화','수','목','금','토'];
         {selectedDateInfo.year}년
       </p>
       <div class="flex items-baseline gap-2 flex-wrap">
-        <h2 id="day-popup-title" class="text-2xl font-bold tracking-tight leading-tight text-foreground">
+        <h2 id="day-popup-title" class="text-2xl font-bold leading-tight text-foreground">
           {monthNames[selectedDateInfo.month - 1]} {selectedDateInfo.day}일
         </h2>
         <span class="text-base text-muted-foreground leading-tight">{selectedDateInfo.weekday}요일</span>

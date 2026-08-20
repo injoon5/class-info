@@ -6,15 +6,14 @@ import { noticeTypeClass } from '$lib/notices';
 import type { Snippet } from 'svelte';
 import { SvelteSet } from 'svelte/reactivity';
 import { fade, slide } from 'svelte/transition';
-import { flip } from 'svelte/animate';
-import { fadeFast, flipMove, slideNone, slideY, slideYOut } from '$lib/transitions';
+import { fadeFast, slideNone, slideY, slideYOut } from '$lib/transitions';
 import ConfirmDeleteActions from '$lib/components/ui/ConfirmDeleteActions.svelte';
 import LoadingState from '$lib/components/ui/LoadingState.svelte';
 import FluidHeight from '$lib/components/ui/FluidHeight.svelte';
 
 // `editorTarget` and `editor` come from the admin page so a past notice is
 // edited in its own row too, not somewhere else on the page.
-const {
+let {
     monthKey,
     cutoff,
     today,
@@ -22,7 +21,8 @@ const {
     onDelete,
     editorTarget = null,
     editor,
-    dismissedIds = new SvelteSet<string>()
+    dismissedIds = new SvelteSet<string>(),
+    confirmingDeleteId = $bindable(null)
 }: {
     monthKey: string;
     cutoff: string;
@@ -32,10 +32,11 @@ const {
     editorTarget?: string | null;
     editor?: Snippet;
     dismissedIds?: Set<string>;
+    // Cheap destructive action: confirmed in the row, not in a modal — and
+    // owned by the admin page, so a current notice and a past notice can
+    // never both be armed. When they could, one Enter deleted both.
+    confirmingDeleteId?: string | null;
 } = $props();
-
-// Cheap destructive action: confirmed in the row, not in a modal.
-let confirmingDeleteId = $state<string | null>(null);
 
 const groups = useQuery(
     api.notices.pastByMonth,
@@ -76,22 +77,16 @@ const visibleGroups = $derived(
     {:else}
         <div in:fade={fadeFast}>
         {#each visibleGroups as group (group.date)}
-            <div
-                class="mb-3 last:mb-0"
-                animate:flip={flipMove}
-                in:slide={listSlide}
-                out:slide={slideYOut}
-            >
+            <!-- No FLIP: a leaving row stays in flow while it slides shut, so
+                 FLIP reads the survivors before the gap starts closing and
+                 fights the collapse instead of carrying it. -->
+            <div class="mb-3 last:mb-0" in:slide={listSlide} out:slide={slideYOut}>
                 <h3 class="text-sm font-semibold mb-2 text-muted-foreground border-l-2 border-border pl-2">
                     {group.displayDate}
                 </h3>
                 <div class="grid gap-2">
                     {#each group.notices as notice (notice._id)}
-                        <div
-                            animate:flip={flipMove}
-                            in:slide={listSlide}
-                            out:slide={slideYOut}
-                        >
+                        <div in:slide={listSlide} out:slide={slideYOut}>
                         {#if editor && editorTarget === String(notice._id)}
                             {@render editor()}
                         {:else}

@@ -12,11 +12,10 @@ import ConfirmDeleteActions from '$lib/components/ui/ConfirmDeleteActions.svelte
 import AdminPastMonthDetails from './AdminPastMonthDetails.svelte';
 import DisclosureCaret from '$lib/components/ui/DisclosureCaret.svelte';
 import { autosize } from '$lib/actions/autosize';
-import { onMount, tick } from 'svelte';
+import { tick } from 'svelte';
 import { SvelteSet } from 'svelte/reactivity';
 import { fade, slide } from 'svelte/transition';
-import { flip } from 'svelte/animate';
-import { fadeIn, fadeOut, flipMove, slideNone, slideY, slideYOut } from '$lib/transitions';
+import { fadeIn, fadeOut, slideNone, slideY, slideYOut } from '$lib/transitions';
 import { useQuery } from 'convex-svelte';
 import { followCollapsing } from '$lib/scroll';
 import type { PageData, ActionData } from './$types';
@@ -181,10 +180,20 @@ function hideDismissed(groups: DayGroup[] | undefined) {
 const allGroupedNotices = $derived(overview.data?.currentGroups || []);
 const visibleGroups = $derived(hideDismissed(allGroupedNotices));
 
-// First paint is silent so a page of date groups doesn't all slide in.
+// First paint of the list is silent so a page of date groups doesn't all
+// slide in at once. Gated on the query rather than on mount: with initialData
+// the list is already there at mount, without it the whole page arrives later
+// and would otherwise animate in as one block.
 let live = $state(false);
-onMount(() => {
-	live = true;
+$effect(() => {
+	if (overview.isLoading) {
+		live = false;
+		return;
+	}
+	const frame = requestAnimationFrame(() => {
+		live = true;
+	});
+	return () => cancelAnimationFrame(frame);
 });
 const listSlide = $derived(live ? slideY : slideNone);
 
@@ -351,14 +360,14 @@ const lastUpdatedTs = $derived.by(() => {
 
 				<button
 					type="submit"
-					class="pressable-lg w-full h-12 rounded-xl bg-primary font-semibold text-primary-foreground text-sm transition-opacity pointer:hover:opacity-90"
+					class="pressable-lg w-full h-12 rounded-xl bg-primary font-semibold text-primary-foreground text-sm transition-opacity duration-150 pointer:hover:opacity-90"
 				>
 					로그인
 				</button>
 			</form>
 
 			<div class="mt-6 text-center">
-				<a href="/" class="text-sm text-muted-foreground pointer:hover:text-foreground transition-colors">← 홈으로 돌아가기</a>
+				<a href="/" class="text-sm text-muted-foreground pointer:hover:text-foreground transition-colors duration-150">← 홈으로 돌아가기</a>
 			</div>
 		</div>
 	</div>
@@ -395,7 +404,7 @@ const lastUpdatedTs = $derived.by(() => {
 
 		<!-- Notice List -->
 		{#if overview.isLoading}
-			<LoadingState variant="notices" />
+			<LoadingState />
         {:else if overview.error}
 			<div class="text-center py-8 text-destructive">
 				<p>공지를 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.</p>
@@ -403,21 +412,24 @@ const lastUpdatedTs = $derived.by(() => {
 			</div>
         {:else}
 			<!-- Current and Future Notices. Else on the each so the last date
-			     group can outro instead of a length check tearing it down. -->
+			     group can outro instead of a length check tearing it down.
+
+			     No FLIP animation on these rows. Svelte keeps a leaving node in
+			     flow while it slides shut, so FLIP measures the survivors before
+			     the gap has begun to close, computes a delta of about zero, and
+			     then lets them drift down un-animated behind the collapse. The
+			     slide already carries that layout change on its own — and a flip
+			     on the rows inside a flipping group double-counted the group's
+			     travel, because getBoundingClientRect already includes it. -->
             {#each visibleGroups as group (group.date)}
-				<div
-					class="mb-6"
-					animate:flip={flipMove}
-					in:slide={listSlide}
-					out:slide={slideYOut}
-				>
+				<div class="mb-6" in:slide={listSlide} out:slide={slideYOut}>
 					<h2 class="text-base font-semibold mb-3 text-foreground border-l-[3px] border-foreground pl-3">
 						{group.displayDate}
 					</h2>
 
                     <div class="grid gap-2">
                         {#each group.notices as notice (notice._id)}
-                            <div animate:flip={flipMove} in:slide={listSlide} out:slide={slideYOut}>
+                            <div in:slide={listSlide} out:slide={slideYOut}>
                             {#if editorTarget === String(notice._id)}
                                 {@render noticeEditor()}
                             {:else}
@@ -471,12 +483,7 @@ const lastUpdatedTs = $derived.by(() => {
                 <div class="mt-6 pt-6 border-t border-border" in:slide={listSlide} out:slide={slideYOut}>
                     <h2 class="text-base sm:text-lg font-semibold mb-3 text-muted-foreground">지난 공지</h2>
                     {#each overview.data.pastMonths as m (m.monthKey)}
-                        <div
-                            class="mb-1.5 sm:mb-2"
-                            animate:flip={flipMove}
-                            in:slide={listSlide}
-                            out:slide={slideYOut}
-                        >
+                        <div class="mb-1.5 sm:mb-2" in:slide={listSlide} out:slide={slideYOut}>
                         <details
                             class="bg-card border border-border rounded-3xl overflow-hidden"
                             open={openMonthKey === m.monthKey}
@@ -498,6 +505,7 @@ const lastUpdatedTs = $derived.by(() => {
                                     today={data.today}
                                     {dismissedIds}
                                     {editorTarget}
+                                    bind:confirmingDeleteId
                                     editor={noticeEditor}
                                     onEdit={editNotice}
                                     onDelete={handleDelete}

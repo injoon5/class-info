@@ -146,9 +146,9 @@ function isDisplayDayEvent(dateStr: string): boolean {
 	<header class="flex flex-wrap items-baseline justify-between gap-x-6 gap-y-1.5 mb-6 sm:mb-8">
 		<h1 class="flex flex-wrap items-baseline gap-x-2.5 sm:gap-x-3">
 			{#if isTomorrow}
-				<span class="text-2xl sm:text-3xl font-bold tracking-tight text-amber-700 dark:text-amber-400 whitespace-nowrap">내일</span>
+				<span class="text-2xl sm:text-3xl font-bold text-amber-700 dark:text-amber-400 whitespace-nowrap">내일</span>
 			{/if}
-			<span class="text-2xl sm:text-3xl font-bold tracking-tight text-foreground whitespace-nowrap">{displayMonth}월 {displayDate}일</span>
+			<span class="text-2xl sm:text-3xl font-bold text-foreground whitespace-nowrap">{displayMonth}월 {displayDate}일</span>
 			<span class="text-base sm:text-lg text-muted-foreground whitespace-nowrap">{displayWeekday}요일</span>
 		</h1>
 		{#if displayDayEvents.length > 0}
