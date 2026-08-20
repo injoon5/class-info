@@ -2,36 +2,45 @@
 import { onMount, type Snippet } from 'svelte';
 import { reducedMotion } from '$lib/transitions';
 
-// Horizontally scrollable region with fade gradients that appear only on the
-// side(s) that have more content. Shared by timetable / meals / calendar.
+// Horizontally scrollable region shared by timetable / meals / calendar.
+//
+// The row runs edge to edge: it cancels the page's own `px-4` gutter with a
+// matching negative margin and re-applies it as padding *inside* the scroll
+// port. Content therefore starts exactly where it did before, but has the
+// gutter to scroll through instead of stopping short of it — a grid that
+// continues past the screen now looks like one.
 //
 // `anchor` is a selector for a descendant to bring into view once, on first
 // layout — for a week grid that is wider than a phone, the interesting column
 // is otherwise off-screen until the reader scrolls.
+//
+// `hint` is the line shown under the row while there is more to see. Its
+// arrows track the scroll position, so they only ever point at content.
 const {
 	children,
 	blurred = false,
-	anchor
-}: { children: Snippet; blurred?: boolean; anchor?: string } = $props();
+	anchor,
+	hint
+}: { children: Snippet; blurred?: boolean; anchor?: string; hint?: string } = $props();
 
 let scrollContainer = $state<HTMLDivElement>();
 
-// Booleans, not pixel offsets: the gradients are only ever on or off, and
+// Booleans, not pixel offsets: the hint only ever shows or hides an arrow, and
 // storing the raw offsets re-ran the render on every frame of a scroll.
-let hasBefore = $state(false);
-let hasAfter = $state(false);
+let canScrollBack = $state(false);
+let canScrollForward = $state(false);
 let aligned = false;
 
 // Sub-pixel scroll positions and fractional layout widths mean the ends never
 // land on exactly 0.
 const EPS = 1;
 
-function updateGradients() {
+function updateEdges() {
 	if (!scrollContainer) return;
 	const { scrollLeft, scrollWidth, clientWidth } = scrollContainer;
 	const overflow = scrollWidth - clientWidth > EPS;
-	hasBefore = overflow && scrollLeft > EPS;
-	hasAfter = overflow && scrollWidth - clientWidth - scrollLeft > EPS;
+	canScrollBack = overflow && scrollLeft > EPS;
+	canScrollForward = overflow && scrollWidth - clientWidth - scrollLeft > EPS;
 }
 
 // Assigns scrollLeft rather than calling scrollIntoView: on iOS the latter
@@ -54,7 +63,7 @@ function alignToAnchor() {
 		scrollContainer.scrollLeft = Math.min(Math.max(scrollContainer.scrollLeft + delta, 0), max);
 	}
 	aligned = true;
-	updateGradients();
+	updateEdges();
 }
 
 onMount(() => {
@@ -63,16 +72,16 @@ onMount(() => {
 	const container: HTMLDivElement = el;
 
 	alignToAnchor();
-	updateGradients();
+	updateEdges();
 	// Safari settles layout a frame late often enough to matter here.
 	const raf = requestAnimationFrame(alignToAnchor);
 
 	// The container also has to follow its content: a swap that changes how
-	// wide the row is without changing the box around it leaves the gradients
+	// wide the row is without changing the box around it leaves the hint
 	// describing the old content.
 	const ro = new ResizeObserver(() => {
 		alignToAnchor();
-		updateGradients();
+		updateEdges();
 	});
 	ro.observe(container);
 
@@ -82,7 +91,7 @@ onMount(() => {
 		observedChildren = Array.from(container.children);
 		for (const child of observedChildren) ro.observe(child);
 		alignToAnchor();
-		updateGradients();
+		updateEdges();
 	}
 	observeChildren();
 
@@ -101,24 +110,33 @@ onMount(() => {
 const blurActive = $derived(blurred && !reducedMotion());
 </script>
 
-<div class="relative">
-	<div
-		class="absolute left-0 top-0 bottom-0 w-8 bg-gradient-to-r from-background to-transparent z-10 pointer-events-none transition-opacity duration-150"
-		style="opacity: {hasBefore ? 1 : 0};"
-	></div>
-	<div
-		class="absolute right-0 top-0 bottom-0 w-8 bg-gradient-to-l from-background to-transparent z-10 pointer-events-none transition-opacity duration-150"
-		style="opacity: {hasAfter ? 1 : 0};"
-	></div>
-
-	<div
-		class="overflow-x-auto"
-		bind:this={scrollContainer}
-		onscroll={updateGradients}
-		style="transition: filter 150ms ease-out, opacity 150ms ease-out; {blurActive
-			? 'filter: blur(4px); opacity: 0.7;'
-			: ''}"
-	>
-		{@render children()}
-	</div>
+<div
+	class="overflow-x-auto -mx-4 px-4 print:mx-0 print:px-0"
+	bind:this={scrollContainer}
+	onscroll={updateEdges}
+	style="transition: filter 150ms ease-out, opacity 150ms ease-out; {blurActive
+		? 'filter: blur(4px); opacity: 0.7;'
+		: ''}"
+>
+	{@render children()}
 </div>
+
+{#if hint && (canScrollBack || canScrollForward)}
+	<!-- Both arrows keep their slot whether or not they are lit, so the label
+	     stays put instead of sliding as the reader scrolls. -->
+	<p
+		class="mt-1.5 flex items-center justify-center gap-1.5 text-xs text-muted-foreground select-none pointer-events-none print:hidden"
+	>
+		<span
+			aria-hidden="true"
+			class="transition-opacity duration-150"
+			style="opacity: {canScrollBack ? 1 : 0};">←</span
+		>
+		{hint}
+		<span
+			aria-hidden="true"
+			class="transition-opacity duration-150"
+			style="opacity: {canScrollForward ? 1 : 0};">→</span
+		>
+	</p>
+{/if}

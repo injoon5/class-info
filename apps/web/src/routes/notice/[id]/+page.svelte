@@ -75,13 +75,14 @@ $effect(() => {
 		{:else if !detail.data?.notice}
 			<div class="text-center py-16 text-sm text-muted-foreground">공지를 찾을 수 없어요</div>
 		{:else}
-			<div class="mb-4 bg-card border border-border rounded-3xl p-4 sm:p-6">
+			<div class="mb-4 bg-card border border-border rounded-3xl sm:rounded-[2rem] p-4 sm:p-6">
 				<div class="mb-4">
 					<div class="flex items-center gap-2 sm:gap-3 mb-1.5 sm:mb-2">
-						<span class="inline-flex rounded-[9px] border border-border p-[3px]">
-							<span class="rounded-md px-2 py-1 text-sm font-semibold {noticeTypeClass(detail.data.notice.type)}">
-								{detail.data.notice.type}
-							</span>
+						<!-- Concentric with the card: its corner sits one padding step inside
+						     the card's, so the radius is the card's less that step — 24−16 on a
+						     phone, 32−24 from `sm` up, 8px either way. -->
+						<span class="inline-flex rounded-lg px-2 py-1 text-sm font-semibold {noticeTypeClass(detail.data.notice.type)}">
+							{detail.data.notice.type}
 						</span>
 						<span class="text-base sm:text-lg text-muted-foreground">
 							{detail.data.notice.subject}

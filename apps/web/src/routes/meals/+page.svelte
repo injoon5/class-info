@@ -121,7 +121,7 @@ function openMealDrawer(day: MealDay) {
         />
       </div>
     {/if}
-    <HScroll blurred={blur.blurred} anchor="[data-display-day]">
+    <HScroll blurred={blur.blurred} anchor="[data-display-day]" hint="좌우로 스크롤하세요">
         {#each [
           { days: mealsQuery.data.thisWeek.days, class: "" },
           { days: mealsQuery.data.nextWeek.days, class: "mt-3" }
@@ -169,9 +169,6 @@ function openMealDrawer(day: MealDay) {
         </div>
         {/each}
     </HScroll>
-    <div class="block sm:hidden mt-1.5 text-center text-xs text-muted-foreground select-none pointer-events-none">
-      좌우로 스크롤하세요
-    </div>
   {/if}
 </div>
 

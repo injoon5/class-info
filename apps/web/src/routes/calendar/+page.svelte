@@ -267,7 +267,7 @@ const dayNames = ['일','월','화','수','목','금','토'];
   </div>
 
   <!-- Calendar -->
-  <HScroll anchor="[data-today-cell]">
+  <HScroll anchor="[data-today-cell]" hint="좌우로 스크롤하세요">
       <div
         class="min-w-[40rem] border border-border rounded-xl overflow-hidden"
         aria-busy={eventsPending}
@@ -365,10 +365,6 @@ const dayNames = ['일','월','화','수','목','금','토'];
     <span class="flex items-center gap-1.5"><span class="inline-block w-2.5 h-2.5 rounded-sm bg-red-200 dark:bg-red-900/60"></span>공휴일</span>
     <span class="flex items-center gap-1.5"><span class="inline-block w-2.5 h-2.5 rounded-sm bg-amber-200 dark:bg-amber-900/60"></span>휴업일</span>
     <span class="flex items-center gap-1.5"><span class="inline-block w-2.5 h-2.5 rounded-sm bg-sky-200 dark:bg-sky-900/60"></span>학교 행사</span>
-  </div>
-
-  <div class="block sm:hidden mt-1.5 text-center text-xs text-muted-foreground select-none pointer-events-none">
-    좌우로 스크롤하세요
   </div>
 </div>
 
