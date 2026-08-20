@@ -15,6 +15,7 @@ import {
 	ymdWeekday,
 	weekOffsetBetween,
 	relativeDayLabel,
+	isAtOrAfterDinnerEnd,
 	noticeClock,
 	schoolDisplayClock,
 } from '@class-info/backend/convex/dates';
@@ -32,6 +33,7 @@ export {
 	ymdWeekday,
 	weekOffsetBetween,
 	relativeDayLabel,
+	isAtOrAfterDinnerEnd,
 	noticeClock,
 	schoolDisplayClock,
 };

@@ -24,6 +24,11 @@ export function getNowKst(): Date {
 // Home timetable/meals and notice "past" both flip at this KST hour.
 export const DAY_ROLLOVER_HOUR_KST = 16;
 
+// Today's 석식 is still ahead of the reader until this KST hour. Between the
+// rollover and this hour home shows tomorrow, so tonight's dinner is listed
+// first — it is served before tomorrow's lunch.
+export const DINNER_END_HOUR_KST = 19;
+
 export function calendarDate(date: Date): Date {
   return new Date(date.getFullYear(), date.getMonth(), date.getDate());
 }
@@ -36,8 +41,16 @@ export function getTodayKst(): Date {
   return calendarDate(getNowKst());
 }
 
+export function isAtOrAfterHourKst(now: Date, hour: number): boolean {
+  return now.getHours() >= hour;
+}
+
 export function isAtOrAfterDayRollover(now: Date = getNowKst()): boolean {
-  return now.getHours() >= DAY_ROLLOVER_HOUR_KST;
+  return isAtOrAfterHourKst(now, DAY_ROLLOVER_HOUR_KST);
+}
+
+export function isAtOrAfterDinnerEnd(now: Date = getNowKst()): boolean {
+  return isAtOrAfterHourKst(now, DINNER_END_HOUR_KST);
 }
 
 export function weekdayKr(date: Date): string {

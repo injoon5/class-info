@@ -4,6 +4,7 @@ import { convexHttp } from '$lib/convex';
 import {
 	addDaysYyyymmdd,
 	getNowInKst,
+	isAtOrAfterDinnerEnd,
 	noticeClock,
 	schoolDisplayClock,
 	thisMondayYyyymmdd,
@@ -61,6 +62,7 @@ export const load = (async () => {
 	return {
 		...clock,
 		todayYmd,
+		afterDinner: isAtOrAfterDinnerEnd(now),
 		displayDay: schedule.displayDay,
 		weekStart,
 		currentGroups,

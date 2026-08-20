@@ -2,6 +2,10 @@ import { describe, expect, test } from "vitest";
 import {
   addDaysYyyymmdd,
   closedYmdsFromSchedule,
+  DAY_ROLLOVER_HOUR_KST,
+  DINNER_END_HOUR_KST,
+  isAtOrAfterDayRollover,
+  isAtOrAfterDinnerEnd,
   isSchoolYmd,
   isVacationTitle,
   relativeDayLabel,
@@ -54,6 +58,25 @@ describe("ymdWeekday / weekOffsetBetween", () => {
     expect(weekOffsetBetween(FRI, NEXT_MON)).toBe(1);
     expect(weekOffsetBetween(SUN, NEXT_MON)).toBe(1);
     expect(weekOffsetBetween(MON, addDaysYyyymmdd(MON, 14))).toBe(2);
+  });
+});
+
+describe("rollover hours", () => {
+  // Both read local fields off a KST-shifted Date, so build the probe the same way.
+  const at = (hour: number) => new Date(2026, 7, 20, hour, 30);
+
+  test("the day rollover flips at DAY_ROLLOVER_HOUR_KST", () => {
+    expect(isAtOrAfterDayRollover(at(DAY_ROLLOVER_HOUR_KST - 1))).toBe(false);
+    expect(isAtOrAfterDayRollover(at(DAY_ROLLOVER_HOUR_KST))).toBe(true);
+  });
+
+  // Home leads with today's 석식 between these two hours.
+  test("dinner stays pending until DINNER_END_HOUR_KST", () => {
+    expect(DINNER_END_HOUR_KST).toBeGreaterThan(DAY_ROLLOVER_HOUR_KST);
+    expect(isAtOrAfterDinnerEnd(at(DAY_ROLLOVER_HOUR_KST))).toBe(false);
+    expect(isAtOrAfterDinnerEnd(at(DINNER_END_HOUR_KST - 1))).toBe(false);
+    expect(isAtOrAfterDinnerEnd(at(DINNER_END_HOUR_KST))).toBe(true);
+    expect(isAtOrAfterDinnerEnd(at(23))).toBe(true);
   });
 });
 
