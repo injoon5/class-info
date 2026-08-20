@@ -2,6 +2,7 @@
 import { useQuery, useConvexClient } from 'convex-svelte';
 import { api } from "@class-info/backend/convex/_generated/api";
 import type { Id } from "@class-info/backend/convex/_generated/dataModel";
+import { CLASS_LABEL, SITE_NAME, SITE_URL } from '@class-info/backend/convex/config';
 import Drawer from '$lib/components/ui/Drawer.svelte';
 import HScroll from '$lib/components/ui/HScroll.svelte';
 import { ddayLabel, getNowInKst, toYyyymmdd } from '$lib/date';
@@ -214,15 +215,15 @@ const dayNames = ['일','월','화','수','목','금','토'];
 </script>
 
 <svelte:head>
-  <title>일정 - 1학년 3반</title>
+  <title>일정 - {CLASS_LABEL}</title>
   <meta name="description" content="학교 행사와 학사 일정을 한눈에 확인하세요." />
-  <meta property="og:title" content="일정 - 1학년 3반" />
+  <meta property="og:title" content="일정 - {CLASS_LABEL}" />
   <meta property="og:description" content="학교 행사와 학사 일정을 한눈에 확인하세요." />
-  <meta property="og:url" content="https://timefor.school/calendar" />
+  <meta property="og:url" content="{SITE_URL}/calendar" />
   <meta property="og:type" content="website" />
-  <meta property="og:site_name" content="TimeforSchool" />
+  <meta property="og:site_name" content={SITE_NAME} />
   <meta name="twitter:card" content="summary_large_image" />
-  <meta name="twitter:title" content="일정 - 1학년 3반" />
+  <meta name="twitter:title" content="일정 - {CLASS_LABEL}" />
   <meta name="twitter:description" content="학교 행사와 학사 일정을 한눈에 확인하세요." />
   <meta name="robots" content="noindex" />
 </svelte:head>

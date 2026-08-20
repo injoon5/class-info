@@ -1,6 +1,7 @@
 <script lang="ts">
 import { useQuery } from 'convex-svelte';
 import { api } from "@class-info/backend/convex/_generated/api";
+import { CLASS_LABEL, SITE_NAME, SITE_URL } from '@class-info/backend/convex/config';
 import NoticeGroup from './NoticeGroup.svelte';
 import PastMonthDetails from './PastMonthDetails.svelte';
 import LoadingState from '$lib/components/ui/LoadingState.svelte';
@@ -24,19 +25,19 @@ const overview = useQuery(
 </script>
 
 <svelte:head>
-	<title>공지 - 1학년 3반</title>
+	<title>공지 - {CLASS_LABEL}</title>
 	<meta name="description" content="수행평가, 숙제, 준비물 등 중요한 공지사항을 확인하세요." />
 
 	<!-- Open Graph -->
-	<meta property="og:title" content="공지 - 1학년 3반" />
+	<meta property="og:title" content="공지 - {CLASS_LABEL}" />
 	<meta property="og:description" content="수행평가, 숙제, 준비물 등 중요한 공지사항을 확인하세요." />
-	<meta property="og:url" content="https://timefor.school/notices" />
+	<meta property="og:url" content="{SITE_URL}/notices" />
 	<meta property="og:type" content="website" />
-	<meta property="og:site_name" content="TimeforSchool" />
+	<meta property="og:site_name" content={SITE_NAME} />
 
 	<!-- Twitter Card -->
 	<meta name="twitter:card" content="summary_large_image" />
-	<meta name="twitter:title" content="공지 - 1학년 3반" />
+	<meta name="twitter:title" content="공지 - {CLASS_LABEL}" />
 	<meta name="twitter:description" content="수행평가, 숙제, 준비물 등 중요한 공지사항을 확인하세요." />
 </svelte:head>
 

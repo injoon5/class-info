@@ -2,6 +2,7 @@
 import { useConvexClient } from 'convex-svelte';
 import { api } from "@class-info/backend/convex/_generated/api";
 import type { Id } from "@class-info/backend/convex/_generated/dataModel";
+import { CLASS_LABEL, SITE_NAME } from '@class-info/backend/convex/config';
 import { enhance } from '$app/forms';
 import FileUpload from './FileUpload.svelte';
 import { noticeTypeClass, type DayGroup, type MinimalNotice } from '$lib/notices';
@@ -209,19 +210,19 @@ const lastUpdatedTs = $derived.by(() => {
 </script>
 
 <svelte:head>
-	<title>관리자 페이지 - 1학년 3반 공지</title>
-	<meta name="description" content="1학년 3반 공지 관리자 페이지입니다. " />
+	<title>관리자 페이지 - {CLASS_LABEL} 공지</title>
+	<meta name="description" content="{CLASS_LABEL} 공지 관리자 페이지입니다. " />
 
 	<!-- Open Graph -->
-	<meta property="og:title" content="관리자 페이지 - 1학년 3반 공지" />
-	<meta property="og:description" content="1학년 3반 공지 관리자 페이지입니다. " />
+	<meta property="og:title" content="관리자 페이지 - {CLASS_LABEL} 공지" />
+	<meta property="og:description" content="{CLASS_LABEL} 공지 관리자 페이지입니다. " />
 	<meta property="og:type" content="website" />
-	<meta property="og:site_name" content="TimeforSchool" />
-	
+	<meta property="og:site_name" content={SITE_NAME} />
+
 	<!-- Twitter Card -->
 	<meta name="twitter:card" content="summary_large_image" />
-	<meta name="twitter:title" content="관리자 페이지 - 1학년 3반 공지" />
-	<meta name="twitter:description" content="1학년 3반 공지 관리자 페이지입니다. " />
+	<meta name="twitter:title" content="관리자 페이지 - {CLASS_LABEL} 공지" />
+	<meta name="twitter:description" content="{CLASS_LABEL} 공지 관리자 페이지입니다. " />
 	
 	<!-- Additional meta tags -->	
 	<meta name="robots" content="noindex, nofollow" />

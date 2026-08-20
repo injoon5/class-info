@@ -1,6 +1,7 @@
 <script lang="ts">
 import { useConvexClient, useQuery } from 'convex-svelte';
 import { api } from "@class-info/backend/convex/_generated/api";
+import { CLASS_LABEL, SITE_NAME, SITE_URL } from '@class-info/backend/convex/config';
 import LoadingState from '$lib/components/ui/LoadingState.svelte';
 import ErrorState from '$lib/components/ui/ErrorState.svelte';
 import EmptyState from '$lib/components/ui/EmptyState.svelte';
@@ -193,19 +194,19 @@ async function writeSlot(subject: string, teacher: string) {
 
 
 <svelte:head>
-	<title>시간표 - 1학년 3반</title>
+	<title>시간표 - {CLASS_LABEL}</title>
 	<meta name="description" content="정확한 시간표를 변경사항까지 한 번에 확인하세요. " />
 
 	<!-- Open Graph -->
-	<meta property="og:title" content="시간표 - 1학년 3반" />
+	<meta property="og:title" content="시간표 - {CLASS_LABEL}" />
 	<meta property="og:description" content="정확한 시간표를 변경사항까지 한 번에 확인하세요. " />
-	<meta property="og:url" content="https://timefor.school/timetable" />
+	<meta property="og:url" content="{SITE_URL}/timetable" />
 	<meta property="og:type" content="website" />
-	<meta property="og:site_name" content="TimeforSchool" />
+	<meta property="og:site_name" content={SITE_NAME} />
 
 	<!-- Twitter Card -->
 	<meta name="twitter:card" content="summary_large_image" />
-	<meta name="twitter:title" content="시간표 - 1학년 3반" />
+	<meta name="twitter:title" content="시간표 - {CLASS_LABEL}" />
 	<meta name="twitter:description" content="정확한 시간표를 변경사항까지 한 번에 확인하세요. " />
 	<meta name="robots" content="noindex" />
 </svelte:head>
@@ -229,7 +230,7 @@ async function writeSlot(subject: string, teacher: string) {
 	<!-- Printed heading. Screen readers already have the h1 above, and on paper
 	     this is the only thing identifying the sheet. -->
 	<h1 class="hidden print:block mb-5 text-center text-2xl font-bold tracking-tight text-foreground">
-		1학년 3반 시간표
+		{CLASS_LABEL} 시간표
 	</h1>
 
 	<!-- Header: week / standing selector -->

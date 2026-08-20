@@ -11,6 +11,7 @@ import type { Doc, Id } from "./_generated/dataModel";
 import { requireAdmin } from "./auth";
 import { FULL_TIMETABLE_DAYS, projectFullTimetable, projectTimetable } from "./project";
 import { fullTimetableDoc, timetableDoc, timetableSlot } from "./validators";
+import { SCHOOL_API_BASE_URL } from "./config";
 
 export const upsert = internalMutation({
   args: {
@@ -54,7 +55,7 @@ export const fetchAndSave = internalAction({
     ctx,
     { grade, classno, week, schoolcode }
   ): Promise<Id<"timetables">> => {
-    const url = `https://api.timefor.school/timetable?grade=${encodeURIComponent(
+    const url = `${SCHOOL_API_BASE_URL}/timetable?grade=${encodeURIComponent(
       String(grade)
     )}&classno=${encodeURIComponent(String(classno))}&week=${encodeURIComponent(
       String(week)

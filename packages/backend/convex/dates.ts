@@ -1,10 +1,19 @@
 // Shared KST (UTC+9) date helpers. Convex runs in UTC, so we shift a UTC
-// instant by +9h and then read its UTC-based fields as if they were KST.
+// instant by the configured offset and then read its UTC-based fields as if
+// they were local. The "KST" naming matches this project's default class;
+// see config.ts to point it at a different timezone.
 //
 // Calendar dates (YYYY-MM-DD / YYYYMMDD) are always parsed via Date.UTC so
 // grouping and weekday never depend on the isolate's timezone.
 
-const KST_OFFSET_MS = 9 * 60 * 60_000;
+import {
+  DAY_ROLLOVER_HOUR,
+  DINNER_END_HOUR,
+  SCHOOL_DAY_LOOKAHEAD as SCHOOL_DAY_LOOKAHEAD_CONFIG,
+  TIMEZONE_OFFSET_HOURS,
+} from "./config";
+
+const KST_OFFSET_MS = TIMEZONE_OFFSET_HOURS * 60 * 60_000;
 
 export const WEEKDAYS_KR = ['일', '월', '화', '수', '목', '금', '토'] as const;
 
@@ -22,12 +31,12 @@ export function getNowKst(): Date {
 }
 
 // Home timetable/meals and notice "past" both flip at this KST hour.
-export const DAY_ROLLOVER_HOUR_KST = 16;
+export const DAY_ROLLOVER_HOUR_KST = DAY_ROLLOVER_HOUR;
 
 // Today's 석식 is still ahead of the reader until this KST hour. Between the
 // rollover and this hour home shows tomorrow, so tonight's dinner is listed
 // first — it is served before tomorrow's lunch.
-export const DINNER_END_HOUR_KST = 19;
+export const DINNER_END_HOUR_KST = DINNER_END_HOUR;
 
 export function calendarDate(date: Date): Date {
   return new Date(date.getFullYear(), date.getMonth(), date.getDate());
@@ -275,7 +284,7 @@ export function isSchoolYmd(ymd: string, closed: Set<string>): boolean {
 
 // Long enough to jump a summer break, in both directions: forward to find the
 // next school day, backward to find the 방학 marker that started the current one.
-export const SCHOOL_DAY_LOOKAHEAD = 90;
+export const SCHOOL_DAY_LOOKAHEAD = SCHOOL_DAY_LOOKAHEAD_CONFIG;
 
 export function resolveSchoolDisplayYmd(
   today: string,

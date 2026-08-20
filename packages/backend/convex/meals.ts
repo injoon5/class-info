@@ -4,6 +4,7 @@ import { internal } from "./_generated/api";
 import { addDaysYyyymmdd, getWeekRangeKst, parseYyyymmdd, toYyyymmdd } from "./dates";
 import { projectMeal } from "./project";
 import { mealWeek } from "./validators";
+import { SCHOOL_API_BASE_URL } from "./config";
 
 type ExternalMeal = {
   ATPT_OFCDC_SC_CODE: string;
@@ -82,7 +83,7 @@ async function pullMeals(
   enddate: string,
   schoolcode: string
 ): Promise<void> {
-  const url = `https://api.timefor.school/lunch?startdate=${encodeURIComponent(startdate)}&enddate=${encodeURIComponent(enddate)}&schoolcode=${encodeURIComponent(schoolcode)}`;
+  const url = `${SCHOOL_API_BASE_URL}/lunch?startdate=${encodeURIComponent(startdate)}&enddate=${encodeURIComponent(enddate)}&schoolcode=${encodeURIComponent(schoolcode)}`;
 
   const res = await fetch(url, { headers: { Accept: "application/json" } });
   if (!res.ok) {

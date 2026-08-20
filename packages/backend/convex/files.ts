@@ -5,6 +5,7 @@ import { components } from "./_generated/api";
 import type { Id } from "./_generated/dataModel";
 import { requireAdmin } from "./auth";
 import { fileDoc } from "./validators";
+import { FILES_BASE_URL } from "./config";
 
 const MAX_FILE_BYTES = 10 * 1024 * 1024;
 const ALLOWED_TYPE_PREFIXES = ["image/", "application/pdf"] as const;
@@ -28,7 +29,7 @@ function assertStorageId(storageId: string): void {
 }
 
 function publicFileUrl(key: string): string {
-  return `https://files.timefor.school/${key}`;
+  return `${FILES_BASE_URL}/${key}`;
 }
 
 /**
