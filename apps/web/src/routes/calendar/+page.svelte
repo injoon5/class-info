@@ -344,7 +344,7 @@ const dayNames = ['일','월','화','수','목','금','토'];
   </div>
 
   <div class="block sm:hidden mt-1.5 text-center text-xs text-muted-foreground select-none pointer-events-none">
-    좌우로 스크롤하세요 →
+    좌우로 스크롤하세요
   </div>
 </div>
 
