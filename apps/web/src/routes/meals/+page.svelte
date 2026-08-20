@@ -108,7 +108,7 @@ function openMealDrawer(day: MealDay) {
         />
       </div>
     {/if}
-    <HScroll blurred={blur.blurred}>
+    <HScroll blurred={blur.blurred} anchor="[data-display-day]">
         {#each [
           { days: mealsQuery.data.thisWeek.days, class: "" },
           { days: mealsQuery.data.nextWeek.days, class: "mt-3" }
@@ -123,6 +123,7 @@ function openMealDrawer(day: MealDay) {
               type="button"
               onclick={() => openMealDrawer(day)}
               disabled={!hasMeal}
+              data-display-day={isDisplayCol ? '' : undefined}
               class="relative p-2.5 sm:px-3 sm:py-3 flex flex-col justify-between min-h-[15rem] text-left w-full transition-colors
                 {isDisplayCol ? 'bg-muted/60' : 'bg-card'}
                 {hasMeal ? 'cursor-pointer pointer:hover:bg-muted' : 'cursor-default'}"
@@ -156,7 +157,7 @@ function openMealDrawer(day: MealDay) {
         {/each}
     </HScroll>
     <div class="block sm:hidden mt-1.5 text-center text-xs text-muted-foreground select-none pointer-events-none">
-      좌우로 스크롤하세요 →
+      좌우로 스크롤하세요
     </div>
   {/if}
 </div>
