@@ -68,39 +68,29 @@ const pendingTodayDinner = $derived(
 	displayDay !== todayYmd && !data.afterDinner ? (todayMealDay?.dinner ?? null) : null
 );
 
-const mealSlots = $derived([
-	...(pendingTodayDinner
-		? [{ key: 'today-dinner', type: '석식', day: todayYmd, meal: pendingTodayDinner }]
-		: []),
-	{ key: 'display-lunch', type: '중식', day: displayDay, meal: displayLunch },
-	...(displayDinner
-		? [{ key: 'display-dinner', type: '석식', day: displayDay, meal: displayDinner }]
-		: [])
-]);
+// Two columns is what this card is: a third makes every dish list too narrow
+// to read on a phone, and stacking the three instead pushes the rest of the
+// page below the fold. The slots are in serving order, so the two that survive
+// are the two the reader eats next.
+const mealSlots = $derived(
+	[
+		...(pendingTodayDinner
+			? [{ key: 'today-dinner', type: '석식', day: todayYmd, meal: pendingTodayDinner }]
+			: []),
+		{ key: 'display-lunch', type: '중식', day: displayDay, meal: displayLunch },
+		...(displayDinner
+			? [{ key: 'display-dinner', type: '석식', day: displayDay, meal: displayDinner }]
+			: [])
+	].slice(0, 2)
+);
 
 // Only worth naming the day when the card straddles two of them.
 const mealSpansDays = $derived(pendingTodayDinner !== null);
-// Three dish lists side by side are unreadable on a phone, so that case stacks.
-const mealStacked = $derived(mealSlots.length > 2);
-const mealGridClass = $derived(
-	mealSlots.length === 1
-		? 'grid-cols-1'
-		: mealSlots.length === 2
-			? 'grid-cols-2'
-			: 'grid-cols-1 sm:grid-cols-3'
-);
+const mealGridClass = $derived(mealSlots.length === 1 ? 'grid-cols-1' : 'grid-cols-2');
 
-// Symmetric padding either side of each divider keeps it on the exact fraction
-// of the card's width, at any column count.
-function mealSlotClass(i: number, count: number, stacked: boolean): string {
-	if (stacked) {
-		return [
-			i > 0
-				? 'border-t border-border pt-3 mt-3 sm:border-t-0 sm:pt-0 sm:mt-0 sm:border-l sm:pl-6'
-				: '',
-			i < count - 1 ? 'sm:pr-6' : ''
-		].join(' ');
-	}
+// Symmetric padding either side of the divider keeps it on the exact half of
+// the card's width.
+function mealSlotClass(i: number, count: number): string {
 	return [
 		i > 0 ? 'border-l border-border pl-4 sm:pl-6' : '',
 		i < count - 1 ? 'pr-4 sm:pr-6' : ''
@@ -257,7 +247,7 @@ function isDisplayDayEvent(dateStr: string): boolean {
 				<!-- Meals in the order they are served: tonight's 석식 leads until 7pm. -->
 				<div class="grid {mealGridClass}">
 					{#each mealSlots as slot, i (slot.key)}
-						<div class="flex flex-col {mealSlotClass(i, mealSlots.length, mealStacked)}">
+						<div class="flex flex-col {mealSlotClass(i, mealSlots.length)}">
 							<p class="text-sm font-semibold text-muted-foreground mb-2">
 								{#if mealSpansDays}
 									<span class={slot.day === todayYmd ? '' : 'text-amber-700 dark:text-amber-400'}>{eventDateLabel(slot.day)}</span>

@@ -112,7 +112,7 @@ function getPeriodLabel(period: number): string {
 					<tr class="bg-muted">
 						<th scope="col" class="px-1 py-3 border border-border"><span class="sr-only">교시</span></th>
 						{#each dayNames as name}
-							<th scope="col" class="px-1 py-2 text-center text-base font-semibold sm:text-lg text-foreground border border-border">{name}</th>
+							<th scope="col" class="px-1 py-2.5 text-center text-sm font-semibold sm:text-base text-muted-foreground border border-border">{name}</th>
 						{/each}
 					</tr>
 				</thead>
