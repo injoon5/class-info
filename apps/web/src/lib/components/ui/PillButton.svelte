@@ -1,6 +1,7 @@
 <script lang="ts">
 import type { Snippet } from 'svelte';
 import MorphLabel from './MorphLabel.svelte';
+import Spinner from './Spinner.svelte';
 
 // The pill that recurs across the app. Each variant declares its own hover and
 // active fills, so a caller never has to re-derive them — and a new pill can't
@@ -66,10 +67,7 @@ const base = $derived(
 </script>
 
 {#snippet spinner()}
-	<span
-		class="w-3.5 h-3.5 flex-shrink-0 rounded-full border-2 border-current/40 border-t-current animate-spin"
-		aria-hidden="true"
-	></span>
+	<Spinner size="sm" />
 {/snippet}
 
 {#if href}
@@ -77,7 +75,7 @@ const base = $derived(
 		{#if children}{@render children()}{:else if morph && text}<MorphLabel {text} />{:else}{text}{/if}
 	</a>
 {:else}
-	<button {type} {onclick} {disabled} class={base}>
+	<button {type} {onclick} {disabled} class={base} aria-busy={pending || undefined}>
 		<!-- A morphing label measures the spinner with the text. Beside it, the
 		     spinner snapped the button wider by its own width plus the gap the
 		     instant it appeared, while the label width was still travelling. -->

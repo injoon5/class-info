@@ -404,7 +404,7 @@ const lastUpdatedTs = $derived.by(() => {
 
 		<!-- Notice List -->
 		{#if overview.isLoading}
-			<LoadingState variant="notices" />
+			<LoadingState />
         {:else if overview.error}
 			<div class="text-center py-8 text-destructive">
 				<p>공지를 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.</p>

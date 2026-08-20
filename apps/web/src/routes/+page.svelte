@@ -176,7 +176,7 @@ function isToday(dateStr: string): boolean {
 	<!-- ── Date hero ───────────────────────────────────────────────────────── -->
 	<header class="flex flex-wrap items-baseline justify-between gap-x-6 gap-y-1.5 mb-6 sm:mb-8">
 		<h1 class="flex items-baseline gap-2">
-			<span class="text-2xl sm:text-3xl font-bold tracking-tight text-foreground">{todayMonth}월 {todayDate}일</span>
+			<span class="text-2xl sm:text-3xl font-bold text-foreground">{todayMonth}월 {todayDate}일</span>
 			<span class="text-base sm:text-lg text-muted-foreground">{todayWeekday}요일</span>
 		</h1>
 		{#if todayEvents.length > 0}

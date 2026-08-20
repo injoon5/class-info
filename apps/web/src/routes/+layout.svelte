@@ -6,7 +6,6 @@
 	import { onMount } from 'svelte';
 	import { configure } from 'onedollarstats';
 	import LoadingState from '$lib/components/ui/LoadingState.svelte';
-	import { thisMondayYyyymmdd } from '$lib/date';
 
 	const { children } = $props();
 	setupConvex(getConvexUrl());
@@ -18,54 +17,48 @@
 		{ href: '/calendar', label: '일정', match: (p: string) => p.startsWith('/calendar') }
 	];
 
-	const pendingKind = $derived.by(() => {
+	const pendingNav = $derived.by(() => {
 		const to = navigating.to?.url.pathname;
 		const from = navigating.from?.url.pathname;
-		if (!to || to === from) return null;
-		if (to.startsWith('/timetable')) return 'timetable' as const;
-		if (to.startsWith('/meals')) return 'meals' as const;
-		if (to.startsWith('/calendar')) return 'calendar' as const;
-		if (to.startsWith('/notices') || to.startsWith('/notice/')) return 'notices' as const;
-		return 'spinner' as const;
+		return Boolean(to && to !== from);
 	});
 
-	// Keep the current page for a beat so a preloaded nav doesn't flash bones.
-	const SKELETON_DELAY_MS = 80;
-	// …and once bones are up, keep them up. A 200ms navigation used to render
-	// content → bones → content, and a frame of bones between two frames of
-	// the real page costs more than the wait it saved.
-	const SKELETON_MIN_MS = 320;
+	// Keep the current page for a beat so a preloaded nav doesn't flash a spinner.
+	const PENDING_DELAY_MS = 80;
+	// …and once the spinner is up, keep it up. A 200ms navigation rendered
+	// content → spinner → content, and a frame of spinner between two frames of
+	// the real page reads as a glitch rather than as loading — it costs more
+	// than the wait it saved.
+	const PENDING_MIN_MS = 320;
 
-	let pendingSkeleton = $state<typeof pendingKind>(null);
-	// Plain locals: the effect below decides what to do based on what is on
-	// screen, and reading the state it also writes would make it depend on
+	let showPending = $state(false);
+	// Plain locals: the effect below decides what to do based on what is already
+	// on screen, and reading the state it also writes would make it depend on
 	// itself.
-	let shownKind: typeof pendingKind = null;
+	let shown = false;
 	let shownAt = 0;
 
 	$effect(() => {
-		const kind = pendingKind;
-
-		if (kind) {
+		if (pendingNav) {
 			const t = setTimeout(() => {
-				shownKind = kind;
+				shown = true;
 				shownAt = Date.now();
-				pendingSkeleton = kind;
-			}, SKELETON_DELAY_MS);
+				showPending = true;
+			}, PENDING_DELAY_MS);
 			return () => clearTimeout(t);
 		}
 
-		if (!shownKind) return;
+		if (!shown) return;
 
-		const remaining = SKELETON_MIN_MS - (Date.now() - shownAt);
+		const remaining = PENDING_MIN_MS - (Date.now() - shownAt);
 		if (remaining <= 0) {
-			shownKind = null;
-			pendingSkeleton = null;
+			shown = false;
+			showPending = false;
 			return;
 		}
 		const t = setTimeout(() => {
-			shownKind = null;
-			pendingSkeleton = null;
+			shown = false;
+			showPending = false;
 		}, remaining);
 		return () => clearTimeout(t);
 	});
@@ -129,28 +122,11 @@
 	</header>
 
 	<main id="main">
-		{#if pendingSkeleton === 'timetable'}
-			<div class="max-w-4xl mx-auto px-4 pt-4 pb-1 sm:pt-5">
-				<LoadingState variant="timetable" />
-			</div>
-		{:else if pendingSkeleton === 'meals'}
-			<div class="max-w-4xl mx-auto px-4 pt-4 pb-2 sm:pt-5">
-				<LoadingState variant="meals" weekStart={thisMondayYyyymmdd()} />
-			</div>
-		{:else if pendingSkeleton === 'calendar'}
-			<div class="max-w-4xl mx-auto px-4 pt-4 pb-4">
-				<LoadingState variant="calendar" />
-			</div>
-		{:else if pendingSkeleton === 'notices'}
-			<div class="max-w-4xl mx-auto px-4 pt-5 pb-4 sm:pt-6">
-				<LoadingState variant="notices" />
-			</div>
-		{:else if pendingSkeleton === 'spinner'}
-			<LoadingState />
+		{#if showPending}
+			<LoadingState fill />
 		{:else}
 			{@render children()}
 		{/if}
 	</main>
 
     <div aria-live="polite" aria-atomic="true" class="sr-only" id="aria-live-region"></div>
-	
