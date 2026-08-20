@@ -243,7 +243,7 @@ const dayNames = ['일','월','화','수','목','금','토'];
   </div>
 
   <!-- Calendar -->
-  <HScroll>
+  <HScroll anchor="[data-today-cell]">
       <div
         class="min-w-[40rem] border border-border rounded-xl overflow-hidden"
         aria-busy={eventsPending}
@@ -275,6 +275,7 @@ const dayNames = ['일','월','화','수','목','금','토'];
               {@const hasEvents = cell.day !== null && cellEvents.length > 0}
               <!-- svelte-ignore a11y_no_noninteractive_tabindex -->
               <div
+                data-today-cell={isToday ? '' : undefined}
                 class="min-h-[5rem] sm:min-h-[7rem] p-1 sm:p-1.5 relative group
                   {hasEvents ? 'cursor-pointer transition-colors duration-150' : ''}
                   {di < 6 ? 'border-r border-border' : ''}
