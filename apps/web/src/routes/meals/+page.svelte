@@ -124,6 +124,9 @@ function openMealDrawer(day: MealDay) {
       </div>
     {/if}
     <HScroll blurred={blur.blurred} anchor="[data-display-day]" hint="좌우로 스크롤하세요">
+        <!-- The box HScroll actually pans. FluidHeight clips in Y; without this
+             it sized to the port and left the row with nothing to scroll. -->
+        <div class="min-w-[37rem]">
         {#each [
           { days: mealsQuery.data.thisWeek.days, class: "" },
           { days: mealsQuery.data.nextWeek.days, class: "mt-3" }
@@ -172,6 +175,7 @@ function openMealDrawer(day: MealDay) {
         </div>
         </FluidHeight>
         {/each}
+        </div>
     </HScroll>
   {/if}
 </div>
