@@ -215,13 +215,13 @@ function isDisplayDayEvent(dateStr: string): boolean {
 			{/if}
 		</div>
 
-		<!-- Countdowns sit under the date they are counted from. A neutral pill
-		     with a coloured number: three of them in the event's own fill would
-		     out-shout the date above, and the number is the part being read. -->
+		<!-- Countdowns sit under the date they are counted from. Same treatment
+		     as today's events above: coloured number, then the title. A fill
+		     would out-shout the date. -->
 		{#if ddayEvents.length > 0}
-			<ul class="mt-3 flex flex-wrap items-center gap-2">
+			<ul class="mt-3 flex flex-wrap items-baseline gap-x-4 gap-y-1">
 				{#each ddayEvents as event (event._id)}
-					<li class="inline-flex items-baseline gap-1.5 rounded-full border border-border bg-card py-1 pl-2.5 pr-3">
+					<li class="inline-flex items-baseline gap-1.5">
 						<span class="text-sm font-bold {eventChrome(event).labelColor}">{ddayLabel(event.date, todayYmd)}</span>
 						<span class="text-sm font-semibold text-foreground">{event.title}</span>
 					</li>
