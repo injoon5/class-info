@@ -117,7 +117,10 @@ const blurActive = $derived(blurred && !reducedMotion());
 >
 	<!-- Width lives here, not on the port: a `filter` on the same box as
 	     overflow-x kills panning on iOS, and a block child sized to the port
-	     clips any min-width grid inside. -->
+	     clips any min-width grid inside.
+	     `container-type: inline-size` so children can size with `cqw` against
+	     this port — a `%` width under `w-max` is cyclic and falls back to
+	     content, which is how the meals row blew past its 37rem floor. -->
 	<div
 		class="w-max min-w-full"
 		style="transition: filter 150ms ease-out, opacity 150ms ease-out; {blurActive
@@ -127,6 +130,21 @@ const blurActive = $derived(blurred && !reducedMotion());
 		{@render children()}
 	</div>
 </div>
+
+<style>
+	.h-scroll {
+		-webkit-overflow-scrolling: touch;
+		overscroll-behavior-x: contain;
+		/* `manipulation` on button/a (app.css) is enough on Chrome. WebKit
+		   keeps the gesture on the control, so a row of day-cells never pans. */
+		touch-action: pan-x pan-y;
+		container-type: inline-size;
+		container-name: hscroll;
+	}
+	.h-scroll :global(:is(button, a)) {
+		touch-action: pan-x pan-y;
+	}
+</style>
 
 {#if hint && (canScrollBack || canScrollForward)}
 	<!-- Both arrows keep their slot whether or not they are lit, so the label
@@ -147,16 +165,3 @@ const blurActive = $derived(blurred && !reducedMotion());
 		>
 	</p>
 {/if}
-
-<style>
-	.h-scroll {
-		-webkit-overflow-scrolling: touch;
-		overscroll-behavior-x: contain;
-		/* `manipulation` on button/a (app.css) is enough on Chrome. WebKit
-		   keeps the gesture on the control, so a row of day-cells never pans. */
-		touch-action: pan-x pan-y;
-	}
-	.h-scroll :global(:is(button, a)) {
-		touch-action: pan-x pan-y;
-	}
-</style>

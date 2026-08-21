@@ -126,18 +126,19 @@ function openMealDrawer(day: MealDay) {
     <HScroll blurred={blur.blurred} anchor="[data-display-day]" hint="좌우로 스크롤하세요">
         <!-- The box HScroll actually pans. FluidHeight clips in Y; without this
              it sized to the port and left the row with nothing to scroll.
-             `max(100%, 37rem)` — not bare min-w — so wide viewports still fill
-             the port the way they did before the iOS pan fix. -->
-        <div class="w-[max(100%,37rem)]">
+             Size against the HScroll port with `cqw` — a `%` width under the
+             port's `w-max` wrapper is cyclic and grows with dish names, so
+             phones only saw ~2 oversized columns. `max(100cqw, 37rem)` keeps
+             the 37rem floor on small screens and fills wide viewports. -->
+        <div class="w-[max(100cqw,37rem)]">
         {#each [
           { days: mealsQuery.data.thisWeek.days, class: "" },
           { days: mealsQuery.data.nextWeek.days, class: "mt-3" }
         ] as week}
         <FluidHeight key={selectedMealType}>
-        <!-- minmax(0,1fr): plain 1fr is minmax(auto,1fr), so long nowrap
-             dish names inflate every track past the pan-box floor and the
-             row only shows ~2 oversized cells on a phone. -->
-        <div class="mb-4 grid grid-cols-[repeat(5,minmax(0,1fr))] w-full divide-x divide-border border border-border rounded-xl overflow-hidden">
+        <!-- min-w-0 on cells: long nowrap dishes must truncate inside the
+             track, not stretch the intrinsic size of the pan box. -->
+        <div class="mb-4 grid grid-cols-5 w-full divide-x divide-border border border-border rounded-xl overflow-hidden">
           {#each week.days as day (day.date)}
             {@const meal = mealFor(day, selectedMealType)}
             {@const hasMeal = !!meal}
