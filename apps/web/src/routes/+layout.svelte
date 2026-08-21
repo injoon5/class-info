@@ -6,6 +6,7 @@
 	import { onMount } from 'svelte';
 	import { configure } from 'onedollarstats';
 	import LoadingState from '$lib/components/ui/LoadingState.svelte';
+	import { SITE_NAME } from '@class-info/backend/convex/config';
 
 	const { children } = $props();
 	setupConvex(getConvexUrl());
@@ -101,7 +102,7 @@
 	<header class="sticky top-0 z-30 bg-background border-b border-border">
 		<div class="max-w-4xl mx-auto flex items-center justify-between gap-3 px-4 h-14">
 			<a href="/" class="shrink-0 pressable" aria-label="홈" data-sveltekit-preload-data="hover">
-				<span class="text-xl font-bold tracking-tight text-foreground">TimeforSchool</span>
+				<span class="text-xl font-bold tracking-tight text-foreground">{SITE_NAME}</span>
 			</a>
 			<nav class="flex items-center gap-1 sm:gap-2 text-list" data-sveltekit-preload-data="hover" data-sveltekit-preload-code="eager">
 				{#each navItems as item (item.href)}

@@ -1,14 +1,12 @@
 import { cronJobs } from "convex/server";
 import { internal } from "./_generated/api";
-import { SCHOOL } from "./school";
+import { SCHOOL, SCHEDULE_SYNC_HOUR_UTC, TIMETABLE_POLL_HOURS_UTC } from "./config";
 
 const crons = cronJobs();
 
 // Timetable + meals change at most a few times a day, so poll a handful of
 // times rather than hourly (was 96 external calls/day).
-const TIMETABLE_HOURS_UTC = [21, 1, 5, 9]; // ~06:00, 10:00, 14:00, 18:00 KST
-
-for (const hourUTC of TIMETABLE_HOURS_UTC) {
+for (const hourUTC of TIMETABLE_POLL_HOURS_UTC) {
   crons.daily(
     `fetch timetable - this week @${hourUTC}`,
     { hourUTC, minuteUTC: 0 },
@@ -37,7 +35,7 @@ for (const hourUTC of TIMETABLE_HOURS_UTC) {
 
 crons.daily(
   "fetch schedule window",
-  { hourUTC: 3, minuteUTC: 0 },
+  { hourUTC: SCHEDULE_SYNC_HOUR_UTC, minuteUTC: 0 },
   internal.schedule.fetchScheduleWindow,
   { schoolcode: SCHOOL.code }
 );

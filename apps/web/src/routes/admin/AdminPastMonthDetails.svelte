@@ -6,7 +6,7 @@ import { noticeTypeClass } from '$lib/notices';
 import type { Snippet } from 'svelte';
 import { SvelteSet } from 'svelte/reactivity';
 import { fade, slide } from 'svelte/transition';
-import { fadeFast, slideNone, slideY, slideYOut } from '$lib/transitions';
+import { fadeOut, reveal, slideNone, slideY, slideYOut } from '$lib/transitions';
 import ConfirmDeleteActions from '$lib/components/ui/ConfirmDeleteActions.svelte';
 import LoadingState from '$lib/components/ui/LoadingState.svelte';
 import FluidHeight from '$lib/components/ui/FluidHeight.svelte';
@@ -75,7 +75,7 @@ const visibleGroups = $derived(
     {:else if groups.error}
         <div class="text-sm text-destructive py-3 text-center">오류가 발생했습니다.</div>
     {:else}
-        <div in:fade={fadeFast}>
+        <div in:reveal out:fade={fadeOut}>
         {#each visibleGroups as group (group.date)}
             <!-- No FLIP: a leaving row stays in flow while it slides shut, so
                  FLIP reads the survivors before the gap starts closing and

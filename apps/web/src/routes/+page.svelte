@@ -1,11 +1,13 @@
 <script lang="ts">
 import { useQuery } from 'convex-svelte';
 import { api } from "@class-info/backend/convex/_generated/api";
+import { CLASS_LABEL, SITE_NAME, SITE_URL } from '@class-info/backend/convex/config';
 import NoticeCard from '$lib/components/notices/NoticeCard.svelte';
 import {
 	addDaysYyyymmdd,
 	parseYyyymmdd,
 	weekdayKrUtc,
+	ddayLabel,
 	relativeDayLabel,
 	weekOffsetBetween,
 	ymdWeekday
@@ -68,39 +70,29 @@ const pendingTodayDinner = $derived(
 	displayDay !== todayYmd && !data.afterDinner ? (todayMealDay?.dinner ?? null) : null
 );
 
-const mealSlots = $derived([
-	...(pendingTodayDinner
-		? [{ key: 'today-dinner', type: '석식', day: todayYmd, meal: pendingTodayDinner }]
-		: []),
-	{ key: 'display-lunch', type: '중식', day: displayDay, meal: displayLunch },
-	...(displayDinner
-		? [{ key: 'display-dinner', type: '석식', day: displayDay, meal: displayDinner }]
-		: [])
-]);
+// Two columns is what this card is: a third makes every dish list too narrow
+// to read on a phone, and stacking the three instead pushes the rest of the
+// page below the fold. The slots are in serving order, so the two that survive
+// are the two the reader eats next.
+const mealSlots = $derived(
+	[
+		...(pendingTodayDinner
+			? [{ key: 'today-dinner', type: '석식', day: todayYmd, meal: pendingTodayDinner }]
+			: []),
+		{ key: 'display-lunch', type: '중식', day: displayDay, meal: displayLunch },
+		...(displayDinner
+			? [{ key: 'display-dinner', type: '석식', day: displayDay, meal: displayDinner }]
+			: [])
+	].slice(0, 2)
+);
 
 // Only worth naming the day when the card straddles two of them.
 const mealSpansDays = $derived(pendingTodayDinner !== null);
-// Three dish lists side by side are unreadable on a phone, so that case stacks.
-const mealStacked = $derived(mealSlots.length > 2);
-const mealGridClass = $derived(
-	mealSlots.length === 1
-		? 'grid-cols-1'
-		: mealSlots.length === 2
-			? 'grid-cols-2'
-			: 'grid-cols-1 sm:grid-cols-3'
-);
+const mealGridClass = $derived(mealSlots.length === 1 ? 'grid-cols-1' : 'grid-cols-2');
 
-// Symmetric padding either side of each divider keeps it on the exact fraction
-// of the card's width, at any column count.
-function mealSlotClass(i: number, count: number, stacked: boolean): string {
-	if (stacked) {
-		return [
-			i > 0
-				? 'border-t border-border pt-3 mt-3 sm:border-t-0 sm:pt-0 sm:mt-0 sm:border-l sm:pl-6'
-				: '',
-			i < count - 1 ? 'sm:pr-6' : ''
-		].join(' ');
-	}
+// Symmetric padding either side of the divider keeps it on the exact half of
+// the card's width.
+function mealSlotClass(i: number, count: number): string {
 	return [
 		i > 0 ? 'border-l border-border pl-4 sm:pl-6' : '',
 		i < count - 1 ? 'pr-4 sm:pr-6' : ''
@@ -114,6 +106,11 @@ const allEvents = $derived(
 );
 
 const displayDayEvents = $derived(allEvents.filter((e) => e.date === displayDay));
+
+// Countdowns an admin pinned, already filtered to today-onward and capped by
+// the server. Counted from the real today, never the display day — a countdown
+// that jumped a day at 4pm would be wrong for the rest of the afternoon.
+const ddayEvents = $derived(data.ddays ?? []);
 
 // Spans from today, not from the display day: an event still happening today
 // shouldn't vanish from the list at 4pm just because the timetable rolled over.
@@ -180,40 +177,56 @@ function isDisplayDayEvent(dateStr: string): boolean {
 </script>
 
 <svelte:head>
-	<title>오늘 - 1학년 3반</title>
+	<title>오늘 - {CLASS_LABEL}</title>
 	<meta name="description" content="오늘의 시간표, 급식, 공지를 한눈에 확인하세요." />
-	<meta property="og:title" content="오늘 - 1학년 3반" />
+	<meta property="og:title" content="오늘 - {CLASS_LABEL}" />
 	<meta property="og:description" content="오늘의 시간표, 급식, 공지를 한눈에 확인하세요." />
-	<meta property="og:url" content="https://timefor.school" />
+	<meta property="og:url" content={SITE_URL} />
 	<meta property="og:type" content="website" />
-	<meta property="og:site_name" content="TimeforSchool" />
+	<meta property="og:site_name" content={SITE_NAME} />
 	<meta name="twitter:card" content="summary_large_image" />
-	<meta name="twitter:title" content="오늘 - 1학년 3반" />
+	<meta name="twitter:title" content="오늘 - {CLASS_LABEL}" />
 	<meta name="twitter:description" content="오늘의 시간표, 급식, 공지를 한눈에 확인하세요." />
 </svelte:head>
 
 <div class="max-w-4xl mx-auto px-4 pt-6 pb-16 sm:pt-8">
 
 	<!-- ── Date hero ───────────────────────────────────────────────────────── -->
-	<header class="flex flex-wrap items-baseline justify-between gap-x-6 gap-y-1.5 mb-6 sm:mb-8">
-		<h1 class="flex flex-wrap items-baseline gap-x-2.5 sm:gap-x-3">
-			{#if isTomorrow}
-				<span class="text-2xl sm:text-3xl font-bold text-amber-700 dark:text-amber-400 whitespace-nowrap">내일</span>
+	<header class="mb-6 sm:mb-8">
+		<div class="flex flex-wrap items-baseline justify-between gap-x-6 gap-y-1.5">
+			<h1 class="flex flex-wrap items-baseline gap-x-2.5 sm:gap-x-3">
+				{#if isTomorrow}
+					<span class="text-2xl sm:text-3xl font-bold text-amber-700 dark:text-amber-400 whitespace-nowrap">내일</span>
+				{/if}
+				<span class="text-2xl sm:text-3xl font-bold text-foreground whitespace-nowrap">{displayMonth}월 {displayDate}일</span>
+				<span class="text-base sm:text-lg text-muted-foreground whitespace-nowrap">{displayWeekday}요일</span>
+			</h1>
+			{#if displayDayEvents.length > 0}
+				<div class="flex flex-wrap items-baseline gap-x-4 gap-y-1 text-base sm:text-lg">
+					{#each displayDayEvents as event (event._id)}
+						<span class="inline-flex items-baseline gap-1.5">
+							<span class="font-semibold text-foreground">{event.title}</span>
+							{#if eventTypeLabel(event)}
+								<span class="text-sm font-semibold {eventChrome(event).labelColor}">{eventTypeLabel(event)}</span>
+							{/if}
+						</span>
+					{/each}
+				</div>
 			{/if}
-			<span class="text-2xl sm:text-3xl font-bold text-foreground whitespace-nowrap">{displayMonth}월 {displayDate}일</span>
-			<span class="text-base sm:text-lg text-muted-foreground whitespace-nowrap">{displayWeekday}요일</span>
-		</h1>
-		{#if displayDayEvents.length > 0}
-			<div class="flex flex-wrap items-baseline gap-x-4 gap-y-1 text-base sm:text-lg">
-				{#each displayDayEvents as event (event._id)}
-					<span class="inline-flex items-baseline gap-1.5">
-						<span class="font-semibold text-foreground">{event.title}</span>
-						{#if eventTypeLabel(event)}
-							<span class="text-sm font-semibold {eventChrome(event).labelColor}">{eventTypeLabel(event)}</span>
-						{/if}
-					</span>
+		</div>
+
+		<!-- Countdowns sit under the date they are counted from. A neutral pill
+		     with a coloured number: three of them in the event's own fill would
+		     out-shout the date above, and the number is the part being read. -->
+		{#if ddayEvents.length > 0}
+			<ul class="mt-3 flex flex-wrap items-center gap-2">
+				{#each ddayEvents as event (event._id)}
+					<li class="inline-flex items-baseline gap-1.5 rounded-full border border-border bg-card py-1 pl-2.5 pr-3">
+						<span class="text-sm font-bold {eventChrome(event).labelColor}">{ddayLabel(event.date, todayYmd)}</span>
+						<span class="text-sm font-semibold text-foreground">{event.title}</span>
+					</li>
 				{/each}
-			</div>
+			</ul>
 		{/if}
 	</header>
 
@@ -257,7 +270,7 @@ function isDisplayDayEvent(dateStr: string): boolean {
 				<!-- Meals in the order they are served: tonight's 석식 leads until 7pm. -->
 				<div class="grid {mealGridClass}">
 					{#each mealSlots as slot, i (slot.key)}
-						<div class="flex flex-col {mealSlotClass(i, mealSlots.length, mealStacked)}">
+						<div class="flex flex-col {mealSlotClass(i, mealSlots.length)}">
 							<p class="text-sm font-semibold text-muted-foreground mb-2">
 								{#if mealSpansDays}
 									<span class={slot.day === todayYmd ? '' : 'text-amber-700 dark:text-amber-400'}>{eventDateLabel(slot.day)}</span>

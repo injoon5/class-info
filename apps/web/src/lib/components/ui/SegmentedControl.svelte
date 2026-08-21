@@ -1,16 +1,17 @@
-<script lang="ts">
+<script lang="ts" generics="Value extends string | number">
 import { Tween } from 'svelte/motion';
 import { tweenMove } from '$lib/transitions';
 
-// Two-option sliding segmented control (timetable week + meal type toggles).
-type Value = string | number;
+// Sliding segmented control (timetable week/전체 + meal type toggles). Any
+// number of segments: they share the track equally, and the thumb is one
+// segment wide, so it travels exactly 100% of itself per step.
 type Option = { value: Value; label: string; event?: string; eventProps?: string };
 
 let {
 	options,
 	value = $bindable(),
 	onchange
-}: { options: [Option, Option]; value: Value; onchange?: (v: Value) => void } = $props();
+}: { options: Option[]; value: Value; onchange?: (v: Value) => void } = $props();
 
 // A value that matches no option (a meal type that stopped being served while
 // it was selected) leaves `findIndex` at -1, which sent the thumb sliding a
@@ -18,6 +19,9 @@ let {
 // owner reconciles the value.
 const activeIndex = $derived(Math.max(0, options.findIndex((o) => o.value === value)));
 const thumbX = Tween.of(() => activeIndex * 100, tweenMove);
+// The track's p-1 is inside the percentage the thumb resolves against, so the
+// padding has to come out of the share before it is divided.
+const thumbWidth = $derived(`calc((100% - 0.5rem) / ${Math.max(1, options.length)})`);
 
 function select(v: Value) {
 	value = v;
@@ -28,8 +32,8 @@ function select(v: Value) {
 <div class="flex justify-center">
 	<div class="relative flex w-full rounded-xl bg-muted p-1 h-10 sm:h-11 text-sm sm:text-base">
 		<div
-			class="absolute top-1 h-8 sm:h-9 w-[calc(50%-0.25rem)] rounded-lg bg-elevated shadow-sm dark:shadow-none z-0"
-			style="transform: translateX({thumbX.current}%)"
+			class="absolute top-1 h-8 sm:h-9 rounded-lg bg-elevated shadow-sm dark:shadow-none z-0"
+			style="width: {thumbWidth}; transform: translateX({thumbX.current}%)"
 			aria-hidden="true"
 		></div>
 		{#each options as option (option.value)}

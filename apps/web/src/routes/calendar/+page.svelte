@@ -2,9 +2,10 @@
 import { useQuery, useConvexClient } from 'convex-svelte';
 import { api } from "@class-info/backend/convex/_generated/api";
 import type { Id } from "@class-info/backend/convex/_generated/dataModel";
+import { CLASS_LABEL, SITE_NAME, SITE_URL } from '@class-info/backend/convex/config';
 import Drawer from '$lib/components/ui/Drawer.svelte';
 import HScroll from '$lib/components/ui/HScroll.svelte';
-import { getNowInKst, toYyyymmdd } from '$lib/date';
+import { ddayLabel, getNowInKst, toYyyymmdd } from '$lib/date';
 import {
   CUSTOM_COLOR_SWATCH,
   CUSTOM_EVENT_COLORS,
@@ -16,7 +17,7 @@ import { focusOnElement } from '$lib/actions/focus';
 import PillButton from '$lib/components/ui/PillButton.svelte';
 import Spinner from '$lib/components/ui/Spinner.svelte';
 import { fade, slide } from 'svelte/transition';
-import { fadeFast, fadeIn, fadeInAfter, fadeOut, slideYBoth } from '$lib/transitions';
+import { fadeFast, fadeInAfter, fadeOut, reveal, slideYBoth } from '$lib/transitions';
 import type { PageData } from './$types.js';
 
 const { data }: { data: PageData } = $props();
@@ -107,13 +108,16 @@ const customEventsByDate = $derived(
   indexByDate((eventsQuery.data ?? []).filter((e) => e.source === 'custom'))
 );
 
-type CellEvent = { id: string; title: string; chipClass: string };
+type CellEvent = { id: string; title: string; dday: string; chipClass: string };
 
 function eventsForDate(dateStr: string | null): CellEvent[] {
   if (!dateStr) return [];
   return [...(schoolEventsByDate[dateStr] ?? []), ...(customEventsByDate[dateStr] ?? [])].map((e) => ({
     id: String(e._id),
     title: e.title,
+    // A countdown is only news while it is still ahead; past dates keep the
+    // flag (an admin may reuse it next year) but stop announcing it.
+    dday: e.dday && e.date >= todayStr ? ddayLabel(e.date, todayStr) : '',
     chipClass: eventChrome(e).chip,
   }));
 }
@@ -181,6 +185,21 @@ async function handleAddEvent() {
   }
 }
 
+// Works on school events as well as custom ones: a countdown to the exam the
+// feed already carries is the case this exists for.
+async function handleToggleDday(event: PublicEvent) {
+  saveError = null;
+  try {
+    await client.mutation(api.schedule.setEventDday, {
+      sessionToken,
+      id: event._id,
+      dday: !event.dday,
+    });
+  } catch {
+    saveError = 'D-Day를 바꾸지 못했어요. 잠시 후 다시 시도해 주세요.';
+  }
+}
+
 async function handleDeleteCustomEvent(id: Id<'schedules'>) {
   if (!confirm('이 일정을 삭제하시겠습니까? 되돌릴 수 없습니다.')) return;
   saveError = null;
@@ -196,15 +215,15 @@ const dayNames = ['일','월','화','수','목','금','토'];
 </script>
 
 <svelte:head>
-  <title>일정 - 1학년 3반</title>
+  <title>일정 - {CLASS_LABEL}</title>
   <meta name="description" content="학교 행사와 학사 일정을 한눈에 확인하세요." />
-  <meta property="og:title" content="일정 - 1학년 3반" />
+  <meta property="og:title" content="일정 - {CLASS_LABEL}" />
   <meta property="og:description" content="학교 행사와 학사 일정을 한눈에 확인하세요." />
-  <meta property="og:url" content="https://timefor.school/calendar" />
+  <meta property="og:url" content="{SITE_URL}/calendar" />
   <meta property="og:type" content="website" />
-  <meta property="og:site_name" content="TimeforSchool" />
+  <meta property="og:site_name" content={SITE_NAME} />
   <meta name="twitter:card" content="summary_large_image" />
-  <meta name="twitter:title" content="일정 - 1학년 3반" />
+  <meta name="twitter:title" content="일정 - {CLASS_LABEL}" />
   <meta name="twitter:description" content="학교 행사와 학사 일정을 한눈에 확인하세요." />
   <meta name="robots" content="noindex" />
 </svelte:head>
@@ -249,7 +268,7 @@ const dayNames = ['일','월','화','수','목','금','토'];
   </div>
 
   <!-- Calendar -->
-  <HScroll anchor="[data-today-cell]">
+  <HScroll anchor="[data-today-cell]" hint="좌우로 스크롤하세요">
       <div
         class="min-w-[40rem] border border-border rounded-xl overflow-hidden"
         aria-busy={eventsPending}
@@ -326,7 +345,12 @@ const dayNames = ['일','월','화','수','목','금','토'];
                   </div>
 
                   {#each cellEvents as event (event.id)}
-                    <div class="text-xs rounded px-1 py-0.5 mb-0.5 truncate leading-tight {event.chipClass}" title={event.title}>{event.title}</div>
+                    <!-- Flex, not a truncated string: the countdown is the part
+                         that must survive a title too long for the cell. -->
+                    <div class="flex items-baseline gap-1 text-xs rounded px-1 py-0.5 mb-0.5 leading-tight {event.chipClass}" title={event.title}>
+                      {#if event.dday}<span class="font-bold shrink-0">{event.dday}</span>{/if}
+                      <span class="truncate">{event.title}</span>
+                    </div>
                   {/each}
                 {/if}
               </div>
@@ -342,10 +366,6 @@ const dayNames = ['일','월','화','수','목','금','토'];
     <span class="flex items-center gap-1.5"><span class="inline-block w-2.5 h-2.5 rounded-sm bg-red-200 dark:bg-red-900/60"></span>공휴일</span>
     <span class="flex items-center gap-1.5"><span class="inline-block w-2.5 h-2.5 rounded-sm bg-amber-200 dark:bg-amber-900/60"></span>휴업일</span>
     <span class="flex items-center gap-1.5"><span class="inline-block w-2.5 h-2.5 rounded-sm bg-sky-200 dark:bg-sky-900/60"></span>학교 행사</span>
-  </div>
-
-  <div class="block sm:hidden mt-1.5 text-center text-xs text-muted-foreground select-none pointer-events-none">
-    좌우로 스크롤하세요
   </div>
 </div>
 
@@ -367,11 +387,13 @@ const dayNames = ['일','월','화','수','목','금','토'];
       </PillButton>
     </div>
   {:else}
-    <!-- Height only — no fly. A transform on this node plus the keyboard
-         is what froze the sheet on iOS. Bidirectional, so `cubicOut`: one
-         easing has to read as motion opening and closing alike. -->
+    <!-- Height only on this node — no fly. A transform *here* plus the
+         keyboard is what froze the sheet on iOS; the reveal's rise lives on
+         the content inside, where it is gone before the field takes focus.
+         Bidirectional, so `cubicOut`: one easing has to read as motion
+         opening and closing alike. -->
     <div class="col-start-1 row-start-1" transition:slide={slideYBoth}>
-    <div class="space-y-5 pt-1" in:fade={fadeIn} out:fade={fadeOut}>
+    <div class="space-y-5 pt-1" in:reveal out:fade={fadeOut}>
       <div class="space-y-3.5">
         <input
           type="text"
@@ -441,6 +463,52 @@ const dayNames = ['일','월','화','수','목','금','토'];
   </div>
 {/snippet}
 
+<!-- One row shape for both sources: only the delete button is exclusive to
+     custom events, and the D-Day toggle deliberately is not. -->
+{#snippet eventRow(event: PublicEvent, deletable: boolean)}
+  {@const chrome = eventChrome(event)}
+  {@const countdown = event.dday && event.date >= todayStr ? ddayLabel(event.date, todayStr) : ''}
+  <li class="flex rounded-lg overflow-hidden">
+    <div class="w-1.5 flex-shrink-0 {chrome.popupBar}"></div>
+    <div class="flex-1 flex items-center justify-between gap-3 px-3 py-2.5 {chrome.popupBg}">
+      <div class="min-w-0">
+        <p class="flex items-baseline gap-2 mb-0.5">
+          <span class="text-sm font-semibold {chrome.labelColor}">{chrome.label}</span>
+          {#if countdown}
+            <span class="text-sm font-bold text-foreground">{countdown}</span>
+          {/if}
+        </p>
+        <p class="text-base font-semibold text-foreground leading-snug">{event.title}</p>
+      </div>
+      {#if isAuthenticated}
+        <div class="flex items-center gap-1 flex-shrink-0">
+          <button
+            type="button"
+            onclick={() => handleToggleDday(event)}
+            aria-pressed={event.dday === true}
+            title={event.dday ? 'D-Day 해제' : 'D-Day로 표시'}
+            class="pressable touch-target px-2.5 py-1 rounded-full text-xs font-semibold transition-colors duration-150
+              {event.dday
+                ? 'bg-primary text-primary-foreground'
+                : 'border border-border text-muted-foreground pointer:hover:text-foreground pointer:hover:bg-muted'}"
+          >D-Day</button>
+          {#if deletable}
+            <button
+              onclick={() => handleDeleteCustomEvent(event._id)}
+              class="pressable-icon touch-target flex-shrink-0 w-7 h-7 flex items-center justify-center rounded-full text-muted-foreground pointer:hover:text-destructive pointer:hover:bg-destructive/10 transition-colors duration-150"
+              aria-label="삭제" title="삭제"
+            >
+              <svg viewBox="0 0 20 20" fill="currentColor" class="w-4 h-4">
+                <path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clip-rule="evenodd"/>
+              </svg>
+            </button>
+          {/if}
+        </div>
+      {/if}
+    </div>
+  </li>
+{/snippet}
+
 <!-- Day detail drawer -->
 <Drawer
   open={selectedDate !== null}
@@ -480,37 +548,10 @@ const dayNames = ['일','월','화','수','목','금','토'];
   {:else}
     <ul class="space-y-2.5">
       {#each selectedDateEvents.school as event (event._id)}
-        {@const chrome = eventChrome(event)}
-        <li class="flex rounded-lg overflow-hidden">
-          <div class="w-1.5 flex-shrink-0 {chrome.popupBar}"></div>
-          <div class="flex-1 px-3 py-2.5 {chrome.popupBg}">
-            <p class="text-sm font-semibold {chrome.labelColor} mb-0.5">{chrome.label}</p>
-            <p class="text-base font-semibold text-foreground leading-snug">{event.title}</p>
-          </div>
-        </li>
+        {@render eventRow(event, false)}
       {/each}
       {#each selectedDateEvents.custom as event (event._id)}
-        {@const chrome = eventChrome(event)}
-        <li class="flex rounded-lg overflow-hidden">
-          <div class="w-1.5 flex-shrink-0 {chrome.popupBar}"></div>
-          <div class="flex-1 flex items-center justify-between gap-2 px-3 py-2.5 {chrome.popupBg}">
-            <div class="min-w-0">
-              <p class="text-sm font-semibold {chrome.labelColor} mb-0.5">{chrome.label}</p>
-              <p class="text-base font-semibold text-foreground leading-snug">{event.title}</p>
-            </div>
-            {#if isAuthenticated}
-              <button
-                onclick={() => handleDeleteCustomEvent(event._id)}
-                class="pressable-icon touch-target flex-shrink-0 w-7 h-7 flex items-center justify-center rounded-full text-muted-foreground pointer:hover:text-destructive pointer:hover:bg-destructive/10 transition-colors duration-150"
-                aria-label="삭제" title="삭제"
-              >
-                <svg viewBox="0 0 20 20" fill="currentColor" class="w-4 h-4">
-                  <path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clip-rule="evenodd"/>
-                </svg>
-              </button>
-            {/if}
-          </div>
-        </li>
+        {@render eventRow(event, true)}
       {/each}
     </ul>
   {/if}

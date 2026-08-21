@@ -1,6 +1,7 @@
 <script lang="ts">
 import { useQuery } from 'convex-svelte';
 import { api } from "@class-info/backend/convex/_generated/api";
+import { CLASS_LABEL, SITE_NAME, SITE_URL } from '@class-info/backend/convex/config';
 import LoadingState from '$lib/components/ui/LoadingState.svelte';
 import ErrorState from '$lib/components/ui/ErrorState.svelte';
 import EmptyState from '$lib/components/ui/EmptyState.svelte';
@@ -48,6 +49,19 @@ function mealFor(day: MealDay, type: string): PublicMeal | null {
   return type === '중식' ? day.lunch : day.dinner;
 }
 
+// Between the 4pm rollover and 7pm the grid has moved on to the next school
+// day, but tonight's 석식 has not been served yet — so on the 석식 tab the
+// highlight stays on today until it has been. Only when today actually has a
+// dinner to show: on a Saturday, today isn't even a column.
+const todayDinner = $derived(
+  [...(mealsQuery.data?.thisWeek.days ?? []), ...(mealsQuery.data?.nextWeek.days ?? [])].find(
+    (d) => d.date === todayYmd
+  )?.dinner ?? null
+);
+const highlightDay = $derived(
+  selectedMealType === '석식' && !data.afterDinner && todayDinner ? todayYmd : displayDay
+);
+
 function formatDateFull(dateStr: string): { year: number; month: number; day: number; weekday: string } {
   const y = Number(dateStr.slice(0, 4));
   const m = Number(dateStr.slice(4, 6));
@@ -75,15 +89,15 @@ function openMealDrawer(day: MealDay) {
 </script>
 
 <svelte:head>
-  <title>급식 - 1학년 3반</title>
+  <title>급식 - {CLASS_LABEL}</title>
   <meta name="description" content="정확한 급식을 한 눈에 확인하세요. " />
-  <meta property="og:title" content="급식 - 1학년 3반" />
+  <meta property="og:title" content="급식 - {CLASS_LABEL}" />
   <meta property="og:description" content="정확한 급식을 한 눈에 확인하세요. " />
-  <meta property="og:url" content="https://timefor.school/meals" />
+  <meta property="og:url" content="{SITE_URL}/meals" />
   <meta property="og:type" content="website" />
-  <meta property="og:site_name" content="TimeforSchool" />
+  <meta property="og:site_name" content={SITE_NAME} />
   <meta name="twitter:card" content="summary_large_image" />
-  <meta name="twitter:title" content="급식 - 1학년 3반" />
+  <meta name="twitter:title" content="급식 - {CLASS_LABEL}" />
   <meta name="twitter:description" content="정확한 급식을 한 눈에 확인하세요. " />
   <meta name="robots" content="noindex" />
 </svelte:head>
@@ -108,7 +122,7 @@ function openMealDrawer(day: MealDay) {
         />
       </div>
     {/if}
-    <HScroll blurred={blur.blurred} anchor="[data-display-day]">
+    <HScroll blurred={blur.blurred} anchor="[data-display-day]" hint="좌우로 스크롤하세요">
         {#each [
           { days: mealsQuery.data.thisWeek.days, class: "" },
           { days: mealsQuery.data.nextWeek.days, class: "mt-3" }
@@ -117,7 +131,7 @@ function openMealDrawer(day: MealDay) {
           {#each week.days as day (day.date)}
             {@const meal = mealFor(day, selectedMealType)}
             {@const hasMeal = !!meal}
-            {@const isDisplayCol = day.date === displayDay}
+            {@const isDisplayCol = day.date === highlightDay}
             {@const dayLabel = relativeDayLabel(day.date, todayYmd)}
             <button
               type="button"
@@ -156,9 +170,6 @@ function openMealDrawer(day: MealDay) {
         </div>
         {/each}
     </HScroll>
-    <div class="block sm:hidden mt-1.5 text-center text-xs text-muted-foreground select-none pointer-events-none">
-      좌우로 스크롤하세요
-    </div>
   {/if}
 </div>
 

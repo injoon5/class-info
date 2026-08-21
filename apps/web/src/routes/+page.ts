@@ -38,7 +38,8 @@ export const load = (async () => {
 			console.error('home schedule.homeSchedule', err);
 			return {
 				displayDay: displayClock.afterRollover ? addDaysYyyymmdd(todayYmd, 1) : todayYmd,
-				events: []
+				events: [],
+				ddays: []
 			};
 		}),
 		client.query(api.notices.currentGroups, clock).catch((err) => {
@@ -69,6 +70,7 @@ export const load = (async () => {
 		timetable,
 		nextWeekTimetable,
 		meals,
-		events: schedule.events
+		events: schedule.events,
+		ddays: schedule.ddays
 	};
 }) satisfies PageLoad;

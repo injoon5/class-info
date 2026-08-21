@@ -1,13 +1,14 @@
 <script lang="ts">
 import { useQuery } from 'convex-svelte';
 import { api } from "@class-info/backend/convex/_generated/api";
+import { CLASS_LABEL, SITE_NAME, SITE_URL } from '@class-info/backend/convex/config';
 import NoticeGroup from './NoticeGroup.svelte';
 import PastMonthDetails from './PastMonthDetails.svelte';
 import LoadingState from '$lib/components/ui/LoadingState.svelte';
 import ErrorState from '$lib/components/ui/ErrorState.svelte';
 import EmptyState from '$lib/components/ui/EmptyState.svelte';
 import NoticeFooter from './NoticeFooter.svelte';
-import DisclosureCaret from '$lib/components/ui/DisclosureCaret.svelte';
+import Disclosure from '$lib/components/ui/Disclosure.svelte';
 import type { PageData } from './$types.js';
 
 const { data }: { data: PageData } = $props();
@@ -24,19 +25,19 @@ const overview = useQuery(
 </script>
 
 <svelte:head>
-	<title>공지 - 1학년 3반</title>
+	<title>공지 - {CLASS_LABEL}</title>
 	<meta name="description" content="수행평가, 숙제, 준비물 등 중요한 공지사항을 확인하세요." />
 
 	<!-- Open Graph -->
-	<meta property="og:title" content="공지 - 1학년 3반" />
+	<meta property="og:title" content="공지 - {CLASS_LABEL}" />
 	<meta property="og:description" content="수행평가, 숙제, 준비물 등 중요한 공지사항을 확인하세요." />
-	<meta property="og:url" content="https://timefor.school/notices" />
+	<meta property="og:url" content="{SITE_URL}/notices" />
 	<meta property="og:type" content="website" />
-	<meta property="og:site_name" content="TimeforSchool" />
+	<meta property="og:site_name" content={SITE_NAME} />
 
 	<!-- Twitter Card -->
 	<meta name="twitter:card" content="summary_large_image" />
-	<meta name="twitter:title" content="공지 - 1학년 3반" />
+	<meta name="twitter:title" content="공지 - {CLASS_LABEL}" />
 	<meta name="twitter:description" content="수행평가, 숙제, 준비물 등 중요한 공지사항을 확인하세요." />
 </svelte:head>
 
@@ -62,21 +63,14 @@ const overview = useQuery(
             <div class="mt-6 sm:mt-8 pt-4 sm:pt-6 border-t border-border">
                 <h2 class="text-base sm:text-lg font-semibold mb-2 sm:mb-3 text-muted-foreground">지난 공지</h2>
                 {#each overview.data.pastMonths as month (month.monthKey)}
-                    <details class="mb-1.5 sm:mb-2 bg-card border border-border rounded-3xl overflow-hidden" open={openMonthKey === month.monthKey}>
-                        <summary
-                            class="touch-target flex items-center gap-2 px-3 sm:px-4 py-2.5 sm:py-3 cursor-pointer list-none transition-colors duration-150 pointer:hover:bg-muted text-muted-foreground font-semibold text-sm sm:text-base [&::-webkit-details-marker]:hidden"
-                            onclick={(e) => {
-                                e.preventDefault();
-                                openMonthKey = openMonthKey === month.monthKey ? null : month.monthKey;
-                            }}
-                        >
-                            <DisclosureCaret open={openMonthKey === month.monthKey} />
-                            {month.monthName} ({month.total}개)
-                        </summary>
-                        {#if openMonthKey === month.monthKey}
-                            <PastMonthDetails monthKey={month.monthKey} cutoff={data.cutoff} today={data.today} />
-                        {/if}
-                    </details>
+                    <Disclosure
+                        class="mb-1.5 sm:mb-2"
+                        open={openMonthKey === month.monthKey}
+                        label="{month.monthName} ({month.total}개)"
+                        onToggle={() => (openMonthKey = openMonthKey === month.monthKey ? null : month.monthKey)}
+                    >
+                        <PastMonthDetails monthKey={month.monthKey} cutoff={data.cutoff} today={data.today} />
+                    </Disclosure>
                 {/each}
             </div>
         {/if}
