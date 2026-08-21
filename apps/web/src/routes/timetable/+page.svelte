@@ -62,20 +62,30 @@ const queryError = $derived(
 	pending ? (isFull ? fullQuery.error : timetableQuery.error) : undefined
 );
 
-const dayNames = ['월', '화', '수', '목', '금'];
+// Saturday only ever appears when the timetable source published it, so the
+// column is grown from the data rather than always reserved. The standing
+// timetable is fixed at Mon–Fri.
+const dayNames = ['월', '화', '수', '목', '금', '토'];
+const WEEKDAYS = 5;
 
 // One shape for both views. The standing timetable has no substitutions to
 // report, so its cells are never `replaced` — that is what makes it the
 // baseline the weekly view's amber is measured against.
-type Cell = { subject: string; teacher: string; replaced: boolean };
+type Cell = { period: number; subject: string; teacher: string; replaced: boolean };
 
 const days = $derived<Cell[][]>(
 	isFull
 		? (fullData?.timetable ?? []).map((day) =>
-				day.map((slot) => ({ subject: slot.subject, teacher: slot.teacher, replaced: false }))
+				day.map((slot, i) => ({
+					period: i + 1,
+					subject: slot.subject,
+					teacher: slot.teacher,
+					replaced: false
+				}))
 			)
 		: (weekData?.timetable ?? []).map((day) =>
 				day.map((slot) => ({
+					period: slot.period,
 					subject: slot.subject,
 					teacher: slot.teacher,
 					replaced: slot.replaced
@@ -83,11 +93,36 @@ const days = $derived<Cell[][]>(
 			)
 );
 
-const dayTimes = $derived(isFull ? (fullData?.day_time ?? []) : (weekData?.day_time ?? []));
+// A fetched week is addressed by 교시, not by position: the merged grid can
+// skip a period on one day and not another, which would otherwise shift every
+// later subject a row up. The standing timetable pads its gaps with blanks, so
+// there the two coincide — which is also why editing stays positional.
+const byPeriod = $derived(days.map((day) => new Map(day.map((c) => [c.period, c]))));
 
-const maxPeriods = $derived(days.reduce((max, day) => Math.max(max, day.length), 0));
-// An all-blank standing timetable is nothing to show, however many rows it has.
-const hasData = $derived(isFull ? maxPeriods > 0 : !!weekData);
+const dayTimes = $derived(isFull ? (fullData?.day_time ?? []) : (weekData?.day_time ?? []));
+// NEIS publishes no bell times, so a week it alone covers has none to show.
+const hasBellTimes = $derived(dayTimes.length > 0);
+
+const columns = $derived(
+	dayNames.slice(
+		0,
+		isFull
+			? WEEKDAYS
+			: Math.min(
+					Math.max(
+						days.reduce((last, day, i) => (day.length > 0 ? i + 1 : last), 0),
+						WEEKDAYS
+					),
+					dayNames.length
+				)
+	)
+);
+
+const maxPeriods = $derived(
+	days.reduce((max, day) => day.reduce((m, c) => Math.max(m, c.period), max), 0)
+);
+// An all-blank timetable is nothing to show, however many rows it has.
+const hasData = $derived(maxPeriods > 0);
 
 const editedAt = $derived(
 	isFull ? (fullData?.updatedAt ?? null) : (weekData?.editedAt ?? null)
@@ -217,7 +252,9 @@ async function writeSlot(subject: string, teacher: string) {
 			class="truncate {subjectSizeClass(slot.subject)} font-semibold {slot.replaced ? 'text-amber-700 dark:text-amber-300' : 'text-foreground'}"
 			title={slot.subject}
 		>{slot.subject}</div>
-		<div class="truncate text-sm sm:text-base mt-0.5 text-muted-foreground">{slot.teacher}</div>
+		{#if slot.teacher}
+			<div class="truncate text-sm sm:text-base mt-0.5 text-muted-foreground">{slot.teacher}</div>
+		{/if}
 	{:else}
 		<span class="text-muted-foreground/50 text-base sm:text-lg" aria-hidden="true">-</span>
 		<span class="sr-only">수업 없음</span>
@@ -257,7 +294,7 @@ async function writeSlot(subject: string, teacher: string) {
 				<thead>
 					<tr class="bg-muted">
 						<th scope="col" class="px-1 py-3 border border-border"><span class="sr-only">교시</span></th>
-						{#each dayNames as name}
+						{#each columns as name}
 							<th scope="col" class="px-1 py-2.5 text-center text-sm font-semibold sm:text-base text-muted-foreground border border-border">{name}</th>
 						{/each}
 					</tr>
@@ -267,10 +304,12 @@ async function writeSlot(subject: string, teacher: string) {
 						<tr>
 							<th scope="row" class="px-0.5 py-3 sm:py-6 border border-border text-center font-normal bg-muted">
 								<div class="text-sm sm:text-lg font-semibold text-foreground whitespace-nowrap">{i + 1}교시</div>
-								<div class="text-[11px] sm:text-base text-muted-foreground tabular-nums leading-tight">{getPeriodLabel(i + 1)}</div>
+								{#if hasBellTimes && getPeriodLabel(i + 1)}
+									<div class="text-[11px] sm:text-base text-muted-foreground tabular-nums leading-tight">{getPeriodLabel(i + 1)}</div>
+								{/if}
 							</th>
-							{#each dayNames as dayName, d}
-								{@const slot = days[d]?.[i]}
+							{#each columns as dayName, d}
+								{@const slot = byPeriod[d]?.get(i + 1)}
 								<td
 									data-replaced={slot?.replaced ? '' : undefined}
 									class="border border-border p-0 text-center {slot?.replaced ? 'bg-amber-100/70 dark:bg-amber-900/20' : 'bg-card'}"
@@ -299,7 +338,7 @@ async function writeSlot(subject: string, teacher: string) {
 							<th scope="row" class="px-0.5 py-2 border border-border text-center bg-muted">
 								<span class="text-xs font-semibold text-muted-foreground">교시 수</span>
 							</th>
-							{#each dayNames as dayName, d}
+							{#each columns as dayName, d}
 								{@const length = days[d]?.length ?? 0}
 								<td class="border border-border bg-card px-1 py-2">
 									<div class="flex items-center justify-center gap-1">

@@ -13,6 +13,10 @@
 // code by searching for it at https://open.neis.go.kr, or by trying your
 // school's name against https://api.timefor.school. `grade`/`classno` select
 // which homeroom's timetable is fetched.
+//
+// Prefer the code over the name: school names repeat across regions, and the
+// API resolves a duplicate to its first match rather than asking. 양정고등학교
+// is both Seoul (7010208) and Busan (7150152).
 export const SCHOOL = {
   code: "7010208",
   grade: 1,
