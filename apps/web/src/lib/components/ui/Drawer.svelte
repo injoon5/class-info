@@ -3,6 +3,7 @@ import type { Snippet } from 'svelte';
 import { Tween } from 'svelte/motion';
 import {
   PANEL_CLOSE_MS,
+  PANEL_OPEN_MS,
   projectMomentum,
   reducedMotion,
   SHEET_DISMISS,
@@ -122,10 +123,19 @@ const scrimValue = $derived(
 
 // `backdrop-filter` re-samples the whole page behind the scrim on every frame
 // its opacity changes, which is the most expensive thing either animation
-// does on a phone. The tint alone carries the fade; the blur waits for the
-// scrim to land and then eases in on its own.
+// does on a phone. The tint alone carries the fade; the blur eases in on its
+// own over a separate CSS transition instead of riding the same tween.
+//
+// That transition still has to land on time. At a fixed 0.99 the blur used to
+// start only after the scrim was almost fully in, and its own SCRIM_BLUR_MS
+// then ran *after* the rest of the entrance had already settled — the blur
+// visibly catching up a beat late. Starting it SCRIM_BLUR_MS early instead
+// lets the two finish together: solving expoOut(t) = 1 - 2^(-10t) for the
+// threshold at which SCRIM_BLUR_MS remains gives the value below.
+const SCRIM_BLUR_MS = 150; // matches the `duration-150` on the backdrop below
+const SCRIM_BLUR_THRESHOLD = 1 - Math.pow(2, -10 * (1 - SCRIM_BLUR_MS / PANEL_OPEN_MS));
 const scrimSettled = $derived(
-  !isDragging && isVisible && scrimValue > 0.99
+  !isDragging && isVisible && scrimValue > SCRIM_BLUR_THRESHOLD
 );
 
 const panelStyle = $derived(
