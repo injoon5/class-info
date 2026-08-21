@@ -6,7 +6,6 @@ import LoadingState from '$lib/components/ui/LoadingState.svelte';
 import ErrorState from '$lib/components/ui/ErrorState.svelte';
 import EmptyState from '$lib/components/ui/EmptyState.svelte';
 import Drawer from '$lib/components/ui/Drawer.svelte';
-import HScroll from '$lib/components/ui/HScroll.svelte';
 import PillButton from '$lib/components/ui/PillButton.svelte';
 import SegmentedControl from '$lib/components/ui/SegmentedControl.svelte';
 import { createBlurPulse } from '$lib/blurPulse.svelte';
@@ -291,88 +290,90 @@ async function writeSlot(subject: string, teacher: string) {
 	{:else if !hasData}
 		<EmptyState message={isFull ? '전체 시간표가 아직 없어요' : '시간표가 없어요'} />
 	{:else}
-		<HScroll blurred={blur.blurred}>
-			<!-- Same hairline construction as the calendar: a real box per row
-			     (not display:contents — Safari still generates one), border-bottom
-			     on the row, border-right on every cell but the last. Each interior
-			     line is painted once. --grid-line is opaque, so the 1px corner
-			     where they meet cannot alpha-stack into a plus. -->
-			<div
-				class="timetable-grid overflow-hidden print:overflow-visible rounded-xl min-w-[18rem] mx-auto"
-				style="--cols: {columns.length + 1}"
-				role="table"
-			>
+		<!-- Same hairline construction as the calendar: a real box per row
+		     (not display:contents — Safari still generates one), border-bottom
+		     on the row, border-right on every cell but the last. Each interior
+		     line is painted once. --grid-line is opaque, so the 1px corner
+		     where they meet cannot alpha-stack into a plus.
+		     No HScroll: the grid is always five/six equal columns and fits the
+		     page width; pan-x would only fight vertical scroll on phones. -->
+		<div
+			class="timetable-grid overflow-hidden print:overflow-visible rounded-xl mx-auto"
+			style="--cols: {columns.length + 1}; transition: filter 150ms ease-out, opacity 150ms ease-out; {blur.blurred
+				? 'filter: blur(4px); opacity: 0.7;'
+				: ''}"
+			role="table"
+		>
+			<div role="row" class="timetable-row">
+				<div role="columnheader" class="px-1 py-3 bg-muted"><span class="sr-only">교시</span></div>
+				{#each columns as name (name)}
+					<div role="columnheader" class="px-1 py-2.5 text-center text-sm font-semibold sm:text-base text-muted-foreground bg-muted">{name}</div>
+				{/each}
+			</div>
+			{#each Array(maxPeriods) as _, i (i)}
 				<div role="row" class="timetable-row">
-					<div role="columnheader" class="px-1 py-3 bg-muted"><span class="sr-only">교시</span></div>
-					{#each columns as name (name)}
-						<div role="columnheader" class="px-1 py-2.5 text-center text-sm font-semibold sm:text-base text-muted-foreground bg-muted">{name}</div>
-					{/each}
-				</div>
-				{#each Array(maxPeriods) as _, i (i)}
-					<div role="row" class="timetable-row">
-						<div role="rowheader" class="px-0.5 py-3 sm:py-6 text-center bg-muted">
-							<div class="text-sm sm:text-lg font-semibold text-foreground whitespace-nowrap">{i + 1}교시</div>
-							{#if hasBellTimes && getPeriodLabel(i + 1)}
-								<div class="text-[11px] sm:text-base text-muted-foreground tabular-nums leading-tight">{getPeriodLabel(i + 1)}</div>
+					<div role="rowheader" class="px-0.5 py-3 sm:py-6 text-center bg-muted">
+						<div class="text-sm sm:text-lg font-semibold text-foreground whitespace-nowrap">{i + 1}교시</div>
+						{#if hasBellTimes && getPeriodLabel(i + 1)}
+							<div class="text-[11px] sm:text-base text-muted-foreground tabular-nums leading-tight">{getPeriodLabel(i + 1)}</div>
+						{/if}
+					</div>
+					{#each columns as dayName, d (dayName)}
+						{@const slot = byPeriod[d]?.get(i + 1)}
+						<div
+							role="cell"
+							data-replaced={slot?.replaced ? '' : undefined}
+							class="p-0 text-center flex flex-col {slot?.replaced ? REPLACED_BG : 'bg-card'}"
+						>
+							<!-- The whole cell is the hit area while editing, so what
+							     is pressed is exactly what opens. -->
+							{#if canEdit}
+								<button
+									type="button"
+									onclick={() => openSlotEditor(d, i + 1)}
+									aria-label="{dayName}요일 {i + 1}교시 수정"
+									class="block w-full flex-1 {CELL_PAD} cursor-pointer transition-colors duration-150 pointer:hover:bg-muted"
+								>{@render cell(slot)}</button>
+							{:else}
+								<div class="flex-1 {CELL_PAD}">{@render cell(slot)}</div>
 							{/if}
 						</div>
-						{#each columns as dayName, d (dayName)}
-							{@const slot = byPeriod[d]?.get(i + 1)}
-							<div
-								role="cell"
-								data-replaced={slot?.replaced ? '' : undefined}
-								class="p-0 text-center flex flex-col {slot?.replaced ? REPLACED_BG : 'bg-card'}"
-							>
-								<!-- The whole cell is the hit area while editing, so what
-								     is pressed is exactly what opens. -->
-								{#if canEdit}
-									<button
-										type="button"
-										onclick={() => openSlotEditor(d, i + 1)}
-										aria-label="{dayName}요일 {i + 1}교시 수정"
-										class="block w-full flex-1 {CELL_PAD} cursor-pointer transition-colors duration-150 pointer:hover:bg-muted"
-									>{@render cell(slot)}</button>
-								{:else}
-									<div class="flex-1 {CELL_PAD}">{@render cell(slot)}</div>
-								{/if}
-							</div>
-						{/each}
-					</div>
-				{/each}
+					{/each}
+				</div>
+			{/each}
 
-				<!-- Per-day length. A day is as long as it is: Friday routinely
-				     ends before Monday does. -->
-				{#if canEdit}
-					<div role="row" class="timetable-row edit-row">
-						<div role="rowheader" class="px-0.5 py-2 text-center bg-muted">
-							<span class="text-xs font-semibold text-muted-foreground">교시 수</span>
-						</div>
-						{#each columns as dayName, d (dayName)}
-							{@const length = days[d]?.length ?? 0}
-							<div role="cell" class="bg-card px-1 py-2">
-								<div class="flex items-center justify-center gap-1">
-									<button
-										type="button"
-										onclick={() => changeDayLength(d, -1)}
-										disabled={length <= 0}
-										aria-label="{dayName}요일 교시 줄이기"
-										class="pressable touch-target w-6 h-6 flex items-center justify-center rounded-full border border-border text-muted-foreground transition-colors duration-150 enabled:pointer:hover:text-foreground enabled:pointer:hover:bg-muted disabled:opacity-40"
-									>−</button>
-									<span class="w-5 text-center text-sm font-semibold tabular-nums text-foreground">{length}</span>
-									<button
-										type="button"
-										onclick={() => changeDayLength(d, 1)}
-										disabled={length >= MAX_PERIODS}
-										aria-label="{dayName}요일 교시 늘리기"
-										class="pressable touch-target w-6 h-6 flex items-center justify-center rounded-full border border-border text-muted-foreground transition-colors duration-150 enabled:pointer:hover:text-foreground enabled:pointer:hover:bg-muted disabled:opacity-40"
-									>+</button>
-								</div>
-							</div>
-						{/each}
+			<!-- Per-day length. A day is as long as it is: Friday routinely
+			     ends before Monday does. -->
+			{#if canEdit}
+				<div role="row" class="timetable-row edit-row">
+					<div role="rowheader" class="px-0.5 py-2 text-center bg-muted">
+						<span class="text-xs font-semibold text-muted-foreground">교시 수</span>
 					</div>
-				{/if}
-			</div>
-		</HScroll>
+					{#each columns as dayName, d (dayName)}
+						{@const length = days[d]?.length ?? 0}
+						<div role="cell" class="bg-card px-1 py-2">
+							<div class="flex items-center justify-center gap-1">
+								<button
+									type="button"
+									onclick={() => changeDayLength(d, -1)}
+									disabled={length <= 0}
+									aria-label="{dayName}요일 교시 줄이기"
+									class="pressable touch-target w-6 h-6 flex items-center justify-center rounded-full border border-border text-muted-foreground transition-colors duration-150 enabled:pointer:hover:text-foreground enabled:pointer:hover:bg-muted disabled:opacity-40"
+								>−</button>
+								<span class="w-5 text-center text-sm font-semibold tabular-nums text-foreground">{length}</span>
+								<button
+									type="button"
+									onclick={() => changeDayLength(d, 1)}
+									disabled={length >= MAX_PERIODS}
+									aria-label="{dayName}요일 교시 늘리기"
+									class="pressable touch-target w-6 h-6 flex items-center justify-center rounded-full border border-border text-muted-foreground transition-colors duration-150 enabled:pointer:hover:text-foreground enabled:pointer:hover:bg-muted disabled:opacity-40"
+								>+</button>
+							</div>
+						</div>
+					{/each}
+				</div>
+			{/if}
+		</div>
 
 		{#if adminError}
 			<p class="mt-3 text-sm font-semibold text-destructive print:hidden" role="alert">{adminError}</p>
