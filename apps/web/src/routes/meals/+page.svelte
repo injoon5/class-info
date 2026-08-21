@@ -134,7 +134,10 @@ function openMealDrawer(day: MealDay) {
           { days: mealsQuery.data.nextWeek.days, class: "mt-3" }
         ] as week}
         <FluidHeight key={selectedMealType}>
-        <div class={`mb-4 grid grid-cols-5 sm:grid-cols-5 w-full divide-x divide-border border border-border rounded-xl overflow-hidden`}>
+        <!-- minmax(0,1fr): plain 1fr is minmax(auto,1fr), so long nowrap
+             dish names inflate every track past the pan-box floor and the
+             row only shows ~2 oversized cells on a phone. -->
+        <div class="mb-4 grid grid-cols-[repeat(5,minmax(0,1fr))] w-full divide-x divide-border border border-border rounded-xl overflow-hidden">
           {#each week.days as day (day.date)}
             {@const meal = mealFor(day, selectedMealType)}
             {@const hasMeal = !!meal}
@@ -145,21 +148,21 @@ function openMealDrawer(day: MealDay) {
               onclick={() => openMealDrawer(day)}
               disabled={!hasMeal}
               data-display-day={isDisplayCol ? '' : undefined}
-              class="relative p-2.5 sm:px-3 sm:py-3 flex flex-col justify-between min-h-[15rem] text-left w-full transition-colors duration-150
+              class="relative min-w-0 p-2.5 sm:px-3 sm:py-3 flex flex-col justify-between min-h-[15rem] text-left w-full transition-colors duration-150
                 {isDisplayCol ? 'bg-muted/60' : 'bg-card'}
                 {hasMeal ? 'cursor-pointer pointer:hover:bg-muted' : 'cursor-default'}"
             >
-              <div>
-                <h2 class="flex items-baseline gap-1.5 text-sm sm:text-base font-semibold {isDisplayCol ? 'text-foreground' : 'text-muted-foreground'}">
-                  <span class="tabular-nums">{formatDateKorean(day.date)}</span>
+              <div class="min-w-0">
+                <h2 class="flex min-w-0 items-baseline gap-1.5 text-sm sm:text-base font-semibold {isDisplayCol ? 'text-foreground' : 'text-muted-foreground'}">
+                  <span class="tabular-nums truncate">{formatDateKorean(day.date)}</span>
                   {#if dayLabel}
-                    <span class="text-xs font-semibold {dayLabel === '내일' ? 'text-amber-700 dark:text-amber-400' : 'text-muted-foreground'}">{dayLabel}</span>
+                    <span class="shrink-0 text-xs font-semibold {dayLabel === '내일' ? 'text-amber-700 dark:text-amber-400' : 'text-muted-foreground'}">{dayLabel}</span>
                   {/if}
                 </h2>
                 {#if meal}
-                  <ul class="mt-2.5 space-y-1 text-foreground">
+                  <ul class="mt-2.5 min-w-0 space-y-1 text-foreground">
                     {#each meal.dishes as dish}
-                      <li class="text-sm sm:text-list leading-snug truncate max-w-full overflow-hidden whitespace-nowrap" title={dish}>{dish}</li>
+                      <li class="text-sm sm:text-list leading-snug truncate" title={dish}>{dish}</li>
                     {/each}
                   </ul>
                 {:else}
