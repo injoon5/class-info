@@ -292,24 +292,24 @@ async function writeSlot(subject: string, teacher: string) {
 		<EmptyState message={isFull ? '전체 시간표가 아직 없어요' : '시간표가 없어요'} />
 	{:else}
 		<HScroll blurred={blur.blurred}>
-			<!-- Hairlines are the 1px CSS-grid gaps showing this wrapper's
-			     --border fill. Cell borders (and table border-spacing) still
-			     paint at crossings; a grid gap cannot. display:contents on
-			     the rows lets the cells sit in one grid, so a highlighted
-			     column doesn't restyle the line. -->
+			<!-- Same hairline construction as the calendar: a real box per row
+			     (not display:contents — Safari still generates one), border-bottom
+			     on the row, border-right on every cell but the last. Each interior
+			     line is painted once. --grid-line is opaque, so the 1px corner
+			     where they meet cannot alpha-stack into a plus. -->
 			<div
-				class="timetable-grid overflow-hidden print:overflow-visible rounded-xl bg-border min-w-[18rem] mx-auto grid gap-px"
-				style="grid-template-columns: repeat({columns.length + 1}, minmax(0, 1fr))"
+				class="timetable-grid overflow-hidden print:overflow-visible rounded-xl min-w-[18rem] mx-auto"
+				style="--cols: {columns.length + 1}"
 				role="table"
 			>
-				<div role="row" class="contents">
+				<div role="row" class="timetable-row">
 					<div role="columnheader" class="px-1 py-3 bg-muted"><span class="sr-only">교시</span></div>
 					{#each columns as name (name)}
 						<div role="columnheader" class="px-1 py-2.5 text-center text-sm font-semibold sm:text-base text-muted-foreground bg-muted">{name}</div>
 					{/each}
 				</div>
 				{#each Array(maxPeriods) as _, i (i)}
-					<div role="row" class="contents">
+					<div role="row" class="timetable-row">
 						<div role="rowheader" class="px-0.5 py-3 sm:py-6 text-center bg-muted">
 							<div class="text-sm sm:text-lg font-semibold text-foreground whitespace-nowrap">{i + 1}교시</div>
 							{#if hasBellTimes && getPeriodLabel(i + 1)}
@@ -343,7 +343,7 @@ async function writeSlot(subject: string, teacher: string) {
 				<!-- Per-day length. A day is as long as it is: Friday routinely
 				     ends before Monday does. -->
 				{#if canEdit}
-					<div role="row" class="contents print:hidden">
+					<div role="row" class="timetable-row edit-row">
 						<div role="rowheader" class="px-0.5 py-2 text-center bg-muted">
 							<span class="text-xs font-semibold text-muted-foreground">교시 수</span>
 						</div>
@@ -497,3 +497,28 @@ async function writeSlot(subject: string, teacher: string) {
 		</form>
 	{/if}
 </Drawer>
+
+<style>
+	.timetable-grid {
+		border: 1px solid var(--grid-line);
+	}
+	.timetable-row {
+		display: grid;
+		grid-template-columns: repeat(var(--cols), minmax(0, 1fr));
+	}
+	.timetable-row:not(:last-child) {
+		border-bottom: 1px solid var(--grid-line);
+	}
+	.timetable-row > :not(:last-child) {
+		border-right: 1px solid var(--grid-line);
+	}
+
+	@media print {
+		.edit-row {
+			display: none;
+		}
+		.timetable-row:nth-last-child(2):has(+ .edit-row) {
+			border-bottom: none;
+		}
+	}
+</style>
