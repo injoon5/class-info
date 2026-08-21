@@ -4,7 +4,8 @@ import { reducedMotion } from '$lib/transitions';
 // Usage:
 //   const blur = createBlurPulse();
 //   $effect(() => { selectedThing; blur.pulse(); });
-//   <HScroll blurred={blur.blurred}> … </HScroll>
+//   <div style={blur.blurred ? 'filter: blur(4px); …' : ''}> … </div>
+//   (or pass blurred into HScroll where a row still pans)
 //
 // Call this during component initialisation: it registers a teardown so a
 // pulse in flight cannot outlive the component that started it.

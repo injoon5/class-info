@@ -2,7 +2,7 @@
 import { onMount, type Snippet } from 'svelte';
 import { reducedMotion } from '$lib/transitions';
 
-// Horizontally scrollable region shared by timetable / meals / calendar.
+// Horizontally scrollable region shared by meals / calendar.
 //
 // The row runs edge to edge: it cancels the page's own `px-4` gutter with a
 // matching negative margin and re-applies it as padding *inside* the scroll
