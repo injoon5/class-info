@@ -126,15 +126,19 @@ function openMealDrawer(day: MealDay) {
     <HScroll blurred={blur.blurred} anchor="[data-display-day]" hint="좌우로 스크롤하세요">
         <!-- The box HScroll actually pans. FluidHeight clips in Y; without this
              it sized to the port and left the row with nothing to scroll.
-             `max(100%, 37rem)` — not bare min-w — so wide viewports still fill
-             the port the way they did before the iOS pan fix. -->
-        <div class="w-[max(100%,37rem)]">
+             Size against the HScroll port with `cqw` — a `%` width under the
+             port's `w-max` wrapper is cyclic and grows with dish names, so
+             phones only saw ~2 oversized columns. `max(100cqw, 37rem)` keeps
+             the 37rem floor on small screens and fills wide viewports. -->
+        <div class="w-[max(100cqw,37rem)]">
         {#each [
           { days: mealsQuery.data.thisWeek.days, class: "" },
           { days: mealsQuery.data.nextWeek.days, class: "mt-3" }
         ] as week}
         <FluidHeight key={selectedMealType}>
-        <div class={`mb-4 grid grid-cols-5 sm:grid-cols-5 w-full divide-x divide-border border border-border rounded-xl overflow-hidden`}>
+        <!-- min-w-0 on cells: long nowrap dishes must truncate inside the
+             track, not stretch the intrinsic size of the pan box. -->
+        <div class="mb-4 grid grid-cols-5 w-full divide-x divide-border border border-border rounded-xl overflow-hidden">
           {#each week.days as day (day.date)}
             {@const meal = mealFor(day, selectedMealType)}
             {@const hasMeal = !!meal}
@@ -145,21 +149,21 @@ function openMealDrawer(day: MealDay) {
               onclick={() => openMealDrawer(day)}
               disabled={!hasMeal}
               data-display-day={isDisplayCol ? '' : undefined}
-              class="relative p-2.5 sm:px-3 sm:py-3 flex flex-col justify-between min-h-[15rem] text-left w-full transition-colors duration-150
+              class="relative min-w-0 p-2.5 sm:px-3 sm:py-3 flex flex-col justify-between min-h-[15rem] text-left w-full transition-colors duration-150
                 {isDisplayCol ? 'bg-muted/60' : 'bg-card'}
                 {hasMeal ? 'cursor-pointer pointer:hover:bg-muted' : 'cursor-default'}"
             >
-              <div>
-                <h2 class="flex items-baseline gap-1.5 text-sm sm:text-base font-semibold {isDisplayCol ? 'text-foreground' : 'text-muted-foreground'}">
-                  <span class="tabular-nums">{formatDateKorean(day.date)}</span>
+              <div class="min-w-0">
+                <h2 class="flex min-w-0 items-baseline gap-1.5 text-sm sm:text-base font-semibold {isDisplayCol ? 'text-foreground' : 'text-muted-foreground'}">
+                  <span class="tabular-nums truncate">{formatDateKorean(day.date)}</span>
                   {#if dayLabel}
-                    <span class="text-xs font-semibold {dayLabel === '내일' ? 'text-amber-700 dark:text-amber-400' : 'text-muted-foreground'}">{dayLabel}</span>
+                    <span class="shrink-0 text-xs font-semibold {dayLabel === '내일' ? 'text-amber-700 dark:text-amber-400' : 'text-muted-foreground'}">{dayLabel}</span>
                   {/if}
                 </h2>
                 {#if meal}
-                  <ul class="mt-2.5 space-y-1 text-foreground">
+                  <ul class="mt-2.5 min-w-0 space-y-1 text-foreground">
                     {#each meal.dishes as dish}
-                      <li class="text-sm sm:text-list leading-snug truncate max-w-full overflow-hidden whitespace-nowrap" title={dish}>{dish}</li>
+                      <li class="text-sm sm:text-list leading-snug truncate" title={dish}>{dish}</li>
                     {/each}
                   </ul>
                 {:else}
