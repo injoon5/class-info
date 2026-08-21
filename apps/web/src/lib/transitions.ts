@@ -44,7 +44,9 @@ export function tweenMs(duration: number): () => number {
 }
 
 export const tweenMove = { duration: tweenMs(300), easing: expoOut };
-export const tweenPanel = { duration: tweenMs(360), easing: expoOut };
+/** Entrance: panel scale/fade and the desktop scrim tween over this long. */
+export const PANEL_OPEN_MS = 360;
+export const tweenPanel = { duration: tweenMs(PANEL_OPEN_MS), easing: expoOut };
 /** Dismiss: shorter, accelerates off-screen so it doesn't hang at the end. */
 export const PANEL_CLOSE_MS = 180;
 export const tweenPanelClose = { duration: tweenMs(PANEL_CLOSE_MS), easing: cubicIn };
