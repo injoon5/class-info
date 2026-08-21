@@ -1,6 +1,7 @@
 <script lang="ts">
 import { useQuery } from 'convex-svelte';
 import { api } from "@class-info/backend/convex/_generated/api";
+import { CLASS_LABEL, SITE_NAME, SITE_URL } from '@class-info/backend/convex/config';
 import LoadingState from '$lib/components/ui/LoadingState.svelte';
 import ErrorState from '$lib/components/ui/ErrorState.svelte';
 import EmptyState from '$lib/components/ui/EmptyState.svelte';
@@ -88,15 +89,15 @@ function openMealDrawer(day: MealDay) {
 </script>
 
 <svelte:head>
-  <title>급식 - 1학년 3반</title>
+  <title>급식 - {CLASS_LABEL}</title>
   <meta name="description" content="정확한 급식을 한 눈에 확인하세요. " />
-  <meta property="og:title" content="급식 - 1학년 3반" />
+  <meta property="og:title" content="급식 - {CLASS_LABEL}" />
   <meta property="og:description" content="정확한 급식을 한 눈에 확인하세요. " />
-  <meta property="og:url" content="https://timefor.school/meals" />
+  <meta property="og:url" content="{SITE_URL}/meals" />
   <meta property="og:type" content="website" />
-  <meta property="og:site_name" content="TimeforSchool" />
+  <meta property="og:site_name" content={SITE_NAME} />
   <meta name="twitter:card" content="summary_large_image" />
-  <meta name="twitter:title" content="급식 - 1학년 3반" />
+  <meta name="twitter:title" content="급식 - {CLASS_LABEL}" />
   <meta name="twitter:description" content="정확한 급식을 한 눈에 확인하세요. " />
   <meta name="robots" content="noindex" />
 </svelte:head>

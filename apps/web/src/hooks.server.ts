@@ -1,4 +1,5 @@
 import type { Handle } from '@sveltejs/kit';
+import { SITE_NAME } from '@class-info/backend/convex/config';
 
 function htmlToMarkdown(html: string): string {
 	return html
@@ -45,7 +46,11 @@ export const handle: Handle = async ({ event, resolve }) => {
 	const wantsMarkdown = accept.includes('text/markdown');
 	const isAdmin = event.url.pathname === '/admin' || event.url.pathname.startsWith('/admin/');
 
-	const response = await resolve(event);
+	const response = await resolve(event, {
+		// app.html is static markup; %site.name% is our own placeholder (not a
+		// %sveltekit.*% built-in) so branding still comes from config.ts.
+		transformPageChunk: ({ html }) => html.replace(/%site\.name%/g, SITE_NAME)
+	});
 	applySecurityHeaders(response);
 	response.headers.append('Vary', 'Accept');
 

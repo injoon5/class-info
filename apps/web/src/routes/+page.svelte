@@ -1,6 +1,7 @@
 <script lang="ts">
 import { useQuery } from 'convex-svelte';
 import { api } from "@class-info/backend/convex/_generated/api";
+import { CLASS_LABEL, SITE_NAME, SITE_URL } from '@class-info/backend/convex/config';
 import NoticeCard from '$lib/components/notices/NoticeCard.svelte';
 import {
 	addDaysYyyymmdd,
@@ -176,15 +177,15 @@ function isDisplayDayEvent(dateStr: string): boolean {
 </script>
 
 <svelte:head>
-	<title>오늘 - 1학년 3반</title>
+	<title>오늘 - {CLASS_LABEL}</title>
 	<meta name="description" content="오늘의 시간표, 급식, 공지를 한눈에 확인하세요." />
-	<meta property="og:title" content="오늘 - 1학년 3반" />
+	<meta property="og:title" content="오늘 - {CLASS_LABEL}" />
 	<meta property="og:description" content="오늘의 시간표, 급식, 공지를 한눈에 확인하세요." />
-	<meta property="og:url" content="https://timefor.school" />
+	<meta property="og:url" content={SITE_URL} />
 	<meta property="og:type" content="website" />
-	<meta property="og:site_name" content="TimeforSchool" />
+	<meta property="og:site_name" content={SITE_NAME} />
 	<meta name="twitter:card" content="summary_large_image" />
-	<meta name="twitter:title" content="오늘 - 1학년 3반" />
+	<meta name="twitter:title" content="오늘 - {CLASS_LABEL}" />
 	<meta name="twitter:description" content="오늘의 시간표, 급식, 공지를 한눈에 확인하세요." />
 </svelte:head>
 

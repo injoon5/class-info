@@ -31,6 +31,8 @@ const config = {
 					'wss://*.convex.cloud',
 					'https://*.convex.site',
 					'https://collector.onedollarstats.com',
+					// Keep in sync with FILES_BASE_URL in packages/backend/convex/config.ts —
+					// this file can't import that TS module, so it's a manual mirror.
 					'https://files.timefor.school',
 					'https://*.r2.cloudflarestorage.com'
 				],

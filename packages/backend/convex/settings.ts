@@ -6,16 +6,17 @@ import {
   type QueryCtx,
 } from "./_generated/server";
 import type { Doc } from "./_generated/dataModel";
-
-const DEFAULT_PIN = "1234";
-const SESSION_TTL_MS = 24 * 60 * 60 * 1000; // 24 hours
+import {
+  ADMIN_SESSION_TTL_MS as SESSION_TTL_MS,
+  DEFAULT_ADMIN_PIN as DEFAULT_PIN,
+  LOGIN_LOCKOUT_MS as LOCKOUT_MS,
+  LOGIN_MAX_FAILS as MAX_FAILS,
+  LOGIN_WINDOW_MS as WINDOW_MS,
+} from "./config";
 
 // Brute-force throttle: after MAX_FAILS failed attempts within the window, the
 // login endpoint locks out for LOCKOUT_MS. Stored as a JSON blob in `settings`.
 const THROTTLE_KEY = "login_throttle";
-const MAX_FAILS = 5;
-const WINDOW_MS = 15 * 60 * 1000;
-const LOCKOUT_MS = 15 * 60 * 1000;
 const PIN_RE = /^\d{4,8}$/;
 const PBKDF2_ITERS = 100_000;
 const PBKDF2_PREFIX = "pbkdf2$";

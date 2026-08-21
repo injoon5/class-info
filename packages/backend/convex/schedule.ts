@@ -20,6 +20,12 @@ import {
 } from "./dates";
 import { projectSchedule } from "./project";
 import { customEventColor, publicEvent, schoolClockArgs } from "./validators";
+import {
+  HOME_DDAY_LIMIT,
+  HOME_EVENT_WINDOW_DAYS,
+  SCHEDULE_RANGE_MAX_DAYS as RANGE_MAX_DAYS,
+  SCHOOL_API_BASE_URL,
+} from "./config";
 
 type ExternalScheduleEvent = {
   AA_YMD: string; // YYYYMMDD
@@ -101,7 +107,7 @@ async function pullSchoolSchedule(
   enddate: string,
   schoolcode: string
 ): Promise<void> {
-  const url = `https://api.timefor.school/schedule?startdate=${encodeURIComponent(startdate)}&enddate=${encodeURIComponent(enddate)}&schoolcode=${encodeURIComponent(schoolcode)}`;
+  const url = `${SCHOOL_API_BASE_URL}/schedule?startdate=${encodeURIComponent(startdate)}&enddate=${encodeURIComponent(enddate)}&schoolcode=${encodeURIComponent(schoolcode)}`;
 
   const res = await fetch(url, { headers: { Accept: "application/json" } });
   if (!res.ok) {
@@ -184,8 +190,6 @@ export const fetchScheduleWindow = internalAction({
   },
 });
 
-const RANGE_MAX_DAYS = 400;
-
 export const getEventsInRange = query({
   args: { start: v.string(), end: v.string() },
   returns: v.array(publicEvent),
@@ -203,12 +207,6 @@ export const getEventsInRange = query({
     return rows.map(projectSchedule).filter((e): e is NonNullable<typeof e> => e !== null);
   },
 });
-
-// How far past the display day the home page's event list reaches.
-const HOME_EVENT_WINDOW_DAYS = 7;
-
-// The home hero holds a couple of countdowns before it stops being a hero.
-const HOME_DDAY_LIMIT = 3;
 
 // One indexed pass over the schedule, wide enough to answer both questions the
 // home page asks. It reaches a full lookahead *behind* today because a break

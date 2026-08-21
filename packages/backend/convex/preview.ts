@@ -1,7 +1,7 @@
 import { internalAction } from "./_generated/server";
 import { internal } from "./_generated/api";
 import { v } from "convex/values";
-import { SCHOOL } from "./school";
+import { SCHOOL } from "./config";
 
 // Same school the production crons poll. Preview deployments start empty
 // (Convex never clones prod data), so we refill from the public school APIs.

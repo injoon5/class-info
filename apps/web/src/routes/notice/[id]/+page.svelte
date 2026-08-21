@@ -1,6 +1,7 @@
 <script lang="ts">
 import { useQuery } from 'convex-svelte';
 import { api } from "@class-info/backend/convex/_generated/api";
+import { CLASS_LABEL, SITE_NAME } from '@class-info/backend/convex/config';
 import { page } from '$app/state';
 import { noticeTypeClass } from '$lib/notices';
 import { getFirstLine, renderMarkdown } from '$lib/markdown';
@@ -36,14 +37,14 @@ $effect(() => {
 
 <svelte:head>
 	{#if detail.data?.notice}
-		<title>{detail.data.notice.subject} {detail.data.notice.title} | 1-3 학급 공지</title>
+		<title>{detail.data.notice.subject} {detail.data.notice.title} | {CLASS_LABEL} 공지</title>
 		<meta name="description" content="{getFirstLine(detail.data.notice.description) || '공지 내용을 확인하세요!'}" />
 
 		<!-- Open Graph -->
-		<meta property="og:title" content="{detail.data.notice.subject} {detail.data.notice.title} | 1-3 학급 공지" />
+		<meta property="og:title" content="{detail.data.notice.subject} {detail.data.notice.title} | {CLASS_LABEL} 공지" />
 		<meta property="og:description" content="{getFirstLine(detail.data.notice.description) || '공지 내용을 확인하세요!'}" />
 		<meta property="og:type" content="article" />
-		<meta property="og:site_name" content="TimeforSchool" />
+		<meta property="og:site_name" content={SITE_NAME} />
 
 		<!-- Twitter Card -->
 		<meta name="twitter:card" content="summary_large_image" />
