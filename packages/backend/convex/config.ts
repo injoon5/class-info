@@ -72,7 +72,7 @@ export const DINNER_END_HOUR = 19;
 export const HOME_EVENT_WINDOW_DAYS = 7;
 
 // How many D-day countdowns the home hero shows before it stops being a hero.
-export const HOME_DDAY_LIMIT = 3;
+export const HOME_DDAY_LIMIT = 2;
 
 // Long enough to jump a summer break, in both directions: forward to find the
 // next school day, backward to find the 방학 marker that started a break
