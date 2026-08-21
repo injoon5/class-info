@@ -111,14 +111,21 @@ const blurActive = $derived(blurred && !reducedMotion());
 </script>
 
 <div
-	class="overflow-x-auto -mx-4 px-4 print:mx-0 print:px-0"
+	class="h-scroll overflow-x-auto overflow-y-hidden -mx-4 px-4 print:mx-0 print:px-0"
 	bind:this={scrollContainer}
 	onscroll={updateEdges}
-	style="transition: filter 150ms ease-out, opacity 150ms ease-out; {blurActive
-		? 'filter: blur(4px); opacity: 0.7;'
-		: ''}"
 >
-	{@render children()}
+	<!-- Width lives here, not on the port: a `filter` on the same box as
+	     overflow-x kills panning on iOS, and a block child sized to the port
+	     clips any min-width grid inside. -->
+	<div
+		class="w-max min-w-full"
+		style="transition: filter 150ms ease-out, opacity 150ms ease-out; {blurActive
+			? 'filter: blur(4px); opacity: 0.7;'
+			: ''}"
+	>
+		{@render children()}
+	</div>
 </div>
 
 {#if hint && (canScrollBack || canScrollForward)}
@@ -140,3 +147,16 @@ const blurActive = $derived(blurred && !reducedMotion());
 		>
 	</p>
 {/if}
+
+<style>
+	.h-scroll {
+		-webkit-overflow-scrolling: touch;
+		overscroll-behavior-x: contain;
+		/* `manipulation` on button/a (app.css) is enough on Chrome. WebKit
+		   keeps the gesture on the control, so a row of day-cells never pans. */
+		touch-action: pan-x pan-y;
+	}
+	.h-scroll :global(:is(button, a)) {
+		touch-action: pan-x pan-y;
+	}
+</style>

@@ -7,6 +7,10 @@ import { clampWindowScroll, scrollingEl, scrollIsTouchDriven, visibleTop } from 
 // Pixel-clip after first layout so a content swap (spinner → list) can tween
 // height. Parent <details> open/close stays instant.
 //
+// Clip, not `overflow: hidden`. Hidden makes a scroll container, and on iOS a
+// nested scrollport steals pans from an ancestor overflow-x row even when
+// nothing actually overflows this box. `clip` only paints.
+//
 // ResizeObserver follows nested row slides with duration 0. A key-change
 // tween has to win that race: the observer sees the new content immediately
 // and would otherwise snap the clip to the destination before the tween
@@ -143,7 +147,7 @@ $effect(() => {
 
 <div
 	bind:this={outer}
-	class={measured ? 'overflow-hidden' : ''}
+	class={measured ? 'overflow-y-clip' : ''}
 	style:height={measured ? `${height.current}px` : undefined}
 >
 	<div bind:this={inner} class="flow-root">
