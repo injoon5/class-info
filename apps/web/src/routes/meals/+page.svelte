@@ -8,6 +8,7 @@ import EmptyState from '$lib/components/ui/EmptyState.svelte';
 import Drawer from '$lib/components/ui/Drawer.svelte';
 import HScroll from '$lib/components/ui/HScroll.svelte';
 import SegmentedControl from '$lib/components/ui/SegmentedControl.svelte';
+import FluidHeight from '$lib/components/ui/FluidHeight.svelte';
 import { createBlurPulse } from '$lib/blurPulse.svelte';
 import { relativeDayLabel } from '$lib/date';
 import type { MealDay, PublicMeal } from '@class-info/backend/convex/validators';
@@ -127,6 +128,7 @@ function openMealDrawer(day: MealDay) {
           { days: mealsQuery.data.thisWeek.days, class: "" },
           { days: mealsQuery.data.nextWeek.days, class: "mt-3" }
         ] as week}
+        <FluidHeight key={selectedMealType}>
         <div class={`mb-4 grid grid-cols-5 sm:grid-cols-5 min-w-[37rem] divide-x divide-border border border-border rounded-xl overflow-hidden`}>
           {#each week.days as day (day.date)}
             {@const meal = mealFor(day, selectedMealType)}
@@ -168,6 +170,7 @@ function openMealDrawer(day: MealDay) {
             </button>
           {/each}
         </div>
+        </FluidHeight>
         {/each}
     </HScroll>
   {/if}
