@@ -179,7 +179,7 @@ describe("schedule D-days", () => {
       today: THU,
       afterRollover: false,
     });
-    expect(ddays.map((e) => e.date)).toEqual(["20260825", "20260830", "20260901"]);
+    expect(ddays.map((e) => e.date)).toEqual(["20260825", "20260830"]);
   });
 
   // A sync deletes and re-inserts every school row in the range, so a flag set

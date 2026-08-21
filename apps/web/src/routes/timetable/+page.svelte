@@ -147,7 +147,9 @@ function getPeriodLabel(period: number): string {
 
 // Padding lives on the inner box, not the cell, so the editing button can fill
 // the cell and still measure the same as the static view. The substituted wash
-// lives there too, compositing onto --card instead of the gap's --border fill.
+// lives on the cell itself — the inner box only sizes to its content, so a
+// dash next to a two-line subject would otherwise leave a --card gap at the
+// bottom of the row.
 const CELL_PAD = 'py-3 sm:py-6 px-1';
 const REPLACED_BG = 'bg-amber-100/70 dark:bg-amber-900/20';
 
@@ -321,7 +323,7 @@ async function writeSlot(subject: string, teacher: string) {
 							<div
 								role="cell"
 								data-replaced={slot?.replaced ? '' : undefined}
-								class="p-0 text-center bg-card"
+								class="p-0 text-center flex flex-col {slot?.replaced ? REPLACED_BG : 'bg-card'}"
 							>
 								<!-- The whole cell is the hit area while editing, so what
 								     is pressed is exactly what opens. -->
@@ -330,10 +332,10 @@ async function writeSlot(subject: string, teacher: string) {
 										type="button"
 										onclick={() => openSlotEditor(d, i + 1)}
 										aria-label="{dayName}요일 {i + 1}교시 수정"
-										class="block w-full {CELL_PAD} cursor-pointer transition-colors duration-150 pointer:hover:bg-muted {slot?.replaced ? REPLACED_BG : ''}"
+										class="block w-full flex-1 {CELL_PAD} cursor-pointer transition-colors duration-150 pointer:hover:bg-muted"
 									>{@render cell(slot)}</button>
 								{:else}
-									<div class="{CELL_PAD} {slot?.replaced ? REPLACED_BG : ''}">{@render cell(slot)}</div>
+									<div class="flex-1 {CELL_PAD}">{@render cell(slot)}</div>
 								{/if}
 							</div>
 						{/each}
