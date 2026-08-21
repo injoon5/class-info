@@ -125,14 +125,16 @@ function openMealDrawer(day: MealDay) {
     {/if}
     <HScroll blurred={blur.blurred} anchor="[data-display-day]" hint="좌우로 스크롤하세요">
         <!-- The box HScroll actually pans. FluidHeight clips in Y; without this
-             it sized to the port and left the row with nothing to scroll. -->
-        <div class="min-w-[37rem]">
+             it sized to the port and left the row with nothing to scroll.
+             `max(100%, 37rem)` — not bare min-w — so wide viewports still fill
+             the port the way they did before the iOS pan fix. -->
+        <div class="w-[max(100%,37rem)]">
         {#each [
           { days: mealsQuery.data.thisWeek.days, class: "" },
           { days: mealsQuery.data.nextWeek.days, class: "mt-3" }
         ] as week}
         <FluidHeight key={selectedMealType}>
-        <div class={`mb-4 grid grid-cols-5 sm:grid-cols-5 min-w-[37rem] divide-x divide-border border border-border rounded-xl overflow-hidden`}>
+        <div class={`mb-4 grid grid-cols-5 sm:grid-cols-5 w-full divide-x divide-border border border-border rounded-xl overflow-hidden`}>
           {#each week.days as day (day.date)}
             {@const meal = mealFor(day, selectedMealType)}
             {@const hasMeal = !!meal}
