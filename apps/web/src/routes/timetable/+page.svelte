@@ -292,85 +292,85 @@ async function writeSlot(subject: string, teacher: string) {
 		<EmptyState message={isFull ? '전체 시간표가 아직 없어요' : '시간표가 없어요'} />
 	{:else}
 		<HScroll blurred={blur.blurred}>
-			<!-- Hairlines are the 1px gaps showing this wrapper's --border fill.
-			     Cell borders (and border-collapse) paint twice at every crossing;
-			     --border is translucent in dark mode, so that reads as a bright
-			     plus. A single background in the gap cannot stack. -->
-			<div class="overflow-hidden print:overflow-visible rounded-xl bg-border min-w-[18rem] mx-auto">
-				<table class="w-full table-fixed border-separate border-spacing-px">
-				<thead>
-					<tr>
-						<th scope="col" class="px-1 py-3 bg-muted"><span class="sr-only">교시</span></th>
-						{#each columns as name}
-							<th scope="col" class="px-1 py-2.5 text-center text-sm font-semibold sm:text-base text-muted-foreground bg-muted">{name}</th>
-						{/each}
-					</tr>
-				</thead>
-				<tbody>
-					{#each Array(maxPeriods) as _, i}
-						<tr>
-							<th scope="row" class="px-0.5 py-3 sm:py-6 text-center font-normal bg-muted">
-								<div class="text-sm sm:text-lg font-semibold text-foreground whitespace-nowrap">{i + 1}교시</div>
-								{#if hasBellTimes && getPeriodLabel(i + 1)}
-									<div class="text-[11px] sm:text-base text-muted-foreground tabular-nums leading-tight">{getPeriodLabel(i + 1)}</div>
-								{/if}
-							</th>
-							{#each columns as dayName, d}
-								{@const slot = byPeriod[d]?.get(i + 1)}
-								<td
-									data-replaced={slot?.replaced ? '' : undefined}
-									class="p-0 text-center bg-card"
-								>
-									<!-- The whole cell is the hit area while editing, so what
-									     is pressed is exactly what opens. -->
-									{#if canEdit}
-										<button
-											type="button"
-											onclick={() => openSlotEditor(d, i + 1)}
-											aria-label="{dayName}요일 {i + 1}교시 수정"
-											class="block w-full {CELL_PAD} cursor-pointer transition-colors duration-150 pointer:hover:bg-muted {slot?.replaced ? REPLACED_BG : ''}"
-										>{@render cell(slot)}</button>
-									{:else}
-										<div class="{CELL_PAD} {slot?.replaced ? REPLACED_BG : ''}">{@render cell(slot)}</div>
-									{/if}
-								</td>
-							{/each}
-						</tr>
+			<!-- Hairlines are the 1px CSS-grid gaps showing this wrapper's
+			     --border fill. Cell borders (and table border-spacing) still
+			     paint at crossings; a grid gap cannot. display:contents on
+			     the rows lets the cells sit in one grid, so a highlighted
+			     column doesn't restyle the line. -->
+			<div
+				class="timetable-grid overflow-hidden print:overflow-visible rounded-xl bg-border min-w-[18rem] mx-auto grid gap-px"
+				style="grid-template-columns: repeat({columns.length + 1}, minmax(0, 1fr))"
+				role="table"
+			>
+				<div role="row" class="contents">
+					<div role="columnheader" class="px-1 py-3 bg-muted"><span class="sr-only">교시</span></div>
+					{#each columns as name (name)}
+						<div role="columnheader" class="px-1 py-2.5 text-center text-sm font-semibold sm:text-base text-muted-foreground bg-muted">{name}</div>
 					{/each}
+				</div>
+				{#each Array(maxPeriods) as _, i (i)}
+					<div role="row" class="contents">
+						<div role="rowheader" class="px-0.5 py-3 sm:py-6 text-center bg-muted">
+							<div class="text-sm sm:text-lg font-semibold text-foreground whitespace-nowrap">{i + 1}교시</div>
+							{#if hasBellTimes && getPeriodLabel(i + 1)}
+								<div class="text-[11px] sm:text-base text-muted-foreground tabular-nums leading-tight">{getPeriodLabel(i + 1)}</div>
+							{/if}
+						</div>
+						{#each columns as dayName, d (dayName)}
+							{@const slot = byPeriod[d]?.get(i + 1)}
+							<div
+								role="cell"
+								data-replaced={slot?.replaced ? '' : undefined}
+								class="p-0 text-center bg-card"
+							>
+								<!-- The whole cell is the hit area while editing, so what
+								     is pressed is exactly what opens. -->
+								{#if canEdit}
+									<button
+										type="button"
+										onclick={() => openSlotEditor(d, i + 1)}
+										aria-label="{dayName}요일 {i + 1}교시 수정"
+										class="block w-full {CELL_PAD} cursor-pointer transition-colors duration-150 pointer:hover:bg-muted {slot?.replaced ? REPLACED_BG : ''}"
+									>{@render cell(slot)}</button>
+								{:else}
+									<div class="{CELL_PAD} {slot?.replaced ? REPLACED_BG : ''}">{@render cell(slot)}</div>
+								{/if}
+							</div>
+						{/each}
+					</div>
+				{/each}
 
-					<!-- Per-day length. A day is as long as it is: Friday routinely
-					     ends before Monday does. -->
-					{#if canEdit}
-						<tr class="print:hidden">
-							<th scope="row" class="px-0.5 py-2 text-center bg-muted">
-								<span class="text-xs font-semibold text-muted-foreground">교시 수</span>
-							</th>
-							{#each columns as dayName, d}
-								{@const length = days[d]?.length ?? 0}
-								<td class="bg-card px-1 py-2">
-									<div class="flex items-center justify-center gap-1">
-										<button
-											type="button"
-											onclick={() => changeDayLength(d, -1)}
-											disabled={length <= 0}
-											aria-label="{dayName}요일 교시 줄이기"
-											class="pressable touch-target w-6 h-6 flex items-center justify-center rounded-full border border-border text-muted-foreground transition-colors duration-150 enabled:pointer:hover:text-foreground enabled:pointer:hover:bg-muted disabled:opacity-40"
-										>−</button>
-										<span class="w-5 text-center text-sm font-semibold tabular-nums text-foreground">{length}</span>
-										<button
-											type="button"
-											onclick={() => changeDayLength(d, 1)}
-											disabled={length >= MAX_PERIODS}
-											aria-label="{dayName}요일 교시 늘리기"
-											class="pressable touch-target w-6 h-6 flex items-center justify-center rounded-full border border-border text-muted-foreground transition-colors duration-150 enabled:pointer:hover:text-foreground enabled:pointer:hover:bg-muted disabled:opacity-40"
-										>+</button>
-									</div>
-								</td>
-							{/each}
-						</tr>
-					{/if}
-				</tbody>
-			</table>
+				<!-- Per-day length. A day is as long as it is: Friday routinely
+				     ends before Monday does. -->
+				{#if canEdit}
+					<div role="row" class="contents print:hidden">
+						<div role="rowheader" class="px-0.5 py-2 text-center bg-muted">
+							<span class="text-xs font-semibold text-muted-foreground">교시 수</span>
+						</div>
+						{#each columns as dayName, d (dayName)}
+							{@const length = days[d]?.length ?? 0}
+							<div role="cell" class="bg-card px-1 py-2">
+								<div class="flex items-center justify-center gap-1">
+									<button
+										type="button"
+										onclick={() => changeDayLength(d, -1)}
+										disabled={length <= 0}
+										aria-label="{dayName}요일 교시 줄이기"
+										class="pressable touch-target w-6 h-6 flex items-center justify-center rounded-full border border-border text-muted-foreground transition-colors duration-150 enabled:pointer:hover:text-foreground enabled:pointer:hover:bg-muted disabled:opacity-40"
+									>−</button>
+									<span class="w-5 text-center text-sm font-semibold tabular-nums text-foreground">{length}</span>
+									<button
+										type="button"
+										onclick={() => changeDayLength(d, 1)}
+										disabled={length >= MAX_PERIODS}
+										aria-label="{dayName}요일 교시 늘리기"
+										class="pressable touch-target w-6 h-6 flex items-center justify-center rounded-full border border-border text-muted-foreground transition-colors duration-150 enabled:pointer:hover:text-foreground enabled:pointer:hover:bg-muted disabled:opacity-40"
+									>+</button>
+								</div>
+							</div>
+						{/each}
+					</div>
+				{/if}
 			</div>
 		</HScroll>
 

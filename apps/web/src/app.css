@@ -367,11 +367,12 @@ select:focus-visible {
 		border-radius: 0 !important;
 	}
 
-	/* Close the frame: the outer edge should read like the lines inside it.
-	   overflow-hidden was the rounded clip. Screen hairlines are the 1px
-	   border-spacing gaps showing --border; keep that here rather than
-	   painting a border on every cell, which stacks at crossings. CSS grids
-	   (calendar, meals) already draw theirs on the wrapper. */
+	/* Hairlines are the 1px gaps of .timetable-grid showing --border. Don't
+	   paint a border on every cell — that stacks at crossings. */
+	.timetable-grid {
+		overflow: visible !important;
+		background-color: var(--border) !important;
+	}
 	table {
 		overflow: visible !important;
 		border: none !important;
@@ -385,17 +386,20 @@ select:focus-visible {
 	/* A substituted lesson is styled with hardcoded amber utilities including a
 	   dark: variant, which the token override above cannot reach — so printing
 	   from a dark browser put pale yellow on beige. Restate the light values. */
-	td[data-replaced] {
+	[data-replaced] {
 		background-color: #fef7d8 !important;
 	}
-	td[data-replaced] > div:first-child {
+	[data-replaced] > div:first-child {
 		color: #b45309 !important;
 	}
 
 	/* Never split a row across sheets. */
 	tr,
 	td,
-	th {
+	th,
+	.timetable-grid [role='cell'],
+	.timetable-grid [role='rowheader'],
+	.timetable-grid [role='columnheader'] {
 		break-inside: avoid;
 	}
 	thead {
