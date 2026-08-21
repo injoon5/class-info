@@ -368,17 +368,18 @@ select:focus-visible {
 	}
 
 	/* Close the frame: the outer edge should read like the lines inside it.
-	   overflow-hidden was the rounded clip — without it the collapsed borders
-	   reach the edge. The same 1px on the table and every cell gives the grid
-	   a continuous matching edge; CSS grids (calendar, meals) already draw
-	   theirs on the wrapper. */
+	   overflow-hidden was the rounded clip. Screen hairlines are the 1px
+	   border-spacing gaps showing --border; keep that here rather than
+	   painting a border on every cell, which stacks at crossings. CSS grids
+	   (calendar, meals) already draw theirs on the wrapper. */
 	table {
 		overflow: visible !important;
-		border: 1px solid var(--border) !important;
+		border: none !important;
+		background-color: var(--border) !important;
 	}
 	table th,
 	table td {
-		border: 1px solid var(--border) !important;
+		border: none !important;
 	}
 
 	/* A substituted lesson is styled with hardcoded amber utilities including a

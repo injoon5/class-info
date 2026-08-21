@@ -146,8 +146,10 @@ function getPeriodLabel(period: number): string {
 }
 
 // Padding lives on the inner box, not the cell, so the editing button can fill
-// the cell and still measure the same as the static view.
+// the cell and still measure the same as the static view. The substituted wash
+// lives there too, compositing onto --card instead of the gap's --border fill.
 const CELL_PAD = 'py-3 sm:py-6 px-1';
+const REPLACED_BG = 'bg-amber-100/70 dark:bg-amber-900/20';
 
 // ── Admin: snapshot a fetched week into the standing timetable ───────────────
 
@@ -290,19 +292,24 @@ async function writeSlot(subject: string, teacher: string) {
 		<EmptyState message={isFull ? '전체 시간표가 아직 없어요' : '시간표가 없어요'} />
 	{:else}
 		<HScroll blurred={blur.blurred}>
-				<table class="w-full min-w-[18rem] table-fixed border border-border border-collapse overflow-hidden rounded-xl mx-auto">
+			<!-- Hairlines are the 1px gaps showing this wrapper's --border fill.
+			     Cell borders (and border-collapse) paint twice at every crossing;
+			     --border is translucent in dark mode, so that reads as a bright
+			     plus. A single background in the gap cannot stack. -->
+			<div class="overflow-hidden print:overflow-visible rounded-xl bg-border min-w-[18rem] mx-auto">
+				<table class="w-full table-fixed border-separate border-spacing-px">
 				<thead>
-					<tr class="bg-muted">
-						<th scope="col" class="px-1 py-3 border border-border"><span class="sr-only">교시</span></th>
+					<tr>
+						<th scope="col" class="px-1 py-3 bg-muted"><span class="sr-only">교시</span></th>
 						{#each columns as name}
-							<th scope="col" class="px-1 py-2.5 text-center text-sm font-semibold sm:text-base text-muted-foreground border border-border">{name}</th>
+							<th scope="col" class="px-1 py-2.5 text-center text-sm font-semibold sm:text-base text-muted-foreground bg-muted">{name}</th>
 						{/each}
 					</tr>
 				</thead>
 				<tbody>
 					{#each Array(maxPeriods) as _, i}
 						<tr>
-							<th scope="row" class="px-0.5 py-3 sm:py-6 border border-border text-center font-normal bg-muted">
+							<th scope="row" class="px-0.5 py-3 sm:py-6 text-center font-normal bg-muted">
 								<div class="text-sm sm:text-lg font-semibold text-foreground whitespace-nowrap">{i + 1}교시</div>
 								{#if hasBellTimes && getPeriodLabel(i + 1)}
 									<div class="text-[11px] sm:text-base text-muted-foreground tabular-nums leading-tight">{getPeriodLabel(i + 1)}</div>
@@ -312,7 +319,7 @@ async function writeSlot(subject: string, teacher: string) {
 								{@const slot = byPeriod[d]?.get(i + 1)}
 								<td
 									data-replaced={slot?.replaced ? '' : undefined}
-									class="border border-border p-0 text-center {slot?.replaced ? 'bg-amber-100/70 dark:bg-amber-900/20' : 'bg-card'}"
+									class="p-0 text-center bg-card"
 								>
 									<!-- The whole cell is the hit area while editing, so what
 									     is pressed is exactly what opens. -->
@@ -321,10 +328,10 @@ async function writeSlot(subject: string, teacher: string) {
 											type="button"
 											onclick={() => openSlotEditor(d, i + 1)}
 											aria-label="{dayName}요일 {i + 1}교시 수정"
-											class="block w-full {CELL_PAD} cursor-pointer transition-colors duration-150 pointer:hover:bg-muted"
+											class="block w-full {CELL_PAD} cursor-pointer transition-colors duration-150 pointer:hover:bg-muted {slot?.replaced ? REPLACED_BG : ''}"
 										>{@render cell(slot)}</button>
 									{:else}
-										<div class="{CELL_PAD}">{@render cell(slot)}</div>
+										<div class="{CELL_PAD} {slot?.replaced ? REPLACED_BG : ''}">{@render cell(slot)}</div>
 									{/if}
 								</td>
 							{/each}
@@ -335,12 +342,12 @@ async function writeSlot(subject: string, teacher: string) {
 					     ends before Monday does. -->
 					{#if canEdit}
 						<tr class="print:hidden">
-							<th scope="row" class="px-0.5 py-2 border border-border text-center bg-muted">
+							<th scope="row" class="px-0.5 py-2 text-center bg-muted">
 								<span class="text-xs font-semibold text-muted-foreground">교시 수</span>
 							</th>
 							{#each columns as dayName, d}
 								{@const length = days[d]?.length ?? 0}
-								<td class="border border-border bg-card px-1 py-2">
+								<td class="bg-card px-1 py-2">
 									<div class="flex items-center justify-center gap-1">
 										<button
 											type="button"
@@ -364,6 +371,7 @@ async function writeSlot(subject: string, teacher: string) {
 					{/if}
 				</tbody>
 			</table>
+			</div>
 		</HScroll>
 
 		{#if adminError}
