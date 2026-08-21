@@ -40,33 +40,24 @@ onMount(() => {
 const blur = createBlurPulse();
 $effect(() => { selectedTab; blur.pulse(); });
 
-// One query per week, not one query whose args follow the tab. On 전체,
-// selectedWeek collapses to 0, so a shared query with keepPreviousData would
-// still be holding this week's row — and paint it for a frame when jumping
-// to 다음 주.
-const thisWeekQuery = useQuery(api.timetable.getByWeek, () => ({ week: 0 as const }));
-const nextWeekQuery = useQuery(api.timetable.getByWeek, () => ({ week: 1 as const }));
+// keepPreviousData is wrong here: on 전체, selectedWeek is 0, so the
+// previous result is this week — jumping to 다음 주 would paint it until
+// week 1 arrives. The gap is the server load, which already has both weeks.
+const timetableQuery = useQuery(api.timetable.getByWeek, () => ({ week: selectedWeek }));
 const fullQuery = useQuery(api.timetable.getFull, () => ({}));
 
 // convex-svelte tests `initialData` for truthiness, so it cannot carry the
 // `null` that means "nothing stored yet" — a page whose server load already
 // answered `null` would sit on a spinner until the socket connected. Hold the
 // server's answer here instead and let the live result replace it.
-const thisWeekData = $derived(
-	thisWeekQuery.data !== undefined ? thisWeekQuery.data : data.timetable
-);
-const nextWeekData = $derived(
-	nextWeekQuery.data !== undefined ? nextWeekQuery.data : data.nextWeek
-);
-const weekData = $derived(selectedWeek === 1 ? nextWeekData : thisWeekData);
+const serverWeek = $derived(selectedWeek === 1 ? data.nextWeek : data.timetable);
+const weekData = $derived(timetableQuery.data !== undefined ? timetableQuery.data : serverWeek);
 const fullData = $derived(fullQuery.data !== undefined ? fullQuery.data : data.full);
 
 // Undefined means neither source has answered yet; null is an answer.
 const pending = $derived(isFull ? fullData === undefined : weekData === undefined);
 const queryError = $derived(
-	pending
-		? (isFull ? fullQuery.error : selectedWeek === 1 ? nextWeekQuery.error : thisWeekQuery.error)
-		: undefined
+	pending ? (isFull ? fullQuery.error : timetableQuery.error) : undefined
 );
 
 // Saturday only ever appears when the timetable source published it, so the
