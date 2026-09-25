@@ -89,7 +89,8 @@ html {
 		margin: 0;
 		min-height: 100vh;
 		min-width: 320px;
-		padding-top: env(safe-area-inset-top);
+		/* Top inset belongs to the sticky header, so it also clears the status
+		   bar once scrolled; body padding would scroll away beneath it. */
 		padding-bottom: env(safe-area-inset-bottom);
 		padding-left: env(safe-area-inset-left);
 		padding-right: env(safe-area-inset-right);

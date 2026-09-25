@@ -114,11 +114,13 @@ Run this again (with `--prod`) after your first production deploy.
   the PWA home-screen title (via a `%site.name%` placeholder in `app.html`
   that `hooks.server.ts` fills in at request time), and every page's
   `<title>`/OpenGraph/Twitter Card tags.
-- `apps/web/static/` holds the actual image assets — favicons, apple-touch
-  icons, splash screens. Regenerate/replace those with your own branding — a
-  favicon generator that outputs the same filenames is the fastest path.
-  `apps/web/src/app.html` itself shouldn't need edits beyond what's already
-  templated.
+- Icons and iOS startup images come from one mark. Replace
+  `apps/web/scripts/brand-mark.png` (a greyscale coverage mask: white is the
+  mark) and `apps/web/static/apple-touch-icon.png` (180×180, opaque), adjust
+  the colours at the top of `apps/web/scripts/generate-app-assets.py` if your
+  palette differs, then run it (`pip install pillow` first). It rewrites the
+  startup images, their `<link>` tags in `app.html`, and the manifest icons.
+  Replace `favicon.ico`/`favicon.png` by hand.
 - The four notice categories (수행평가/숙제/준비물/기타) are a schema-level
   enum, not a config value — see `packages/backend/convex/schema.ts`
   (`notices.type`) if you want to change them. That's a real schema change:

@@ -118,8 +118,7 @@
 </script>
     <a href="#main" class="sr-only focus:not-sr-only focus:fixed focus:z-[1000] focus:top-2 focus:left-2 focus:bg-primary focus:text-primary-foreground focus:px-3 focus:py-2 focus:rounded-lg">본문으로 건너뛰기</a>
 
-	<!-- Global Header -->
-	<header class="sticky top-0 z-30 bg-background border-b border-border">
+	<header class="sticky top-0 z-30 pt-(--sat) bg-background border-b border-border">
 		<div class="max-w-4xl mx-auto flex items-center justify-between gap-3 px-4 h-14">
 			<a href="/" class="shrink-0 pressable" aria-label="홈" data-sveltekit-preload-data="hover">
 				<span class="text-xl font-bold tracking-tight text-foreground">{SITE_NAME}</span>

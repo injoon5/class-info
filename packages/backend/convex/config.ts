@@ -28,10 +28,9 @@ export const SCHOOL = {
 export const SCHOOL_API_BASE_URL = "https://api.timefor.school";
 
 // ── Branding ─────────────────────────────────────────────────────────────
-// Shown in the header, the PWA home-screen title, and page <title>/OpenGraph
-// tags. The favicons, splash screens, and `apple-mobile-web-app-title` in
-// apps/web/src/app.html are static assets/markup and need to be swapped by
-// hand — see SETUP.md.
+// Shown in the header, the Home Screen name (web app manifest and
+// `apple-mobile-web-app-title`), and page <title>/OpenGraph tags. Icons and
+// startup images are generated separately — see SETUP.md.
 export const SITE_NAME = "TimeforSchool";
 
 // Canonical production URL, used in absolute OpenGraph `og:url` tags. No

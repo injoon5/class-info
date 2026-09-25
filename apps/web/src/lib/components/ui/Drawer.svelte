@@ -79,6 +79,7 @@ function springPanelY(
 let panelEl = $state<HTMLElement | undefined>();
 let contentEl = $state<HTMLElement | undefined>();
 let backdropEl = $state<HTMLElement | undefined>();
+let stripEl = $state<HTMLElement | undefined>();
 let wrapperEl = $state<HTMLElement | undefined>();
 
 let isMobile = $state(true);
@@ -125,6 +126,12 @@ const panelStyle = $derived(
       : `transform: translateY(0px) scale(${panelScale.current}); opacity: ${panelOpacity.current}`
 );
 
+// Inline opacity for the scrim and its status-bar strip while a drag owns them.
+function setScrimStyle(opacity: string) {
+  if (backdropEl) backdropEl.style.opacity = opacity;
+  if (stripEl) stripEl.style.opacity = opacity;
+}
+
 let dragFrame = 0;
 function paintDrag() {
   dragFrame = 0;
@@ -134,9 +141,7 @@ function paintDrag() {
       ? `translateY(${dragY}px)`
       : `translateY(${dragY}px) scale(1)`;
   }
-  if (backdropEl) {
-    backdropEl.style.opacity = String(Math.max(0, 1 - Math.max(0, dragY) / panelHeight));
-  }
+  setScrimStyle(String(Math.max(0, 1 - Math.max(0, dragY) / panelHeight)));
 }
 function scheduleDragPaint() {
   if (!dragFrame) dragFrame = requestAnimationFrame(paintDrag);
@@ -164,7 +169,7 @@ async function close(velocity = 0) {
   isDragging = false;
   isVisible = false;
   if (panelEl) panelEl.style.transform = '';
-  if (backdropEl) backdropEl.style.opacity = '';
+  setScrimStyle('');
   (document.activeElement instanceof HTMLElement ? document.activeElement : null)?.blur();
   // Re-measure: the panel may have grown since it opened.
   if (panelEl) panelHeight = panelEl.offsetHeight;
@@ -287,6 +292,18 @@ $effect(() => {
   return () => {
     if (opener?.isConnected) opener.focus({ preventScroll: true });
   };
+});
+
+// iOS scrolls the page behind a fixed backdrop, whatever body overflow says.
+// Single-finger moves on the scrim are swallowed; pinch zoom still passes.
+$effect(() => {
+  const el = backdropEl;
+  if (!el) return;
+  const block = (e: TouchEvent) => {
+    if (e.touches.length === 1) e.preventDefault();
+  };
+  el.addEventListener('touchmove', block, { passive: false });
+  return () => el.removeEventListener('touchmove', block);
 });
 
 // Escape closes from anywhere, not only while focus is inside the panel.
@@ -413,7 +430,7 @@ function startDrag(y: number) {
       ? `translateY(${panelY}px)`
       : `translateY(0px) scale(1)`;
   }
-  if (backdropEl) backdropEl.style.opacity = String(scrimValue);
+  setScrimStyle(String(scrimValue));
   return true;
 }
 
@@ -446,7 +463,7 @@ function endDrag() {
   dragOffset = 0;
   samples = [];
   if (panelEl) panelEl.style.transform = '';
-  if (backdropEl) backdropEl.style.opacity = '';
+  setScrimStyle('');
   isDragging = false;
 
   // Decide on where the throw is heading, not where the finger stopped, so an
@@ -615,6 +632,15 @@ function onPanelKeydown(e: KeyboardEvent) {
     role="presentation"
     onclick={() => close()}
   ></div>
+  <!-- Safari tints its status bar from the sticky header and keeps that tint
+       under a full-screen dim. This edge strip is the header's colour with the
+       dim applied, so the bar darkens with the page. Clicks fall through. -->
+  <div
+    bind:this={stripEl}
+    class="status-strip fixed inset-x-0 top-0 h-2 z-50 pointer-events-none"
+    style={isDragging ? '' : `opacity: ${scrimValue}`}
+    aria-hidden="true"
+  ></div>
 
   <div
     bind:this={wrapperEl}
@@ -664,13 +690,13 @@ function onPanelKeydown(e: KeyboardEvent) {
       <div
         bind:this={contentEl}
         onscroll={onContentScroll}
-        class="flex-1 overflow-y-auto overscroll-contain px-4 py-4 min-h-0"
+        class="flex-1 overflow-y-auto overscroll-contain px-4 pt-4 min-h-0 {footer ? 'pb-4' : 'pb-safe'}"
       >
         {@render children()}
       </div>
 
       {#if footer}
-        <div class="flex-shrink-0 border-t border-border px-4 py-4">
+        <div class="flex-shrink-0 border-t border-border px-4 pt-4 pb-safe">
           {@render footer()}
         </div>
       {/if}
@@ -678,3 +704,16 @@ function onPanelKeydown(e: KeyboardEvent) {
     </div>
   </div>
 {/if}
+
+<style>
+  /* The sheet's last section clears the home indicator (0 on a centred dialog). */
+  .pb-safe {
+    padding-bottom: calc(1rem + var(--sab));
+  }
+  .status-strip {
+    background: color-mix(in srgb, var(--background) 60%, black);
+  }
+  :global(.dark) .status-strip {
+    background: color-mix(in srgb, var(--background) 40%, black);
+  }
+</style>
