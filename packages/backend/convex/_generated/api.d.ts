@@ -9,19 +9,14 @@
  */
 
 import type * as auth from "../auth.js";
-import type * as config from "../config.js";
 import type * as crons from "../crons.js";
 import type * as dates from "../dates.js";
 import type * as files from "../files.js";
 import type * as meals from "../meals.js";
 import type * as notices from "../notices.js";
-import type * as preview from "../preview.js";
-import type * as project from "../project.js";
 import type * as schedule from "../schedule.js";
 import type * as settings from "../settings.js";
-import type * as text from "../text.js";
 import type * as timetable from "../timetable.js";
-import type * as validators from "../validators.js";
 
 import type {
   ApiFromModules,
@@ -29,49 +24,159 @@ import type {
   FunctionReference,
 } from "convex/server";
 
-declare const fullApi: ApiFromModules<{
-  auth: typeof auth;
-  config: typeof config;
-  crons: typeof crons;
-  dates: typeof dates;
-  files: typeof files;
-  meals: typeof meals;
-  notices: typeof notices;
-  preview: typeof preview;
-  project: typeof project;
-  schedule: typeof schedule;
-  settings: typeof settings;
-  text: typeof text;
-  timetable: typeof timetable;
-  validators: typeof validators;
-}>;
-
 /**
- * A utility for referencing Convex functions in your app's public API.
+ * A utility for referencing Convex functions in your app's API.
  *
  * Usage:
  * ```js
  * const myFunctionReference = api.myModule.myFunction;
  * ```
  */
+declare const fullApi: ApiFromModules<{
+  auth: typeof auth;
+  crons: typeof crons;
+  dates: typeof dates;
+  files: typeof files;
+  meals: typeof meals;
+  notices: typeof notices;
+  schedule: typeof schedule;
+  settings: typeof settings;
+  timetable: typeof timetable;
+}>;
+declare const fullApiWithMounts: typeof fullApi;
+
 export declare const api: FilterApi<
-  typeof fullApi,
+  typeof fullApiWithMounts,
   FunctionReference<any, "public">
 >;
-
-/**
- * A utility for referencing Convex functions in your app's internal API.
- *
- * Usage:
- * ```js
- * const myFunctionReference = internal.myModule.myFunction;
- * ```
- */
 export declare const internal: FilterApi<
-  typeof fullApi,
+  typeof fullApiWithMounts,
   FunctionReference<any, "internal">
 >;
 
 export declare const components: {
-  r2: import("@convex-dev/r2/_generated/component.js").ComponentApi<"r2">;
+  r2: {
+    lib: {
+      deleteMetadata: FunctionReference<
+        "mutation",
+        "internal",
+        { bucket: string; key: string },
+        null
+      >;
+      deleteObject: FunctionReference<
+        "mutation",
+        "internal",
+        {
+          accessKeyId: string;
+          bucket: string;
+          endpoint: string;
+          key: string;
+          secretAccessKey: string;
+        },
+        null
+      >;
+      deleteR2Object: FunctionReference<
+        "action",
+        "internal",
+        {
+          accessKeyId: string;
+          bucket: string;
+          endpoint: string;
+          key: string;
+          secretAccessKey: string;
+        },
+        null
+      >;
+      getMetadata: FunctionReference<
+        "query",
+        "internal",
+        {
+          accessKeyId: string;
+          bucket: string;
+          endpoint: string;
+          key: string;
+          secretAccessKey: string;
+        },
+        {
+          bucket: string;
+          bucketLink: string;
+          contentType?: string;
+          key: string;
+          lastModified: string;
+          link: string;
+          sha256?: string;
+          size?: number;
+          url: string;
+        } | null
+      >;
+      listMetadata: FunctionReference<
+        "query",
+        "internal",
+        {
+          accessKeyId: string;
+          bucket: string;
+          cursor?: string;
+          endpoint: string;
+          limit?: number;
+          secretAccessKey: string;
+        },
+        {
+          continueCursor: string;
+          isDone: boolean;
+          page: Array<{
+            bucket: string;
+            bucketLink: string;
+            contentType?: string;
+            key: string;
+            lastModified: string;
+            link: string;
+            sha256?: string;
+            size?: number;
+            url: string;
+          }>;
+          pageStatus?: null | "SplitRecommended" | "SplitRequired";
+          splitCursor?: null | string;
+        }
+      >;
+      store: FunctionReference<
+        "action",
+        "internal",
+        {
+          accessKeyId: string;
+          bucket: string;
+          endpoint: string;
+          secretAccessKey: string;
+          url: string;
+        },
+        any
+      >;
+      syncMetadata: FunctionReference<
+        "action",
+        "internal",
+        {
+          accessKeyId: string;
+          bucket: string;
+          endpoint: string;
+          key: string;
+          onComplete?: string;
+          secretAccessKey: string;
+        },
+        null
+      >;
+      upsertMetadata: FunctionReference<
+        "mutation",
+        "internal",
+        {
+          bucket: string;
+          contentType?: string;
+          key: string;
+          lastModified: string;
+          link: string;
+          sha256?: string;
+          size?: number;
+        },
+        { isNew: boolean }
+      >;
+    };
+  };
 };
