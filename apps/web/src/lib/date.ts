@@ -20,7 +20,10 @@ import {
 	isAtOrAfterDinnerEnd,
 	noticeClock,
 	schoolDisplayClock,
+	scheduleWindow,
+	mondayYyyymmddOf,
 } from '@class-info/backend/convex/dates';
+import { TIMEZONE_OFFSET_HOURS } from '@class-info/backend/convex/config';
 
 export {
 	WEEKDAYS_KR,
@@ -40,6 +43,8 @@ export {
 	isAtOrAfterDinnerEnd,
 	noticeClock,
 	schoolDisplayClock,
+	scheduleWindow,
+	mondayYyyymmddOf,
 };
 
 export function pad2(n: number): string {
@@ -66,8 +71,14 @@ export function toYyyymmdd(year: number, month: number, day: number): string {
 // Absolute is the fallback and the tooltip; relative is what the cell shows.
 // Callers pass an explicit `now` so server-rendered output stays deterministic.
 
+// Pinned to the school's zone. The server renders in UTC, so without this an
+// SSR'd timestamp read nine hours early. `Etc/GMT` names count the other way
+// round (Etc/GMT-9 is UTC+9) and only take whole hours, as the config does.
+const TIME_ZONE = `Etc/GMT${TIMEZONE_OFFSET_HOURS >= 0 ? '-' : '+'}${Math.abs(TIMEZONE_OFFSET_HOURS)}`;
+
 export function formatAbsolute(ts: number | string | Date): string {
 	return new Date(ts).toLocaleString('ko-KR', {
+		timeZone: TIME_ZONE,
 		year: 'numeric',
 		month: 'long',
 		day: 'numeric',
@@ -89,7 +100,12 @@ export function formatRelative(ts: number | string | Date, now: number = Date.no
 	if (days < 7) return `${days}일 전`;
 	if (days < 28) return `${Math.floor(days / 7)}주 전`;
 	// Older than a month: an absolute date carries more than "5주 전" does.
-	return new Date(ts).toLocaleDateString('ko-KR', { year: 'numeric', month: 'long', day: 'numeric' });
+	return new Date(ts).toLocaleDateString('ko-KR', {
+		timeZone: TIME_ZONE,
+		year: 'numeric',
+		month: 'long',
+		day: 'numeric'
+	});
 }
 
 export function formatDate(dateString: string) {

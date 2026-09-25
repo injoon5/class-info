@@ -11,8 +11,18 @@ import { formatFileSize } from '$lib/format';
 const {
   files = [],
   onFilesChange,
+  onUploaded,
   sessionToken = ''
-}: { files: Id<'files'>[]; onFilesChange: (fileIds: Id<'files'>[]) => void; sessionToken?: string } = $props();
+}: {
+  files: Id<'files'>[];
+  onFilesChange: (fileIds: Id<'files'>[]) => void;
+  /** Reports fresh uploads, so the owner can clean them up if never saved. */
+  onUploaded?: (fileIds: Id<'files'>[]) => void;
+  sessionToken?: string;
+} = $props();
+
+const ALLOWED_TYPES = ['image/', 'application/pdf'];
+const MAX_BYTES = 10 * 1024 * 1024;
 
 const client = useConvexClient();
 let isUploading = $state(false);
@@ -70,57 +80,49 @@ async function handleFileUpload(fileList: FileList) {
   uploadError = null;
   const rejected: string[] = [];
 
-  try {
-    const uploadPromises = Array.from(fileList).map(async (file) => {
-      // Validate file type
-      const allowedTypes = ['image/', 'application/pdf'];
-      if (!allowedTypes.some(type => file.type.startsWith(type))) {
-        rejected.push(`${file.name} — 이미지 또는 PDF만 올릴 수 있습니다`);
-        return null;
-      }
-      
-      // Validate file size (10MB max)
-      if (file.size > 10 * 1024 * 1024) {
-        rejected.push(`${file.name} — 10MB를 넘습니다`);
-        return null;
-      }
-      
+  // Each file stands on its own: one failed PUT must not throw away the ones
+  // that already landed, or they sit in storage attached to nothing.
+  const uploads = Array.from(fileList).map(async (file): Promise<Id<'files'> | null> => {
+    if (!ALLOWED_TYPES.some((type) => file.type.startsWith(type))) {
+      rejected.push(`${file.name} — 이미지 또는 PDF만 올릴 수 있습니다`);
+      return null;
+    }
+    if (file.size > MAX_BYTES) {
+      rejected.push(`${file.name} — 10MB를 넘습니다`);
+      return null;
+    }
+    try {
       const { key, url } = await client.mutation(api.files.generateUploadUrl, { sessionToken });
       const put = await fetch(url, { method: 'PUT', body: file });
       if (!put.ok) throw new Error('Upload failed');
-
-      const fileId = await client.mutation(api.files.updateFileMetadataByStorageId, {
+      return await client.mutation(api.files.updateFileMetadataByStorageId, {
         sessionToken,
         storageId: key,
         name: file.name,
         type: file.type,
         size: file.size,
       });
-      
-      return fileId;
-    });
-    
-    const newFileIds = (await Promise.all(uploadPromises)).filter((id): id is Id<'files'> => id !== null);
-    const updatedFiles = [...files, ...newFileIds];
-    onFilesChange(updatedFiles);
-    if (rejected.length > 0) uploadError = rejected.join('\n');
-  } catch {
-    uploadError = '업로드하지 못했습니다. 잠시 후 다시 시도해 주세요.';
-  } finally {
-    isUploading = false;
+    } catch {
+      rejected.push(`${file.name} — 업로드하지 못했습니다`);
+      return null;
+    }
+  });
+
+  const newFileIds = (await Promise.all(uploads)).filter((id): id is Id<'files'> => id !== null);
+  if (newFileIds.length > 0) {
+    onUploaded?.(newFileIds);
+    onFilesChange([...files, ...newFileIds]);
   }
+  if (rejected.length > 0) uploadError = rejected.join('\n');
+  isUploading = false;
 }
 
-async function removeFile(fileId: Id<'files'>) {
-  try {
-    await client.mutation(api.files.deleteFile, { sessionToken, fileId });
-    const updatedFiles = files.filter(id => id !== fileId);
-    onFilesChange(updatedFiles);
-    // Also update the local uploadedFiles array immediately
-    uploadedFiles = uploadedFiles.filter(file => file._id !== fileId);
-  } catch {
-    uploadError = '파일을 삭제하지 못했습니다. 잠시 후 다시 시도해 주세요.';
-  }
+// Detach only. The notice keeps the file until it is saved without it, so
+// removing one and then cancelling the edit loses nothing — the admin page
+// deletes what was actually dropped once the save lands.
+function removeFile(fileId: Id<'files'>) {
+  onFilesChange(files.filter((id) => id !== fileId));
+  uploadedFiles = uploadedFiles.filter((file) => file._id !== fileId);
 }
 
 function copyMarkdownToClipboard(file: UploadedFile) {
@@ -185,7 +187,12 @@ function handleDrop(e: DragEvent) {
       type="file"
       multiple
       accept="image/*,application/pdf"
-      onchange={(e) => { const t = e.currentTarget as HTMLInputElement; if (t.files) handleFileUpload(t.files); }}
+      onchange={async (e) => {
+        const t = e.currentTarget as HTMLInputElement;
+        if (t.files) await handleFileUpload(t.files);
+        // Cleared so picking the same file again still fires a change.
+        t.value = '';
+      }}
       class="hidden"
       id="file-upload"
       disabled={isUploading}
@@ -270,9 +277,6 @@ function handleDrop(e: DragEvent) {
           </div>
         {/each}
       </div>
-      <p class="text-xs text-muted-foreground hidden sm:block">
-        파일에 마우스를 올리면 마크다운 복사 버튼이 나타납니다.
-      </p>
     </div>
   {/if}
 </div>

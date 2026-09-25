@@ -41,8 +41,11 @@ function isSafeImg(url: string): boolean {
   return isSafeHttpUrl(url) || isSafePath(url);
 }
 
+// Bare URLs only. The lookbehind keeps a URL that is already a markdown link
+// or image target — `[영상](https://youtu.be/…)` — from being torn out of it,
+// and stops a match from starting partway into a longer URL.
 const YT_URL =
-  /(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/watch\?v=|youtu\.be\/)([a-zA-Z0-9_-]{11})(?:[&?]t=(\d+)s?)?/g;
+  /(?<![(\[<"'/\w.])(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/watch\?v=|youtu\.be\/)([a-zA-Z0-9_-]{11})(?:[&?]t=(\d+)s?)?/g;
 // Constrained charsets: id is 11 url-safe chars, start is digits only.
 const YT_PLACEHOLDER = /<p>@@YT:([a-zA-Z0-9_-]{11}):(\d*)@@<\/p>/g;
 
@@ -70,14 +73,52 @@ marked.use({
   },
 });
 
+const FENCE = /^\s{0,3}(`{3,}|~{3,})/;
+const TABLE_DELIMITER = /^\s*\|?\s*:?-+:?\s*(\|\s*:?-+:?\s*)*\|?\s*$/;
+
+// Marks which lines belong to a GFM table: the header, the delimiter row, and
+// every following line that still has a cell separator.
+function tableLines(lines: string[]): boolean[] {
+  const inTable = lines.map(() => false);
+  for (let i = 1; i < lines.length; i++) {
+    const line = lines[i]!;
+    if (!line.includes('-') || !TABLE_DELIMITER.test(line)) continue;
+    if (!lines[i - 1]!.includes('|')) continue;
+    inTable[i - 1] = inTable[i] = true;
+    for (let j = i + 1; j < lines.length && lines[j]!.includes('|'); j++) inTable[j] = true;
+  }
+  return inTable;
+}
+
 function preprocess(text: string): string {
-  return text
-    .replace(/\r\n/g, '\n')
-    // Turn single newlines into paragraph breaks. Lookarounds (not capture
-    // groups) so consecutive short lines each get split, instead of every
-    // other one being missed.
-    .replace(/(?<=[^\n])\n(?=[^\n])/g, '\n\n')
-    .replace(YT_URL, (_m, id, ts) => `\n\n@@YT:${id}:${ts ?? ''}@@\n\n`);
+  const lines = text.replace(/\r\n/g, '\n').split('\n');
+  const inTable = tableLines(lines);
+  const out: string[] = [];
+  let fence: string | null = null;
+
+  for (let i = 0; i < lines.length; i++) {
+    let line = lines[i]!;
+    const marker = FENCE.exec(line)?.[1];
+    if (fence) {
+      if (marker && marker[0] === fence[0] && marker.length >= fence.length) fence = null;
+      out.push(line);
+      continue;
+    }
+    if (marker) {
+      fence = marker;
+      out.push(line);
+      continue;
+    }
+    line = line.replace(YT_URL, (_m, id, ts) => `\n\n@@YT:${id}:${ts ?? ''}@@\n\n`);
+    out.push(line);
+    // A single newline is a paragraph break — except inside a code block or a
+    // table, where splitting the lines apart destroyed the block entirely.
+    const next = lines[i + 1];
+    if (next !== undefined && line.trim() && next.trim() && !(inTable[i] && inTable[i + 1])) {
+      out.push('');
+    }
+  }
+  return out.join('\n');
 }
 
 export function renderMarkdown(text: string): string {

@@ -91,6 +91,16 @@ export const CUSTOM_EVENT_CHROME: Record<CustomEventColor, EventChrome> = {
 	},
 };
 
+// Spoken names for the colour picker's radio buttons.
+export const CUSTOM_COLOR_LABEL: Record<CustomEventColor, string> = {
+	blue: '파랑',
+	green: '초록',
+	purple: '보라',
+	orange: '주황',
+	pink: '분홍',
+	teal: '청록',
+};
+
 // Picker swatches. Orange/pink sit one step lighter so they don't read as
 // "selected" before a check is drawn on them.
 export const CUSTOM_COLOR_SWATCH: Record<CustomEventColor, string> = {

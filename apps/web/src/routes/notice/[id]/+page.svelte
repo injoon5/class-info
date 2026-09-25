@@ -1,7 +1,7 @@
 <script lang="ts">
 import { useQuery } from 'convex-svelte';
 import { api } from "@class-info/backend/convex/_generated/api";
-import { CLASS_LABEL, SITE_NAME } from '@class-info/backend/convex/config';
+import { CLASS_LABEL, SITE_NAME, SITE_URL } from '@class-info/backend/convex/config';
 import { page } from '$app/state';
 import { noticeTypeClass } from '$lib/notices';
 import { getFirstLine, renderMarkdown } from '$lib/markdown';
@@ -27,7 +27,11 @@ let html = $state<string | null>(data.prerenderedHtml || null);
 
 $effect(() => {
 	const description = detail.data?.notice?.description;
-	if (!description) return;
+	if (!description) {
+		// Edited down to nothing: drop the old render rather than keep showing it.
+		if (detail.data?.notice) html = null;
+		return;
+	}
 	const run = () => { html = renderMarkdown(description); };
 	// Lazy render markdown when idle
 	if (typeof requestIdleCallback !== 'undefined') requestIdleCallback(run);
@@ -43,17 +47,18 @@ $effect(() => {
 		<!-- Open Graph -->
 		<meta property="og:title" content="{detail.data.notice.subject} {detail.data.notice.title} | {CLASS_LABEL} 공지" />
 		<meta property="og:description" content="{getFirstLine(detail.data.notice.description) || '공지 내용을 확인하세요!'}" />
+		<meta property="og:url" content="{SITE_URL}/notice/{detail.data.notice.slug || detail.data.notice._id}" />
 		<meta property="og:type" content="article" />
 		<meta property="og:site_name" content={SITE_NAME} />
 
 		<!-- Twitter Card -->
 		<meta name="twitter:card" content="summary_large_image" />
-		<meta name="twitter:title" content="{detail.data.notice.subject} {detail.data.notice.title} | 1-3 학급 공지" />
+		<meta name="twitter:title" content="{detail.data.notice.subject} {detail.data.notice.title} | {CLASS_LABEL} 공지" />
 		<meta name="twitter:description" content="{getFirstLine(detail.data.notice.description) || '공지 내용을 확인하세요!'}" />
 	{:else}
-		<title>공지 상세 - 1-3 학급 공지</title>
+		<title>공지 상세 - {CLASS_LABEL} 공지</title>
 		<meta name="description" content="학급 공지의 상세 내용을 확인하세요." />
-		<meta property="og:title" content="공지 상세 - 학급 공지" />
+		<meta property="og:title" content="공지 상세 - {CLASS_LABEL} 공지" />
 		<meta property="og:description" content="학급 공지의 상세 내용을 확인하세요." />
 	{/if}
 </svelte:head>

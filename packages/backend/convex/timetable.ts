@@ -12,6 +12,7 @@ import { requireAdmin } from "./auth";
 import { FULL_TIMETABLE_DAYS, projectFullTimetable, projectTimetable } from "./project";
 import { fullTimetableDoc, timetableDoc, timetableSlot } from "./validators";
 import { SCHOOL_API_BASE_URL } from "./config";
+import { addDaysYyyymmdd, getNowKst, mondayYyyymmddOf, toYyyymmdd } from "./dates";
 
 type Slot = Infer<typeof timetableSlot>;
 
@@ -89,11 +90,12 @@ export const upsert = internalMutation({
     day_time: v.array(v.string()),
     timetable: v.array(v.array(timetableSlot)),
     update_date: v.string(),
+    weekStart: v.optional(v.string()),
   },
   returns: v.id("timetables"),
   handler: async (
     ctx,
-    { week, day_time, timetable, update_date }
+    { week, day_time, timetable, update_date, weekStart }
   ): Promise<Id<"timetables">> => {
     const existing = await ctx.db
       .query("timetables")
@@ -102,12 +104,19 @@ export const upsert = internalMutation({
 
     const now = Date.now();
     if (existing) {
-      await ctx.db.patch(existing._id, { day_time, timetable, update_date, week, editedAt: now });
+      await ctx.db.patch(existing._id, { day_time, timetable, update_date, week, weekStart, editedAt: now });
       console.log(`[timetable.upsert] updated week=${week}`);
       return existing._id;
     }
 
-    const id = await ctx.db.insert("timetables", { day_time, timetable, update_date, week, editedAt: now });
+    const id = await ctx.db.insert("timetables", {
+      day_time,
+      timetable,
+      update_date,
+      week,
+      ...(weekStart ? { weekStart } : {}),
+      editedAt: now,
+    });
     console.log(`[timetable.upsert] inserted week=${week}`);
     return id;
   },
@@ -175,6 +184,9 @@ export const fetchAndSave = internalAction({
       day_time,
       timetable,
       update_date: str(data.update_date),
+      // The API counts weeks from the current Mon–Sun week in KST, the same
+      // week the home page's weekOffsetBetween assumes.
+      weekStart: addDaysYyyymmdd(mondayYyyymmddOf(toYyyymmdd(getNowKst())), week * 7),
     });
   },
 });
@@ -267,12 +279,18 @@ export const snapshotFull = mutation({
     if (!source) throw new Error("That week has no timetable to snapshot");
 
     const fetched = projectTimetable(source);
-    const days = Array.from({ length: FULL_TIMETABLE_DAYS }, (_, i) =>
-      (fetched.timetable[i] ?? []).slice(0, FULL_MAX_PERIODS).map((slot) => {
+    // Placed by 교시, not by position: the merged feed can skip a period on
+    // one day, and copying positionally moved every later subject up a row.
+    const days = Array.from({ length: FULL_TIMETABLE_DAYS }, (_, i) => {
+      const day: FullSlot[] = [];
+      for (const slot of fetched.timetable[i] ?? []) {
+        if (slot.period < 1 || slot.period > FULL_MAX_PERIODS) continue;
+        while (day.length < slot.period) day.push({ subject: "", teacher: "" });
         const base = slot.original ?? slot;
-        return { subject: cleanText(base.subject), teacher: cleanText(base.teacher) };
-      })
-    );
+        day[slot.period - 1] = { subject: cleanText(base.subject), teacher: cleanText(base.teacher) };
+      }
+      return day;
+    });
 
     const { row } = await readFullDays(ctx);
     await writeFullDays(ctx, row, days, fetched.day_time);

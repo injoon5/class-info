@@ -35,7 +35,9 @@ const mealsQuery = useQuery(
 );
 
 const availableMealTypes = $derived(mealsQuery.data?.availableMealTypes ?? []);
-const hasDinner = $derived(availableMealTypes.includes("석식"));
+// The toggle only earns its place when there is a choice: a school serving
+// dinner alone would otherwise show a 중식 tab that is empty every day.
+const hasChoice = $derived(availableMealTypes.length > 1);
 
 // If the selected meal type is no longer available (e.g. dinner data cleared
 // while it was selected), fall back to lunch so the view can't dead-end.
@@ -112,7 +114,7 @@ function openMealDrawer(day: MealDay) {
   {:else if !mealsQuery.data || availableMealTypes.length === 0}
     <EmptyState message="급식 정보가 없어요" />
   {:else}
-    {#if hasDinner}
+    {#if hasChoice}
       <div class="mb-3">
         <SegmentedControl
           bind:value={selectedMealType}
@@ -245,6 +247,31 @@ function openMealDrawer(day: MealDay) {
           </div>
         {/if}
       </div>
+    {/if}
+
+    {#if selectedMeal.meal.originInfo}
+      {@const originRows = selectedMeal.meal.originInfo
+        .split(/<br\s*\/?>/i)
+        .map((s) => s.trim())
+        .filter(Boolean)
+        .map((s) => {
+          const idx = s.indexOf(' : ');
+          return idx !== -1 ? [s.slice(0, idx).trim(), s.slice(idx + 3).trim()] : [s, ''];
+        })
+        .filter(([, value]) => value)}
+      {#if originRows.length > 0}
+        <div class="mt-4 pt-4 border-t border-border">
+          <p class="text-sm font-semibold text-muted-foreground mb-2">원산지</p>
+          <div class="grid grid-cols-2 gap-x-4 gap-y-1.5">
+            {#each originRows as [name, value]}
+              <div class="flex items-baseline justify-between gap-2 border-b border-border pb-1.5">
+                <span class="text-xs text-muted-foreground truncate">{name}</span>
+                <span class="text-xs text-foreground text-right">{value}</span>
+              </div>
+            {/each}
+          </div>
+        </div>
+      {/if}
     {/if}
   {/if}
 </Drawer>

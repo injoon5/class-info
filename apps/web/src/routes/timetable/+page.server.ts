@@ -2,6 +2,7 @@ import type { PageServerLoad } from './$types.js';
 import { api } from '@class-info/backend/convex/_generated/api';
 import { convexHttp } from '$lib/convex';
 import { getAdminSession } from '$lib/server/auth';
+import { thisMondayYyyymmdd } from '$lib/date';
 
 export const load = (async ({ cookies }) => {
 	const client = convexHttp();
@@ -20,5 +21,5 @@ export const load = (async ({ cookies }) => {
 		}),
 		getAdminSession(cookies)
 	]);
-	return { timetable, nextWeek, full, ...session };
+	return { timetable, nextWeek, full, thisMonday: thisMondayYyyymmdd(), ...session };
 }) satisfies PageServerLoad;

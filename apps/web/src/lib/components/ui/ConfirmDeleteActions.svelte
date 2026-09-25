@@ -50,6 +50,11 @@ $effect(() => {
 			return;
 		}
 		if (e.key === 'Enter' && !e.isComposing) {
+			// A focused control answers Enter itself. Taking it here meant Enter
+			// on 취소 confirmed the delete instead of cancelling it.
+			if (e.target instanceof Element && e.target.closest('button, a, input, textarea, select')) {
+				return;
+			}
 			e.preventDefault();
 			onConfirmDelete();
 		}

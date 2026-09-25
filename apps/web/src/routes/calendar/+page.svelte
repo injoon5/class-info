@@ -5,8 +5,10 @@ import type { Id } from "@class-info/backend/convex/_generated/dataModel";
 import { CLASS_LABEL, SITE_NAME, SITE_URL } from '@class-info/backend/convex/config';
 import Drawer from '$lib/components/ui/Drawer.svelte';
 import HScroll from '$lib/components/ui/HScroll.svelte';
-import { ddayLabel, getNowInKst, toYyyymmdd } from '$lib/date';
+import { ddayLabel, getNowInKst, scheduleWindow, toYyyymmdd } from '$lib/date';
+import { adminErrorMessage } from '$lib/errors';
 import {
+  CUSTOM_COLOR_LABEL,
   CUSTOM_COLOR_SWATCH,
   CUSTOM_EVENT_COLORS,
   eventChrome,
@@ -34,7 +36,8 @@ function parseDateStr(yyyymmdd: string) {
 }
 
 const nowKst = getNowInKst();
-const todayStr = toYyyymmdd(nowKst.getFullYear(), nowKst.getMonth(), nowKst.getDate());
+// From the load, so the layout's day-change refresh moves the highlight too.
+const todayStr = $derived(data.todayYmd);
 
 let displayYear = $state(data.year as number);
 let displayMonth = $state(nowKst.getMonth()); // 0-11
@@ -50,11 +53,15 @@ const eventsQuery = useQuery(
 
 const eventsPending = $derived(eventsQuery.isLoading || eventsQuery.isStale);
 
-// Pagination bounds: Dec of last year → Feb of next year
-const minYear = nowKst.getFullYear() - 1;
-const minMonth = 11;
-const maxYear = nowKst.getFullYear() + 1;
-const maxMonth = 1;
+// Pagination bounds: the synced schedule window — the school year in
+// progress plus a month either side. Shared with the backend sync, so there
+// is never a month to page to that holds no data.
+const {
+  startYear: minYear,
+  startMonth: minMonth,
+  endYear: maxYear,
+  endMonth: maxMonth
+} = scheduleWindow(nowKst);
 
 function canNavigate(direction: number): boolean {
   let m = displayMonth + direction;
@@ -123,7 +130,8 @@ function eventsForDate(dateStr: string | null): CellEvent[] {
 }
 
 // Admin state
-const isAuthenticated = data.isAuthenticated as boolean;
+// Derived: an expired session reloads the page data and must drop the controls.
+const isAuthenticated = $derived(data.isAuthenticated as boolean);
 const sessionToken = $derived((data.sessionToken as string | null) ?? '');
 let newEventTitle = $state('');
 let newEventColor = $state<CustomEventColor>('blue');
@@ -178,8 +186,8 @@ async function handleAddEvent() {
     if (document.activeElement instanceof HTMLElement) document.activeElement.blur();
     newEventTitle = '';
     popupAddMode = false;
-  } catch {
-    saveError = '저장하지 못했어요. 잠시 후 다시 시도해 주세요.';
+  } catch (err) {
+    saveError = adminErrorMessage(err, '저장하지 못했어요. 잠시 후 다시 시도해 주세요.');
   } finally {
     isSaving = false;
   }
@@ -195,8 +203,8 @@ async function handleToggleDday(event: PublicEvent) {
       id: event._id,
       dday: !event.dday,
     });
-  } catch {
-    saveError = 'D-Day를 바꾸지 못했어요. 잠시 후 다시 시도해 주세요.';
+  } catch (err) {
+    saveError = adminErrorMessage(err, 'D-Day를 바꾸지 못했어요. 잠시 후 다시 시도해 주세요.');
   }
 }
 
@@ -205,8 +213,8 @@ async function handleDeleteCustomEvent(id: Id<'schedules'>) {
   saveError = null;
   try {
     await client.mutation(api.schedule.deleteCustomEvent, { sessionToken, id });
-  } catch {
-    saveError = '삭제하지 못했어요. 잠시 후 다시 시도해 주세요.';
+  } catch (err) {
+    saveError = adminErrorMessage(err, '삭제하지 못했어요. 잠시 후 다시 시도해 주세요.');
   }
 }
 
@@ -269,8 +277,12 @@ const dayNames = ['일','월','화','수','목','금','토'];
 
   <!-- Calendar -->
   <HScroll anchor="[data-today-cell]" hint="좌우로 스크롤하세요">
+      <!-- A fixed width, not min-w: HScroll's wrapper is `w-max`, so a floor
+           alone let the grid grow to its max-content — every long, nowrap event
+           title widened the whole month, and the cells changed width from one
+           month to the next. Sized against the port with `cqw`, as on meals. -->
       <div
-        class="min-w-[40rem] border border-border rounded-xl overflow-hidden"
+        class="w-[max(100cqw,40rem)] border border-border rounded-xl overflow-hidden"
         aria-busy={eventsPending}
       >
         {#if eventsPending}
@@ -301,7 +313,7 @@ const dayNames = ['일','월','화','수','목','금','토'];
               <!-- svelte-ignore a11y_no_noninteractive_tabindex -->
               <div
                 data-today-cell={isToday ? '' : undefined}
-                class="min-h-[5rem] sm:min-h-[7rem] p-1 sm:p-1.5 relative group
+                class="min-w-0 min-h-[5rem] sm:min-h-[7rem] p-1 sm:p-1.5 relative group
                   {hasEvents ? 'cursor-pointer transition-colors duration-150' : ''}
                   {di < 6 ? 'border-r border-border' : ''}
                   {cell.day !== null && isSun ? 'bg-red-50/50 dark:bg-red-950/20' : ''}
@@ -349,7 +361,7 @@ const dayNames = ['일','월','화','수','목','금','토'];
                          that must survive a title too long for the cell. -->
                     <div class="flex items-baseline gap-1 text-xs rounded px-1 py-0.5 mb-0.5 leading-tight {event.chipClass}" title={event.title}>
                       {#if event.dday}<span class="font-bold shrink-0">{event.dday}</span>{/if}
-                      <span class="truncate">{event.title}</span>
+                      <span class="min-w-0 truncate">{event.title}</span>
                     </div>
                   {/each}
                 {/if}
@@ -366,6 +378,7 @@ const dayNames = ['일','월','화','수','목','금','토'];
     <span class="flex items-center gap-1.5"><span class="inline-block w-2.5 h-2.5 rounded-sm bg-red-200 dark:bg-red-900/60"></span>공휴일</span>
     <span class="flex items-center gap-1.5"><span class="inline-block w-2.5 h-2.5 rounded-sm bg-amber-200 dark:bg-amber-900/60"></span>휴업일</span>
     <span class="flex items-center gap-1.5"><span class="inline-block w-2.5 h-2.5 rounded-sm bg-sky-200 dark:bg-sky-900/60"></span>학교 행사</span>
+    <span class="flex items-center gap-1.5"><span class="inline-block w-2.5 h-2.5 rounded-sm bg-blue-200 dark:bg-blue-900/60"></span>학급 일정</span>
   </div>
 </div>
 
@@ -424,7 +437,7 @@ const dayNames = ['일','월','화','수','목','금','토'];
                 class="pressable touch-target w-7 h-7 rounded-full flex items-center justify-center {CUSTOM_COLOR_SWATCH[id]}"
                 role="radio"
                 aria-checked={newEventColor === id}
-                aria-label={id}
+                aria-label={CUSTOM_COLOR_LABEL[id]}
               >
                 {#if newEventColor === id}
                   <svg viewBox="0 0 20 20" fill="none" stroke="white" stroke-width="3" class="w-4 h-4" aria-hidden="true">

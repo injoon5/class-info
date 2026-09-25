@@ -1,7 +1,12 @@
 <script lang="ts">
 import PillButton from './PillButton.svelte';
 
-const { error }: { error: any } = $props();
+// The raw error goes to the console, not the page: a Convex stack line means
+// nothing to a student and only crowds out the retry.
+const { error }: { error: unknown } = $props();
+$effect(() => {
+	if (error) console.error(error);
+});
 </script>
 
 <div class="flex flex-col items-center text-center py-16 px-4">
@@ -12,8 +17,5 @@ const { error }: { error: any } = $props();
 	</div>
 	<p class="text-sm font-semibold text-foreground">불러오지 못했어요</p>
 	<p class="text-xs text-muted-foreground mt-1">잠시 후 다시 시도해 주세요.</p>
-	{#if error}
-		<p class="text-xs text-muted-foreground/70 mt-2 max-w-xs break-words">{error?.toString?.() ?? ''}</p>
-	{/if}
 	<PillButton text="다시 시도" onclick={() => window.location.reload()} class="mt-4" />
 </div>

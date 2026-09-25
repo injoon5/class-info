@@ -1,4 +1,4 @@
-import { v } from "convex/values";
+import { ConvexError, v } from "convex/values";
 import { internalMutation, mutation, query, type QueryCtx } from "./_generated/server";
 import type { Doc, Id } from "./_generated/dataModel";
 import { requireAdmin } from "./auth";
@@ -40,9 +40,11 @@ const noticeFields = {
   slug: v.optional(v.string()),
 };
 
-function assertLength(value: string, max: number, field: string): void {
-  if (value.length === 0) throw new Error(`${field} is required`);
-  if (value.length > max) throw new Error(`${field} is too long`);
+// Messages are ConvexErrors in Korean: they reach the admin editor as-is,
+// where a plain Error would be redacted to "Server Error" in production.
+function assertLength(value: string, max: number, label: string): void {
+  if (value.length === 0) throw new ConvexError(`${label}을 입력해 주세요.`);
+  if (value.length > max) throw new ConvexError(`${label}이 너무 길어요. ${max}자 이하로 줄여 주세요.`);
 }
 
 function normalizeSlug(slug: string | undefined): string | undefined {
@@ -63,10 +65,10 @@ function assertNoticeWrite(fields: {
   description: string;
   dueDate: string;
 }): void {
-  assertLength(fields.title.trim(), TITLE_MAX, "title");
-  assertLength(fields.subject.trim(), SUBJECT_MAX, "subject");
+  assertLength(fields.title.trim(), TITLE_MAX, "제목");
+  assertLength(fields.subject.trim(), SUBJECT_MAX, "과목");
   if (fields.description.length > DESCRIPTION_MAX) {
-    throw new Error("description is too long");
+    throw new ConvexError("설명이 너무 길어요.");
   }
   assertIsoDate(fields.dueDate, "dueDate");
 }
@@ -132,14 +134,30 @@ function getUrlBasename(url: string): string {
   return parts[parts.length - 1] || url;
 }
 
+// The card's one-line preview: the first line with any text in it, read as
+// plain text. Starting at line one blindly made a description that opened
+// with a blank line summarize to "", and an empty summary is what marks a
+// notice as having nothing to open — the card stopped being a link.
 function summarizeDescription(description: string): string {
-  let firstLine = description.split("\n")[0] || "";
-  firstLine = firstLine.replace(/^#+\s*/, "");
-  return firstLine.replace(/!\[([^\]]*)\]\(([^)]+)\)/g, (_m, alt, link) => {
-    const trimmedAlt = String(alt || "").trim();
-    if (trimmedAlt.length > 0) return trimmedAlt;
-    return getUrlBasename(String(link || "").trim());
-  });
+  for (const raw of description.split("\n")) {
+    const trimmed = raw.trim();
+    // A fence or rule line carries no words worth previewing.
+    if (/^(?:`{3,}|~{3,}|-{3,}|\*{3,}|_{3,})/.test(trimmed)) continue;
+    const line = trimmed
+      .replace(/^(?:#{1,6}\s+|>\s*|[-*+]\s+|\d+\.\s+)+/, "")
+      .replace(/!\[([^\]]*)\]\(([^)]+)\)/g, (_m, alt, link) => {
+        const trimmedAlt = String(alt || "").trim();
+        if (trimmedAlt.length > 0) return trimmedAlt;
+        return getUrlBasename(String(link || "").trim());
+      })
+      .replace(/\[([^\]]*)\]\([^)]*\)/g, "$1")
+      .replace(/(\*\*|__)(.+?)\1/g, "$2")
+      .replace(/\*(.+?)\*/g, "$1")
+      .replace(/`([^`]*)`/g, "$1")
+      .trim();
+    if (line) return line;
+  }
+  return "";
 }
 
 function toMinimalNotice(n: Doc<"notices">): MinimalNotice {

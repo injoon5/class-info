@@ -2,7 +2,7 @@ import type { PageServerLoad } from './$types.js';
 import { api } from '@class-info/backend/convex/_generated/api';
 import { getAdminSession } from '$lib/server/auth';
 import { convexHttp } from '$lib/convex';
-import { getNowInKst } from '$lib/date';
+import { getNowInKst, yyyymmdd } from '$lib/date';
 
 export const load = (async ({ cookies }) => {
 	const kstNow = getNowInKst();
@@ -19,5 +19,5 @@ export const load = (async ({ cookies }) => {
 
 	const { isAuthenticated, sessionToken } = await getAdminSession(cookies);
 
-	return { events, isAuthenticated, sessionToken, year };
+	return { events, isAuthenticated, sessionToken, year, todayYmd: yyyymmdd(kstNow) };
 }) satisfies PageServerLoad;

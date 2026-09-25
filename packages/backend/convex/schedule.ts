@@ -13,9 +13,9 @@ import {
   addDaysYyyymmdd,
   assertYyyymmdd,
   closedYmdsFromSchedule,
-  getNowKst,
   parseYyyymmdd,
   resolveSchoolDisplayYmd,
+  scheduleWindow,
   SCHOOL_DAY_LOOKAHEAD,
 } from "./dates";
 import { projectSchedule } from "./project";
@@ -169,18 +169,13 @@ function splitInto3MonthChunks(startdate: string, enddate: string) {
   return chunks;
 }
 
-// Fetches last December through next February — the window shown to users.
+// Fetches the current school year plus a month either side — the same window
+// the calendar lets users page through (see dates.scheduleWindow).
 export const fetchScheduleWindow = internalAction({
   args: { schoolcode: v.string() },
   returns: v.null(),
   handler: async (ctx, { schoolcode }) => {
-    const now = getNowKst();
-    const y = now.getFullYear();
-    const m = now.getMonth() + 1; // 1-12
-    const startdate = `${y - 1}1201`;
-    const nextFebYear = m <= 2 ? y : y + 1;
-    const isLeap = (nextFebYear % 4 === 0 && nextFebYear % 100 !== 0) || nextFebYear % 400 === 0;
-    const enddate = `${nextFebYear}02${isLeap ? "29" : "28"}`;
+    const { start: startdate, end: enddate } = scheduleWindow();
 
     const chunks = splitInto3MonthChunks(startdate, enddate);
     for (const chunk of chunks) {

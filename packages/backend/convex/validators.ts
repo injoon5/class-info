@@ -70,6 +70,7 @@ export const timetableDoc = v.object({
   timetable: v.array(v.array(timetableSlot)),
   update_date: v.string(),
   week: v.number(),
+  weekStart: v.optional(v.string()),
   editedAt: v.number(),
 });
 

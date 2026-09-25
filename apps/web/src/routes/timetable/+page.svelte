@@ -10,8 +10,15 @@ import PillButton from '$lib/components/ui/PillButton.svelte';
 import SegmentedControl from '$lib/components/ui/SegmentedControl.svelte';
 import { createBlurPulse } from '$lib/blurPulse.svelte';
 import { focusOnElement } from '$lib/actions/focus';
-import { formatAbsolute, formatRelative } from '$lib/date';
+import {
+	addDaysYyyymmdd,
+	formatAbsolute,
+	formatRelative,
+	parseYyyymmdd
+} from '$lib/date';
+import { timetableForWeek } from '$lib/timetable';
 import { onMount } from 'svelte';
+import { adminErrorMessage } from '$lib/errors';
 import type { PageData } from './$types.js';
 
 const { data }: { data: PageData } = $props();
@@ -23,7 +30,8 @@ let selectedTab = $state<Tab>(0);
 const isFull = $derived(selectedTab === 'full');
 const selectedWeek = $derived<0 | 1>(selectedTab === 1 ? 1 : 0);
 
-const isAuthenticated = data.isAuthenticated as boolean;
+// Derived: an expired session reloads the page data and must drop the controls.
+const isAuthenticated = $derived(data.isAuthenticated as boolean);
 const sessionToken = $derived((data.sessionToken as string | null) ?? '');
 // Editing is only ever of the standing timetable — the fetched weeks are
 // overwritten by the cron a few times a day.
@@ -39,24 +47,39 @@ onMount(() => {
 const blur = createBlurPulse();
 $effect(() => { selectedTab; blur.pulse(); });
 
-// keepPreviousData is wrong here: on 전체, selectedWeek is 0, so the
-// previous result is this week — jumping to 다음 주 would paint it until
-// week 1 arrives. The gap is the server load, which already has both weeks.
-const timetableQuery = useQuery(api.timetable.getByWeek, () => ({ week: selectedWeek }));
+// Both stored weeks, always: either row can turn out to hold the week a tab
+// asks for (see timetableForWeek), so neither can be fetched on demand.
+const week0Query = useQuery(api.timetable.getByWeek, () => ({ week: 0 as const }));
+const week1Query = useQuery(api.timetable.getByWeek, () => ({ week: 1 as const }));
 const fullQuery = useQuery(api.timetable.getFull, () => ({}));
 
 // convex-svelte tests `initialData` for truthiness, so it cannot carry the
 // `null` that means "nothing stored yet" — a page whose server load already
 // answered `null` would sit on a spinner until the socket connected. Hold the
 // server's answer here instead and let the live result replace it.
-const serverWeek = $derived(selectedWeek === 1 ? data.nextWeek : data.timetable);
-const weekData = $derived(timetableQuery.data !== undefined ? timetableQuery.data : serverWeek);
+const week0 = $derived(week0Query.data !== undefined ? week0Query.data : data.timetable);
+const week1 = $derived(week1Query.data !== undefined ? week1Query.data : data.nextWeek);
 const fullData = $derived(fullQuery.data !== undefined ? fullQuery.data : data.full);
+
+// The Monday each tab means, from the reader's own KST clock.
+const selectedMonday = $derived(addDaysYyyymmdd(data.thisMonday, selectedWeek * 7));
+const weekData = $derived(
+	week0 === undefined || week1 === undefined
+		? undefined
+		: timetableForWeek([week0, week1], selectedMonday, selectedWeek)
+);
+
+// "9/21 – 9/25": which week a tab is showing is otherwise never said.
+const weekRangeLabel = $derived.by(() => {
+	const mon = parseYyyymmdd(selectedMonday);
+	const fri = parseYyyymmdd(addDaysYyyymmdd(selectedMonday, 4));
+	return mon && fri ? `${mon.m}/${mon.d} – ${fri.m}/${fri.d}` : '';
+});
 
 // Undefined means neither source has answered yet; null is an answer.
 const pending = $derived(isFull ? fullData === undefined : weekData === undefined);
 const queryError = $derived(
-	pending ? (isFull ? fullQuery.error : timetableQuery.error) : undefined
+	pending ? (isFull ? fullQuery.error : (week0Query.error ?? week1Query.error)) : undefined
 );
 
 // Saturday only ever appears when the timetable source published it, so the
@@ -120,6 +143,10 @@ const maxPeriods = $derived(
 );
 // An all-blank timetable is nothing to show, however many rows it has.
 const hasData = $derived(maxPeriods > 0);
+// …except to an admin on 전체: the grid's per-day length row is the way to
+// build a standing timetable by hand, and hiding it behind the empty state
+// left an emptied one recoverable only by re-importing a week.
+const showGrid = $derived(hasData || canEdit);
 
 const editedAt = $derived(
 	isFull ? (fullData?.updatedAt ?? null) : (weekData?.editedAt ?? null)
@@ -157,10 +184,23 @@ const MAX_PERIODS = 12;
 let adminError = $state<string | null>(null);
 let isSnapshotting = $state(false);
 
-async function handleSnapshot(week: 0 | 1) {
+// `offset` is the tab (0 = 이번 주, 1 = 다음 주); the row that actually holds
+// that week may be stored under the other offset, so it is looked up first.
+function storedWeekFor(offset: 0 | 1): 0 | 1 | null {
+	const monday = addDaysYyyymmdd(data.thisMonday, offset * 7);
+	const row = timetableForWeek([week0, week1], monday, offset);
+	return row ? (row.week === 1 ? 1 : 0) : null;
+}
+
+async function handleSnapshot(offset: 0 | 1) {
 	if (isSnapshotting) return;
+	const week = storedWeekFor(offset);
+	if (week === null) {
+		adminError = '가져올 시간표가 없어요.';
+		return;
+	}
 	const hasStanding = (fullData?.timetable ?? []).some((day) => day.length > 0);
-	const label = week === 1 ? '다음 주' : '이번 주';
+	const label = offset === 1 ? '다음 주' : '이번 주';
 	// Overwriting hand-made corrections is the one destructive thing here, so
 	// it asks — and only when there is something to lose.
 	if (hasStanding && !confirm(`전체 시간표를 ${label} 시간표로 덮어쓸까요?`)) return;
@@ -169,8 +209,8 @@ async function handleSnapshot(week: 0 | 1) {
 	try {
 		await client.mutation(api.timetable.snapshotFull, { sessionToken, week });
 		selectedTab = 'full';
-	} catch {
-		adminError = '전체 시간표를 저장하지 못했어요. 잠시 후 다시 시도해 주세요.';
+	} catch (err) {
+		adminError = adminErrorMessage(err, '전체 시간표를 저장하지 못했어요. 잠시 후 다시 시도해 주세요.');
 	} finally {
 		isSnapshotting = false;
 	}
@@ -182,8 +222,8 @@ async function changeDayLength(day: number, delta: number) {
 	adminError = null;
 	try {
 		await client.mutation(api.timetable.setFullDayLength, { sessionToken, day, length });
-	} catch {
-		adminError = '교시 수를 바꾸지 못했어요. 잠시 후 다시 시도해 주세요.';
+	} catch (err) {
+		adminError = adminErrorMessage(err, '교시 수를 바꾸지 못했어요. 잠시 후 다시 시도해 주세요.');
 	}
 }
 
@@ -220,8 +260,8 @@ async function writeSlot(subject: string, teacher: string) {
 		});
 		if (document.activeElement instanceof HTMLElement) document.activeElement.blur();
 		editingSlot = null;
-	} catch {
-		slotError = '저장하지 못했어요. 잠시 후 다시 시도해 주세요.';
+	} catch (err) {
+		slotError = adminErrorMessage(err, '저장하지 못했어요. 잠시 후 다시 시도해 주세요.');
 	} finally {
 		isSavingSlot = false;
 	}
@@ -287,7 +327,7 @@ async function writeSlot(subject: string, teacher: string) {
 		<ErrorState error={queryError} />
 	{:else if pending}
 		<LoadingState />
-	{:else if !hasData}
+	{:else if !showGrid}
 		<EmptyState message={isFull ? '전체 시간표가 아직 없어요' : '시간표가 없어요'} />
 	{:else}
 		<!-- Same hairline construction as the calendar: a real box per row
@@ -381,6 +421,10 @@ async function writeSlot(subject: string, teacher: string) {
 
 		<div class="mt-3 flex items-center justify-between gap-3 pb-10 print:hidden">
 			<p class="text-xs text-muted-foreground">
+				{#if !isFull && weekRangeLabel}
+					<span class="tabular-nums">{weekRangeLabel}</span>
+					{#if editedAt !== null}<span aria-hidden="true"> · </span>{/if}
+				{/if}
 				{#if editedAt !== null}
 					업데이트: <span title={formatAbsolute(editedAt)}>{now === null ? formatAbsolute(editedAt) : formatRelative(editedAt, now)}</span>
 				{/if}
@@ -406,10 +450,10 @@ async function writeSlot(subject: string, teacher: string) {
 		</div>
 	{/if}
 
-	<!-- An empty standing timetable still needs the snapshot control: the empty
-	     state above stands where the table (and its footer) would have been. -->
-	{#if isAuthenticated && isFull && !hasData && !pending && !queryError}
-		<div class="-mt-8 flex flex-wrap justify-center gap-2 pb-10 print:hidden">
+	<!-- An empty standing timetable still offers the import: the grid above
+	     is only its length row, and importing a week is the quick start. -->
+	{#if canEdit && !hasData && !pending && !queryError}
+		<div class="flex flex-wrap justify-center gap-2 pb-10 print:hidden">
 			<PillButton
 				variant="secondary"
 				text="이번 주에서 가져오기"
@@ -423,9 +467,6 @@ async function writeSlot(subject: string, teacher: string) {
 				onclick={() => handleSnapshot(1)}
 			/>
 		</div>
-		{#if adminError}
-			<p class="mb-8 text-center text-sm font-semibold text-destructive" role="alert">{adminError}</p>
-		{/if}
 	{/if}
 </div>
 

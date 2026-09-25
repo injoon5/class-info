@@ -306,6 +306,34 @@ export function resolveSchoolDisplayYmd(
   return fallback;
 }
 
+// The school year runs March to February. The schedule window is that year
+// plus a month either side: the December before it began through the
+// February that ends it. Keyed on the school year rather than the calendar
+// year, because in January and February the year that is still running
+// started last March — a calendar-year window cut those months off.
+// Returns 0-indexed months alongside the YYYYMMDD bounds for the calendar UI.
+export function scheduleWindow(now: Date = getNowKst()): {
+  start: string;
+  end: string;
+  startYear: number;
+  startMonth: number;
+  endYear: number;
+  endMonth: number;
+} {
+  const y = now.getFullYear();
+  const schoolYear = now.getMonth() >= 2 ? y : y - 1;
+  const endYear = schoolYear + 1;
+  const lastFebDay = new Date(Date.UTC(endYear, 2, 0)).getUTCDate();
+  return {
+    start: `${schoolYear - 1}1201`,
+    end: `${endYear}02${pad2(lastFebDay)}`,
+    startYear: schoolYear - 1,
+    startMonth: 11,
+    endYear,
+    endMonth: 1,
+  };
+}
+
 // Monday–Friday of the KST week `offsetWeeks` away from today (times normalized
 // to noon to avoid DST edge cases). Used by meal/timetable fetch actions.
 export function getWeekRangeKst(offsetWeeks: number): { start: Date; end: Date } {

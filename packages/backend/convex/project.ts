@@ -86,7 +86,7 @@ function projectSlot(slot: Doc<"timetables">["timetable"][number][number]): Infe
 }
 
 export function projectTimetable(t: Doc<"timetables">): Infer<typeof timetableDoc> {
-  return {
+  const out: Infer<typeof timetableDoc> = {
     _id: t._id,
     _creationTime: t._creationTime,
     day_time: Array.isArray(t.day_time) ? t.day_time.filter((s) => typeof s === "string") : [],
@@ -97,6 +97,8 @@ export function projectTimetable(t: Doc<"timetables">): Infer<typeof timetableDo
     week: n(t.week, 0),
     editedAt: n(t.editedAt, t._creationTime),
   };
+  if (typeof t.weekStart === "string") out.weekStart = t.weekStart;
+  return out;
 }
 
 // Mon–Fri, always five columns: the grid renders one per day, and a row that

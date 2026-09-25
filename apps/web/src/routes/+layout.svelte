@@ -7,6 +7,8 @@
 	import { configure } from 'onedollarstats';
 	import LoadingState from '$lib/components/ui/LoadingState.svelte';
 	import { SITE_NAME } from '@class-info/backend/convex/config';
+	import { invalidateAll } from '$app/navigation';
+	import { getNowInKst, isAtOrAfterDinnerEnd, schoolDisplayClock } from '$lib/date';
 
 	const { children } = $props();
 	setupConvex(getConvexUrl());
@@ -69,6 +71,35 @@
 			collectorUrl: 'https://collector.onedollarstats.com/events',
 			autocollect: true,
 		});
+	});
+
+	// Every page works out "today" — and the 4pm and dinner cutoffs — once, in
+	// its load. A tab or home-screen app left open overnight kept showing
+	// yesterday's timetable and meals, so re-run the loads whenever the clock
+	// has crossed one of those lines since: on return to the tab, and once a
+	// minute while it is in view.
+	onMount(() => {
+		const clockKey = () => {
+			const now = getNowInKst();
+			const { today, afterRollover } = schoolDisplayClock(now);
+			return `${today}|${afterRollover}|${isAtOrAfterDinnerEnd(now)}`;
+		};
+		let key = clockKey();
+
+		const check = () => {
+			if (document.visibilityState !== 'visible') return;
+			const next = clockKey();
+			if (next === key) return;
+			key = next;
+			void invalidateAll();
+		};
+
+		const interval = setInterval(check, 60_000);
+		document.addEventListener('visibilitychange', check);
+		return () => {
+			clearInterval(interval);
+			document.removeEventListener('visibilitychange', check);
+		};
 	});
 
 	// Press feedback scales the control down, and Chrome applies `:active` on

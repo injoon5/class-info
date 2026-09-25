@@ -46,6 +46,11 @@ export default defineSchema({
     ),
     update_date: v.string(),
     week: v.number(),
+    // YYYYMMDD Monday of the week this row holds, stamped at fetch time.
+    // `week` is only an offset from whenever the row was fetched; a row the
+    // cron has not refreshed (a failed poll, or a break with nothing to
+    // fetch) keeps its old offset, and read by offset it passes for this week.
+    weekStart: v.optional(v.string()),
     editedAt: v.number(),
   }).index("by_week", ["week"]),
 

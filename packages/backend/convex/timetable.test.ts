@@ -130,6 +130,19 @@ describe("timetable.snapshotFull", () => {
     expect(subjects((await t.query(api.timetable.getFull, {}))!.timetable)[0]).toEqual(["수학"]);
   });
 
+  test("places slots by period, keeping a skipped period as a blank", async () => {
+    const t = await withAdmin({
+      week: 0,
+      timetable: [[slot(1, "국어", "김"), slot(3, "수학", "이")], [], [], [], []],
+    });
+    await t.mutation(api.timetable.snapshotFull, { sessionToken: TOKEN, week: 0 });
+    expect(subjects((await t.query(api.timetable.getFull, {}))!.timetable)[0]).toEqual([
+      "국어",
+      "",
+      "수학",
+    ]);
+  });
+
   test("refuses a week that has no fetched timetable", async () => {
     const t = await withAdmin();
     await expect(
@@ -332,6 +345,22 @@ describe("timetable.fetchAndSave — source", () => {
     await t.action(internal.timetable.fetchAndSave, ARGS);
     expect(urls[0]).toContain("source=auto");
     expect(urls[0]).toContain("schoolcode=7010208");
+  });
+
+  test("stamps the Monday of the week it fetched", async () => {
+    vi.useFakeTimers();
+    // Thursday 2026-08-20, 12:00 KST.
+    vi.setSystemTime(new Date("2026-08-20T03:00:00Z"));
+    try {
+      const t = convexTest(schema, modules);
+      stubFetch(jsonResponse(COMCIGAN));
+      await t.action(internal.timetable.fetchAndSave, ARGS);
+      await t.action(internal.timetable.fetchAndSave, { ...ARGS, week: 1 });
+      expect((await t.query(api.timetable.getByWeek, { week: 0 }))!.weekStart).toBe("20260817");
+      expect((await t.query(api.timetable.getByWeek, { week: 1 }))!.weekStart).toBe("20260824");
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });
 

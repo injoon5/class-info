@@ -13,12 +13,13 @@ import ConfirmDeleteActions from '$lib/components/ui/ConfirmDeleteActions.svelte
 import AdminPastMonthDetails from './AdminPastMonthDetails.svelte';
 import Disclosure from '$lib/components/ui/Disclosure.svelte';
 import { autosize } from '$lib/actions/autosize';
-import { tick } from 'svelte';
+import { onMount, tick } from 'svelte';
 import { SvelteSet } from 'svelte/reactivity';
 import { fade, slide } from 'svelte/transition';
 import { fadeOut, reveal, slideNone, slideY, slideYOut } from '$lib/transitions';
 import { useQuery } from 'convex-svelte';
 import { followCollapsing } from '$lib/scroll';
+import { adminErrorMessage } from '$lib/errors';
 import type { PageData, ActionData } from './$types';
 
 const { data, form }: { data: PageData; form: ActionData } = $props();
@@ -75,24 +76,61 @@ const EMPTY_NOTICE = {
 	files: [] as Id<'files'>[]
 };
 
-// Toggling the header button must open an empty editor, not inherit whatever
-// notice happened to be open.
-function resetForm() {
+// The attachments the open notice had when the editor opened, and the files
+// uploaded since. Removing an attachment only detaches it; what is actually
+// deleted is settled when the editor closes — dropped originals once a save
+// lands, unsaved uploads when it is abandoned — so cancelling loses nothing
+// and nothing is left behind in storage.
+let savedFiles: Id<'files'>[] = [];
+let freshUploads: Id<'files'>[] = [];
+let isSubmitting = $state(false);
+
+function deleteFiles(ids: Id<'files'>[]) {
+	for (const fileId of ids) {
+		client.mutation(api.files.deleteFile, { sessionToken, fileId }).catch(() => {
+			// Best effort: the notice itself is already consistent.
+		});
+	}
+}
+
+function openEditor(target: string, form: typeof noticeForm) {
+	discardUploads();
+	noticeForm = form;
+	savedFiles = [...form.files];
+	freshUploads = [];
+	editorTarget = target;
+	formError = null;
+	confirmingDeleteId = null;
+}
+
+// Uploads that never made it into a saved notice.
+function discardUploads() {
+	deleteFiles(freshUploads);
+	freshUploads = [];
+}
+
+function closeEditor() {
 	followCollapsing(document.getElementById('notice-editor'));
 	noticeForm = { ...EMPTY_NOTICE };
+	savedFiles = [];
+	freshUploads = [];
 	editorTarget = null;
 	formError = null;
 }
 
+// Toggling the header button must open an empty editor, not inherit whatever
+// notice happened to be open.
+function cancelEditor() {
+	discardUploads();
+	closeEditor();
+}
+
 async function startNewNotice() {
 	if (editorTarget === 'new') {
-		resetForm();
+		cancelEditor();
 		return;
 	}
-	noticeForm = { ...EMPTY_NOTICE };
-	formError = null;
-	confirmingDeleteId = null;
-	editorTarget = 'new';
+	openEditor('new', { ...EMPTY_NOTICE, files: [] });
 	await tick();
 	document.getElementById('notice-editor')?.scrollIntoView({ block: 'nearest' });
 }
@@ -108,17 +146,14 @@ async function editNotice(id: Id<'notices'>) {
 			return;
 		}
 		panelError = null;
-		noticeForm = {
+		openEditor(id, {
 			title: full.title || '',
 			subject: full.subject || '',
 			type: full.type || '숙제',
 			description: typeof full.description === 'string' ? full.description : '',
 			dueDate: full.dueDate || '',
 			files: Array.isArray(full.files) ? full.files : []
-		};
-		editorTarget = id;
-		formError = null;
-		confirmingDeleteId = null;
+		});
 	} catch {
 		panelError = '공지를 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.';
 	}
@@ -128,27 +163,41 @@ function handleFilesChange(fileIds: Id<'files'>[]) {
 	noticeForm = { ...noticeForm, files: fileIds };
 }
 
+function handleUploaded(fileIds: Id<'files'>[]) {
+	freshUploads = [...freshUploads, ...fileIds];
+}
+
 async function handleSubmit() {
+	// A second press while the first save is in flight created the notice twice.
+	if (isSubmitting) return;
 	const payload = {
 		...noticeForm,
+		title: noticeForm.title.trim(),
+		subject: noticeForm.subject.trim(),
 		description: typeof noticeForm.description === 'string' ? noticeForm.description : ''
 	};
-	
+
 	if (!payload.title || !payload.subject || !payload.dueDate) {
 		formError = '제목, 과목, 마감일을 모두 입력해 주세요.';
 		return;
 	}
 	formError = null;
-	
+	isSubmitting = true;
+
 	try {
 		if (isEditing) {
 			await client.mutation(api.notices.update, { sessionToken, id: editorTarget as Id<'notices'>, ...payload });
 		} else {
 			await client.mutation(api.notices.create, { sessionToken, ...payload });
 		}
-		resetForm();
-	} catch {
-		formError = '저장하지 못했습니다. 잠시 후 다시 시도해 주세요.';
+		// Saved: whatever was detached from the notice is now attached to nothing.
+		deleteFiles(savedFiles.filter((id) => !payload.files.includes(id)));
+		deleteFiles(freshUploads.filter((id) => !payload.files.includes(id)));
+		closeEditor();
+	} catch (err) {
+		formError = adminErrorMessage(err, '저장하지 못했습니다. 잠시 후 다시 시도해 주세요.');
+	} finally {
+		isSubmitting = false;
 	}
 }
 
@@ -161,10 +210,11 @@ async function handleDelete(id: Id<'notices'>) {
 	try {
 		await client.mutation(api.notices.remove, { sessionToken, id });
 		panelError = null;
-		if (editorTarget === key) resetForm();
-	} catch {
+		// The notice took its saved attachments with it; only unsaved uploads remain.
+		if (editorTarget === key) cancelEditor();
+	} catch (err) {
 		dismissedIds.delete(key);
-		panelError = '삭제하지 못했습니다. 잠시 후 다시 시도해 주세요.';
+		panelError = adminErrorMessage(err, '삭제하지 못했습니다. 잠시 후 다시 시도해 주세요.');
 	}
 }
 
@@ -197,6 +247,12 @@ $effect(() => {
 	return () => cancelAnimationFrame(frame);
 });
 const listSlide = $derived(live ? slideY : slideNone);
+
+// Relative time is resolved after mount so SSR and hydration agree on the markup.
+let now = $state<number | null>(null);
+onMount(() => {
+	now = Date.now();
+});
 
 // Most recent notice timestamp, or null when there are none (avoids Math.max()
 // returning -Infinity → "Invalid Date").
@@ -316,6 +372,7 @@ const lastUpdatedTs = $derived.by(() => {
 					<FileUpload
 						files={noticeForm.files}
 						onFilesChange={handleFilesChange}
+						onUploaded={handleUploaded}
 						{sessionToken}
 					/>
 				</div>
@@ -325,8 +382,15 @@ const lastUpdatedTs = $derived.by(() => {
 				{/if}
 
 				<div class="flex gap-2">
-					<PillButton type="submit" morph text={isEditing ? '수정' : '추가'} class="px-5 py-2.5" />
-					<PillButton type="button" text="취소" variant="secondary" onclick={resetForm} class="px-5 py-2.5" />
+					<PillButton
+						type="submit"
+						morph
+						text={isSubmitting ? '저장 중…' : isEditing ? '수정' : '추가'}
+						pending={isSubmitting}
+						disabled={isSubmitting}
+						class="px-5 py-2.5"
+					/>
+					<PillButton type="button" text="취소" variant="secondary" onclick={cancelEditor} disabled={isSubmitting} class="px-5 py-2.5" />
 				</div>
 			</form>
 		</div>
@@ -511,7 +575,7 @@ const lastUpdatedTs = $derived.by(() => {
 		<!-- Footer -->
 		<div class="text-center py-4 text-xs text-muted-foreground border-t border-border mt-8 tabular-nums">
 			{#if lastUpdatedTs !== null}
-				마지막 업데이트: <span title={formatAbsolute(lastUpdatedTs)}>{formatRelative(lastUpdatedTs)}</span>
+				마지막 업데이트: <span title={formatAbsolute(lastUpdatedTs)}>{now === null ? formatAbsolute(lastUpdatedTs) : formatRelative(lastUpdatedTs, now)}</span>
 			{:else}
 				마지막 업데이트: 없음
 			{/if}

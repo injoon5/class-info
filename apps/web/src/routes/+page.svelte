@@ -10,8 +10,10 @@ import {
 	ddayLabel,
 	relativeDayLabel,
 	weekOffsetBetween,
-	ymdWeekday
+	ymdWeekday,
+	mondayYyyymmddOf
 } from '$lib/date';
+import { timetableForWeek } from '$lib/timetable';
 import { eventChrome } from '$lib/eventChrome';
 import type { DayGroup, MinimalNotice } from '$lib/notices';
 import type { PublicEvent } from '@class-info/backend/convex/validators';
@@ -45,7 +47,13 @@ const displayDayIndex = $derived(parsedDisplay ? ymdWeekday(displayDay) - 1 : -1
 // map by whole-week offset; anything further out has no timetable to show.
 const weekOffset = $derived(parsedDisplay ? weekOffsetBetween(todayYmd, displayDay) : -1);
 const displayTimetableData = $derived(
-	weekOffset === 0 ? data.timetable : weekOffset === 1 ? data.nextWeekTimetable : undefined
+	parsedDisplay
+		? timetableForWeek(
+				[data.timetable, data.nextWeekTimetable],
+				mondayYyyymmddOf(displayDay),
+				weekOffset
+			)
+		: null
 );
 const displaySchedule = $derived(
 	(displayDayIndex >= 0 && displayDayIndex <= 4
