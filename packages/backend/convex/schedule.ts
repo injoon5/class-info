@@ -56,7 +56,7 @@ export const upsertManySchoolEvents = internalMutation({
   },
   returns: v.null(),
   handler: async (ctx, { events, startdate, enddate }) => {
-        // An empty payload (upstream hiccup) must not wipe the range.
+    // An empty payload (upstream hiccup) must not wipe the range.
     if (events.length === 0) {
       console.log(`[schedule.upsertManySchoolEvents] range=${startdate}–${enddate} skipped (no events)`);
       return null;
@@ -69,8 +69,8 @@ export const upsertManySchoolEvents = internalMutation({
 
     const toDelete = existing.filter((ev) => ev.source !== "custom");
 
-        // Every sync re-inserts the range and the feed has no stable id, so a
-        // D-day set on a school event is carried over by (date, title).
+    // Every sync re-inserts the range and the feed has no stable id, so a
+    // D-day set on a school event is carried over by (date, title).
     const carriedDdays = new Set(
       toDelete.filter((ev) => ev.dday === true).map((ev) => ddayKey(ev.date, ev.title))
     );
@@ -248,8 +248,8 @@ export const homeSchedule = query({
       .filter((row) => row.date >= today && row.date <= windowEnd)
       .map(projectSchedule)
       .filter((e): e is NonNullable<typeof e> => e !== null);
-        // Forward-only countdowns, on their own index: the day scan ends a
-        // lookahead past today, and most D-days worth pinning are further out.
+    // Forward-only countdowns, on their own index: the day scan ends a
+    // lookahead past today, and most D-days worth pinning are further out.
     const ddayRows = await ctx.db
       .query("schedules")
       .withIndex("by_dday_date", (q) => q.eq("dday", true).gte("date", today))

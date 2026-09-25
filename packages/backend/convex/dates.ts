@@ -282,7 +282,7 @@ export function resolveSchoolDisplayYmd(
     const ymd = addDaysYyyymmdd(today, i);
     if (isSchoolYmd(ymd, closed)) return ymd;
   }
-    // No school day in the lookahead (bad data): show the next weekday.
+  // No school day in the lookahead (bad data): show the next weekday.
   let fallback = addDaysYyyymmdd(today, 1);
   while (isWeekendYmd(fallback)) fallback = addDaysYyyymmdd(fallback, 1);
   return fallback;

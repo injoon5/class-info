@@ -143,12 +143,8 @@ function scheduleDragPaint() {
 }
 
 
-/**
- * Bring the sheet home. `velocity` is the speed the finger let go at, in px/s,
- * and is what makes the release seamless: the sheet keeps moving at the speed
- * it was already moving rather than restarting from nothing. A throw settles
- * with a little overshoot because it carried momentum; a tap does not.
- */
+// Brings the sheet home carrying the release velocity (px/s). Only a throw
+// may overshoot; a tap-open settles flat, like a UIKit sheet.
 function settleOpen(velocity = 0) {
   if (isMobile) {
     springPanelY(0, velocity ? { ...SHEET_SETTLE, velocity } : SHEET_PRESENT);
@@ -170,21 +166,23 @@ async function close(velocity = 0) {
   if (panelEl) panelEl.style.transform = '';
   if (backdropEl) backdropEl.style.opacity = '';
   (document.activeElement instanceof HTMLElement ? document.activeElement : null)?.blur();
-    // Re-measure: the panel may have grown since it opened.
+  // Re-measure: the panel may have grown since it opened.
   if (panelEl) panelHeight = panelEl.offsetHeight;
   if (isMobile) {
-        // Teardown waits on the spring; the timeout only guards an interrupted one.
+    // Teardown waits on the spring; the timeout only guards an interrupted one.
     await new Promise<void>((resolve) => {
       let settled = false;
       const finish = () => {
         if (settled) return;
         settled = true;
-                // Let the last frame paint before unmounting.
+        // Let the last frame paint before unmounting.
         requestAnimationFrame(() => resolve());
       };
+      // Aimed past the edge and cut off at it: a critically damped spring
+      // creeps into its target, and that tail would show as the sheet's top
+      // lingering at the bottom of the screen.
       springPanelY(
-        panelHeight,
-                // Stop once off screen instead of oscillating where no one can see.
+        panelHeight + DISMISS_OVERSHOOT,
         { ...SHEET_DISMISS, velocity, until: (y) => y >= panelHeight },
         finish
       );
@@ -203,6 +201,14 @@ async function close(velocity = 0) {
 
 $effect(() => {
   if (open && !mounted && !isClosing) {
+    // Start out of sight, so the first paint isn't the sheet at rest; the real
+    // height is measured once it has laid out.
+    if (isMobile) setPanelY(window.innerHeight);
+    else {
+      panelScale.set(0.95, { duration: 0 });
+      panelOpacity.set(0, { duration: 0 });
+    }
+    scrimOpacity.set(0, { duration: 0 });
     mounted = true;
     requestAnimationFrame(() => requestAnimationFrame(() => {
       if (panelEl) panelHeight = panelEl.offsetHeight;
@@ -251,10 +257,10 @@ $effect(() => {
   };
   paint();
 
-    // Ahead of the page's media-scoped tags: the first match wins.
+  // Ahead of the page's media-scoped tags: the first match wins.
   document.head.insertBefore(meta, document.head.querySelector('meta[name="theme-color"]'));
 
-    // Re-read after a light/dark flip.
+  // Re-read after a light/dark flip.
   const mq = window.matchMedia('(prefers-color-scheme: dark)');
   const repaint = () => requestAnimationFrame(paint);
   mq.addEventListener('change', repaint);
@@ -306,13 +312,13 @@ $effect(() => {
     if (covered > 0) {
       wrapperEl.style.height = `${vv.height + vv.offsetTop}px`;
       wrapperEl.style.paddingBottom = '';
-            // svh ignores the keyboard, so cap the panel to what's left above it.
+      // svh ignores the keyboard, so cap the panel to what's left above it.
       if (panelEl) panelEl.style.maxHeight = `${Math.max(160, vv.height - 24)}px`;
     } else {
       wrapperEl.style.height = '';
       wrapperEl.style.paddingBottom = '';
       if (panelEl) panelEl.style.maxHeight = '';
-            // iOS can leave a fixed layer stuck after the keyboard hides.
+      // iOS can leave a fixed layer stuck after the keyboard hides.
       if (wasCovered && panelEl && !isDragging) {
         const el = panelEl;
         el.style.transform = 'translate3d(0,0,0)';
@@ -341,13 +347,32 @@ $effect(() => {
 });
 
 
+const DISMISS_OVERSHOOT = 80;
+
 let pointerStartY = 0;
 let dragOffset = 0;
-let lastPointerY = 0;
-let lastPointerTime = 0;
-let pointerVelocity = 0;
 
-const VELOCITY_STALE_MS = 60;
+// Release velocity is the sheet's own (not the finger's, which a scroller or
+// the rubber band may absorb), over the last VELOCITY_WINDOW_MS rather than
+// the last pair of events, which spikes. A finger held still reads as zero.
+const VELOCITY_WINDOW_MS = 100;
+let samples: { y: number; t: number }[] = [];
+
+function recordSample(y: number) {
+  const t = performance.now();
+  samples.push({ y, t });
+  while (samples.length > 2 && t - samples[0]!.t > VELOCITY_WINDOW_MS) samples.shift();
+}
+
+/** px/s over the recent window. */
+function releaseVelocity(): number {
+  const now = performance.now();
+  const recent = samples.filter((sample) => now - sample.t <= VELOCITY_WINDOW_MS);
+  const first = recent[0];
+  const last = recent[recent.length - 1];
+  if (!first || !last || last.t - first.t < 8) return 0;
+  return ((last.y - first.y) / (last.t - first.t)) * 1000;
+}
 
 // A drag right after a scroll reaches the top is the scroll's tail, not a dismiss.
 const SCROLL_SETTLE_MS = 100;
@@ -364,7 +389,6 @@ function rubberBand(delta: number): number {
   const x = -delta;
   return -(x * OVERDRAG_LIMIT * OVERDRAG_C) / (OVERDRAG_LIMIT + OVERDRAG_C * x);
 }
-
 function contentCanScroll() {
   return !!contentEl && contentEl.scrollHeight > contentEl.clientHeight + 1;
 }
@@ -376,14 +400,13 @@ function startDrag(y: number) {
   if (Date.now() - reachedTopAt < SCROLL_SETTLE_MS) return false;
   if (panelEl) panelHeight = panelEl.offsetHeight;
   pointerStartY = y;
-  lastPointerY = y;
-  lastPointerTime = performance.now();
-  pointerVelocity = 0;
-    // Take over from wherever the sheet is right now.
+  samples = [];
+  // Take over from wherever the sheet is right now.
   stopPanelSpring?.();
   stopPanelSpring = null;
   dragOffset = panelY;
   dragY = dragOffset;
+  recordSample(dragY);
   isDragging = true;
   if (panelEl) {
     panelEl.style.transform = isMobile
@@ -396,49 +419,43 @@ function startDrag(y: number) {
 
 function moveDrag(y: number) {
   if (!isDragging) return;
-  const now = performance.now();
-  const dt = now - lastPointerTime;
-  if (dt > 0) pointerVelocity = (y - lastPointerY) / dt;
-  lastPointerY = y;
-  lastPointerTime = now;
-
-    // Upward gestures belong to the scroller; rebase so coming back down
-    // starts the sheet from rest.
+  // Upward gestures belong to the scroller; rebase so coming back down
+  // starts the sheet from rest.
   if (contentEl && contentEl.scrollTop > 0) {
     pointerStartY = y;
     if (dragY !== 0) {
       dragY = 0;
       scheduleDragPaint();
     }
+    recordSample(dragY);
     return;
   }
 
   const raw = dragOffset + (y - pointerStartY);
   dragY = raw >= 0 ? raw : contentCanScroll() ? 0 : rubberBand(raw);
+  recordSample(dragY);
   scheduleDragPaint();
 }
 
 function endDrag() {
   if (!isDragging) return;
   if (dragFrame) { cancelAnimationFrame(dragFrame); dragFrame = 0; }
-    // A pointer that has been still before release has no velocity.
-  const velocity =
-    performance.now() - lastPointerTime > VELOCITY_STALE_MS ? 0 : pointerVelocity;
-  const pxPerSecond = velocity * 1000;
   const y = dragY;
+  const pxPerSecond = releaseVelocity();
   dragY = 0;
   dragOffset = 0;
-  pointerVelocity = 0;
+  samples = [];
   if (panelEl) panelEl.style.transform = '';
   if (backdropEl) backdropEl.style.opacity = '';
   isDragging = false;
 
-    // Decide on where the throw is heading, not where the finger stopped.
-    // Only downward momentum counts.
-  const projected = y + Math.max(0, projectMomentum(pxPerSecond));
+  // Decide on where the throw is heading, not where the finger stopped, so an
+  // upward flick rescues a sheet dragged most of the way down and a quick
+  // downward flick dismisses one that has barely moved.
+  const projected = y + projectMomentum(pxPerSecond);
 
   setPanelY(y);
-  if (projected > panelHeight * 0.4) close(pxPerSecond);
+  if (projected > panelHeight * 0.5) close(Math.max(0, pxPerSecond));
   else settleOpen(pxPerSecond);
 }
 
@@ -619,7 +636,7 @@ function onPanelKeydown(e: KeyboardEvent) {
       onclick={(e) => e.stopPropagation()}
       onkeydown={onPanelKeydown}
     >
-      <!-- Hangs below the sheet so the entrance overshoot uncovers more sheet. -->
+      <!-- Hangs below the sheet so a settle overshoot uncovers more sheet, not scrim. -->
       <div
         class="sm:hidden absolute inset-x-0 top-full h-14 bg-card border-x border-border"
         aria-hidden="true"

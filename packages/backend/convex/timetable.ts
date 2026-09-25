@@ -123,8 +123,8 @@ export const fetchAndSave = internalAction({
     week: v.number(),
     schoolcode: v.string(),
   },
-    // Null when there is nothing to store (a break or an empty grid), keeping
-    // the stored week rather than blanking it.
+  // Null when there is nothing to store (a break or an empty grid), keeping
+  // the stored week rather than blanking it.
   returns: v.union(v.id("timetables"), v.null()),
   handler: async (
     ctx,
@@ -139,7 +139,7 @@ export const fetchAndSave = internalAction({
     const res = await fetch(url, { headers: { Accept: "application/json" } });
     if (!res.ok) {
       const { code, message } = await readError(res);
-            // No rows from either source: a break, not a fault.
+      // No rows from either source: a break, not a fault.
       if (code === "NEIS_DATA_NOT_FOUND") {
         console.log(`[timetable.fetchAndSave] no rows for week=${week} (${message})`);
         return null;

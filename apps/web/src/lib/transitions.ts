@@ -122,12 +122,14 @@ export function projectMomentum(velocity: number, deceleration = 0.998): number 
 	return ((velocity / 1000) * deceleration) / (1 - deceleration);
 }
 
-/** After a throw: a touch of overshoot, since the gesture carried momentum. */
-export const SHEET_SETTLE = { damping: 0.82, response: 0.32 };
-/** On a tap: bouncy arrival; the skirt under the panel covers the overshoot. */
-export const SHEET_PRESENT = { damping: 0.7, response: 0.34 };
-/** Leaving: the overshoot happens off screen, so it reads as speed. */
-export const SHEET_DISMISS = { damping: 0.75, response: 0.24 };
+// UIKit sheet feel: presentation and dismissal are critically damped; only a
+// release that carried momentum may overshoot (Apple's drawer: 0.8 / 0.3).
+/** Snapping back after a drag or throw. */
+export const SHEET_SETTLE = { damping: 0.8, response: 0.3 };
+/** Tap to open: no bounce, since nothing threw it. */
+export const SHEET_PRESENT = { damping: 1, response: 0.34 };
+/** Leaving, from a tap or carrying a throw's velocity. */
+export const SHEET_DISMISS = { damping: 1, response: 0.3 };
 
 export const REVEAL_RISE = 8;
 
