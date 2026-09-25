@@ -2,6 +2,7 @@ import { ConvexError, v } from "convex/values";
 import { internalMutation, mutation, query, type QueryCtx } from "./_generated/server";
 import type { Doc, Id } from "./_generated/dataModel";
 import { requireAdmin } from "./auth";
+import { summarizeDescription } from "./text";
 import { deleteFilesByIds } from "./files";
 import {
   addDaysIso,
@@ -127,38 +128,6 @@ async function resolveNewSlug(
 }
 
 // ── Notice → minimal projection ────────────────────────────────────────────────
-
-function getUrlBasename(url: string): string {
-  const withoutQuery = url.split("?")[0].split("#")[0];
-  const parts = withoutQuery.split("/");
-  return parts[parts.length - 1] || url;
-}
-
-// The card's one-line preview: the first line with any text in it, read as
-// plain text. Starting at line one blindly made a description that opened
-// with a blank line summarize to "", and an empty summary is what marks a
-// notice as having nothing to open — the card stopped being a link.
-function summarizeDescription(description: string): string {
-  for (const raw of description.split("\n")) {
-    const trimmed = raw.trim();
-    // A fence or rule line carries no words worth previewing.
-    if (/^(?:`{3,}|~{3,}|-{3,}|\*{3,}|_{3,})/.test(trimmed)) continue;
-    const line = trimmed
-      .replace(/^(?:#{1,6}\s+|>\s*|[-*+]\s+|\d+\.\s+)+/, "")
-      .replace(/!\[([^\]]*)\]\(([^)]+)\)/g, (_m, alt, link) => {
-        const trimmedAlt = String(alt || "").trim();
-        if (trimmedAlt.length > 0) return trimmedAlt;
-        return getUrlBasename(String(link || "").trim());
-      })
-      .replace(/\[([^\]]*)\]\([^)]*\)/g, "$1")
-      .replace(/(\*\*|__)(.+?)\1/g, "$2")
-      .replace(/\*(.+?)\*/g, "$1")
-      .replace(/`([^`]*)`/g, "$1")
-      .trim();
-    if (line) return line;
-  }
-  return "";
-}
 
 function toMinimalNotice(n: Doc<"notices">): MinimalNotice {
   return {

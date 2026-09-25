@@ -1,20 +1,8 @@
 import { Marked, type Tokens } from 'marked';
 
-/**
- * Hardened markdown → HTML renderer, safe for `{@html}`.
- *
- * Notice descriptions are admin-controlled, but the output still must not
- * carry injected scripts (stolen admin session, malicious paste). Three
- * defenses, all applied identically on server and client:
- *
- *   1. Raw HTML tokens are escaped, not passed through — kills `<script>`,
- *      `<img onerror=…>`, etc.
- *   2. Link/image URLs are protocol-checked — kills `javascript:`, `data:`,
- *      and protocol-relative `//evil.com`.
- *   3. YouTube embeds are emitted from a trusted placeholder whose id/timestamp
- *      charsets are constrained, so even a forged placeholder can only ever
- *      produce a well-formed YouTube iframe.
- */
+// Markdown → HTML that is safe for `{@html}`: raw HTML is escaped, link and
+// image URLs are protocol-checked, and YouTube embeds come only from a
+// placeholder whose id/timestamp charsets are constrained.
 
 function escapeHtml(s: string): string {
   return s
@@ -41,9 +29,8 @@ function isSafeImg(url: string): boolean {
   return isSafeHttpUrl(url) || isSafePath(url);
 }
 
-// Bare URLs only. The lookbehind keeps a URL that is already a markdown link
-// or image target — `[영상](https://youtu.be/…)` — from being torn out of it,
-// and stops a match from starting partway into a longer URL.
+// Bare URLs only: the lookbehind skips link targets like `[영상](https://youtu.be/…)`
+// and matches starting partway into a longer URL.
 const YT_URL =
   /(?<![(\[<"'/\w.])(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/watch\?v=|youtu\.be\/)([a-zA-Z0-9_-]{11})(?:[&?]t=(\d+)s?)?/g;
 // Constrained charsets: id is 11 url-safe chars, start is digits only.
@@ -111,8 +98,7 @@ function preprocess(text: string): string {
     }
     line = line.replace(YT_URL, (_m, id, ts) => `\n\n@@YT:${id}:${ts ?? ''}@@\n\n`);
     out.push(line);
-    // A single newline is a paragraph break — except inside a code block or a
-    // table, where splitting the lines apart destroyed the block entirely.
+    // A single newline is a paragraph break, except between table rows.
     const next = lines[i + 1];
     if (next !== undefined && line.trim() && next.trim() && !(inTable[i] && inTable[i + 1])) {
       out.push('');
@@ -128,20 +114,4 @@ export function renderMarkdown(text: string): string {
     const start = ts ? `?start=${ts}` : '';
     return `<div class="video-embed"><iframe src="https://www.youtube.com/embed/${id}${start}" title="YouTube video" loading="lazy" referrerpolicy="strict-origin-when-cross-origin" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen sandbox="allow-scripts allow-same-origin allow-presentation"></iframe></div>`;
   });
-}
-
-export function getFirstLine(text: string): string {
-	if (!text) return '';
-	const cleanText = text
-		.replace(/^#{1,6}\s+/gm, '')
-		.replace(/\*\*(.*?)\*\*/g, '$1')
-		.replace(/\*(.*?)\*/g, '$1')
-		.replace(/`(.*?)`/g, '$1')
-		.replace(/\[([^\]]*)\]\([^)]*\)/g, '$1')
-		.replace(/^>\s+/gm, '')
-		.replace(/^-\s+/gm, '')
-		.replace(/^\d+\.\s+/gm, '')
-		.trim();
-
-	return cleanText.split('\n')[0] || '';
 }

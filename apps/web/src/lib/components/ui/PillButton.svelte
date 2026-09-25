@@ -3,12 +3,7 @@ import type { Snippet } from 'svelte';
 import MorphLabel from './MorphLabel.svelte';
 import Spinner from './Spinner.svelte';
 
-// The pill that recurs across the app. Each variant declares its own hover and
-// active fills, so a caller never has to re-derive them — and a new pill can't
-// drift from the others on the next change.
-//
-// §6 spells the variants with @apply; Tailwind 4 does not process @apply inside
-// a Svelte <style> block, so the equivalent here is a variant → classes record.
+// Variant → classes, so every pill shares its hover and press fills.
 
 type Variant = 'primary' | 'secondary' | 'ghost' | 'danger';
 
@@ -76,9 +71,6 @@ const base = $derived(
 	</a>
 {:else}
 	<button {type} {onclick} {disabled} class={base} aria-busy={pending || undefined}>
-		<!-- A morphing label measures the spinner with the text. Beside it, the
-		     spinner snapped the button wider by its own width plus the gap the
-		     instant it appeared, while the label width was still travelling. -->
 		{#if children}
 			{#if pending}{@render spinner()}{/if}
 			{@render children()}

@@ -10,8 +10,6 @@
 		fill?: boolean;
 	} = $props();
 
-	// compact: disclosure / nested fetch. fill: route pending, no page
-	// chrome. default: in-page query, optically centered in the content well.
 </script>
 
 <div

@@ -1,21 +1,9 @@
 <script lang="ts">
 import { onMount, type Snippet } from 'svelte';
-import { reducedMotion } from '$lib/transitions';
 
-// Horizontally scrollable region shared by meals / calendar.
-//
-// The row runs edge to edge: it cancels the page's own `px-4` gutter with a
-// matching negative margin and re-applies it as padding *inside* the scroll
-// port. Content therefore starts exactly where it did before, but has the
-// gutter to scroll through instead of stopping short of it — a grid that
-// continues past the screen now looks like one.
-//
-// `anchor` is a selector for a descendant to bring into view once, on first
-// layout — for a week grid that is wider than a phone, the interesting column
-// is otherwise off-screen until the reader scrolls.
-//
-// `hint` is the line shown under the row while there is more to see. Its
-// arrows track the scroll position, so they only ever point at content.
+// Horizontal scroller for meals and calendar. It runs edge to edge (negative
+// margin, padding inside), `anchor` scrolls a descendant into view once, and
+// `hint` shows arrows while there is more to see.
 const {
 	children,
 	blurred = false,
@@ -25,14 +13,10 @@ const {
 
 let scrollContainer = $state<HTMLDivElement>();
 
-// Booleans, not pixel offsets: the hint only ever shows or hides an arrow, and
-// storing the raw offsets re-ran the render on every frame of a scroll.
 let canScrollBack = $state(false);
 let canScrollForward = $state(false);
 let aligned = false;
 
-// Sub-pixel scroll positions and fractional layout widths mean the ends never
-// land on exactly 0.
 const EPS = 1;
 
 function updateEdges() {
@@ -43,12 +27,9 @@ function updateEdges() {
 	canScrollForward = overflow && scrollWidth - clientWidth - scrollLeft > EPS;
 }
 
-// Assigns scrollLeft rather than calling scrollIntoView: on iOS the latter
-// also scrolls the page vertically and can pick an ancestor scroll port. Runs
-// at most once, so it never fights a reader who has already scrolled.
+// scrollLeft, not scrollIntoView: on iOS that also scrolls the page.
 function alignToAnchor() {
 	if (aligned || !anchor || !scrollContainer) return;
-	// Not laid out yet — retry from the ResizeObserver.
 	if (scrollContainer.clientWidth === 0) return;
 	const el = scrollContainer.querySelector<HTMLElement>(anchor);
 	if (!el) return;
@@ -57,8 +38,6 @@ function alignToAnchor() {
 	if (max > 0) {
 		const port = scrollContainer.getBoundingClientRect();
 		const target = el.getBoundingClientRect();
-		// Centre it when there is room; the clamp pins it to whichever edge it
-		// sits nearest, which is what brings its neighbours along with it.
 		const delta = target.left - port.left - (port.width - target.width) / 2;
 		scrollContainer.scrollLeft = Math.min(Math.max(scrollContainer.scrollLeft + delta, 0), max);
 	}
@@ -73,12 +52,9 @@ onMount(() => {
 
 	alignToAnchor();
 	updateEdges();
-	// Safari settles layout a frame late often enough to matter here.
 	const raf = requestAnimationFrame(alignToAnchor);
 
-	// The container also has to follow its content: a swap that changes how
-	// wide the row is without changing the box around it leaves the hint
-	// describing the old content.
+	// A content swap can change the row width without resizing the port.
 	const ro = new ResizeObserver(() => {
 		alignToAnchor();
 		updateEdges();
@@ -104,10 +80,6 @@ onMount(() => {
 		mo.disconnect();
 	};
 });
-
-// Under reduced motion the app-wide transition override drops `filter`, so a
-// blur here would snap on and off — louder than the change it was softening.
-const blurActive = $derived(blurred && !reducedMotion());
 </script>
 
 <div
@@ -115,15 +87,11 @@ const blurActive = $derived(blurred && !reducedMotion());
 	bind:this={scrollContainer}
 	onscroll={updateEdges}
 >
-	<!-- Width lives here, not on the port: a `filter` on the same box as
-	     overflow-x kills panning on iOS, and a block child sized to the port
-	     clips any min-width grid inside.
-	     `container-type: inline-size` so children can size with `cqw` against
-	     this port — a `%` width under `w-max` is cyclic and falls back to
-	     content, which is how the meals row blew past its 37rem floor. -->
+	<!-- Blur lives on this wrapper: `filter` on the scroll port kills panning
+	     on iOS. The port is a size container so children can size in `cqw`. -->
 	<div
 		class="w-max min-w-full"
-		style="transition: filter 150ms ease-out, opacity 150ms ease-out; {blurActive
+		style="transition: filter 150ms ease-out, opacity 150ms ease-out; {blurred
 			? 'filter: blur(4px); opacity: 0.7;'
 			: ''}"
 	>
@@ -135,8 +103,7 @@ const blurActive = $derived(blurred && !reducedMotion());
 	.h-scroll {
 		-webkit-overflow-scrolling: touch;
 		overscroll-behavior-x: contain;
-		/* `manipulation` on button/a (app.css) is enough on Chrome. WebKit
-		   keeps the gesture on the control, so a row of day-cells never pans. */
+		/* WebKit keeps a pan on the control unless it allows panning too. */
 		touch-action: pan-x pan-y;
 		container-type: inline-size;
 		container-name: hscroll;
@@ -147,8 +114,6 @@ const blurActive = $derived(blurred && !reducedMotion());
 </style>
 
 {#if hint && (canScrollBack || canScrollForward)}
-	<!-- Both arrows keep their slot whether or not they are lit, so the label
-	     stays put instead of sliding as the reader scrolls. -->
 	<p
 		class="mt-1.5 flex items-center justify-center gap-1.5 text-xs text-muted-foreground select-none pointer-events-none print:hidden"
 	>

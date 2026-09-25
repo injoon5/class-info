@@ -1,9 +1,6 @@
-// The fetched weeks are stored by offset (0 = this week, 1 = next), but an
-// offset is only true as of the poll that wrote it: from Monday midnight
-// until the first poll the "this week" row still holds last week, and a
-// break with nothing to fetch leaves an old week there indefinitely. Rows
-// stamped with their Monday are matched on that instead; only rows written
-// before the stamp existed fall back to the offset.
+// Stored weeks are keyed by offset (0 = this week, 1 = next) as of the poll
+// that wrote them, so a stale row can pass for this week. Rows stamped with
+// their Monday are matched on it; older rows fall back to the offset.
 export function timetableForWeek<T extends { weekStart?: string }>(
 	rows: [T | null | undefined, T | null | undefined],
 	monday: string,

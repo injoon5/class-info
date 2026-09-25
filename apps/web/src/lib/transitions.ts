@@ -2,76 +2,38 @@ import { cubicIn, cubicOut, expoOut, linear } from 'svelte/easing';
 import { prefersReducedMotion } from 'svelte/motion';
 import type { EasingFunction, TransitionConfig } from 'svelte/transition';
 
-// One motion vocabulary. Enter/exit/move go through Svelte (`transition`,
-// `in`/`out`, `Tween`) with `expoOut`. CSS keeps hover/press
-// (`duration-150 ease-out`) and the spinner — those aren't journeys.
+// The app's motion vocabulary. Entrances ease `expoOut`, exits `cubicIn` (an
+// outro runs the curve backwards, so `expoOut` there would snap), and anything
+// that can reverse mid-flight `cubicOut`.
 //
-// No FLIP anywhere. Svelte leaves an outgoing node in flow while it animates,
-// so FLIP always measures the survivors a beat too early and then fights the
-// collapse it was meant to carry; a height slide does that job on its own.
-//
-// ── Reduced motion ──────────────────────────────────────────────────────────
-// Svelte drives `transition:`/`in:`/`out:` through the Web
-// Animations API, which CSS `animation-duration` cannot reach — the
-// `prefers-reduced-motion` block in app.css stops CSS animations only. So
-// every duration and delay here is a getter that collapses to 0, read at the
-// moment Svelte destructures the config (i.e. when the transition starts),
-// which is also late enough to follow the setting changing mid-session.
-//
-// ── Easing direction ────────────────────────────────────────────────────────
-// Svelte runs an outro as `t = 1 - easing(elapsed / duration)`. `expoOut` in
-// that direction is a snap: `expoOut(0.1) === 0.5`, so half the distance is
-// gone in a tenth of the time and the rest is an invisible tail. Entrances
-// keep `expoOut`; exits take `cubicIn` so they accelerate away (the curve
-// `tweenPanelClose` already uses); anything bidirectional takes `cubicOut`,
-// which reads as motion in both directions.
-//
-// ── Reveals ─────────────────────────────────────────────────────────────────
-// Every box that opens does the same two things: the height slides, and the
-// content rises the last few pixels into place behind it (`reveal`). Content
-// that sits at its final position while the edge sweeps past it is a curtain
-// going up — the box moves and nothing in it does. Closing is not the mirror
-// image: the content fades out where it stands and the height follows it, so
-// nothing is still legible while the box is shutting on it.
+// Durations are getters read when a transition starts: Svelte animates through
+// the Web Animations API, which the CSS reduced-motion override cannot reach.
 
 function ms(duration: number): number {
 	return prefersReducedMotion.current ? 0 : duration;
 }
 
-/** Tween duration that collapses under reduced motion. */
-export function tweenMs(duration: number): () => number {
+function tweenMs(duration: number): () => number {
 	return () => ms(duration);
 }
 
+export function reducedMotion(): boolean {
+	return prefersReducedMotion.current;
+}
+
 export const tweenMove = { duration: tweenMs(300), easing: expoOut };
-/** Entrance: panel scale/fade and the desktop scrim tween over this long. */
 export const PANEL_OPEN_MS = 360;
 export const tweenPanel = { duration: tweenMs(PANEL_OPEN_MS), easing: expoOut };
-/** Dismiss: shorter, accelerates off-screen so it doesn't hang at the end. */
 export const PANEL_CLOSE_MS = 180;
 export const tweenPanelClose = { duration: tweenMs(PANEL_CLOSE_MS), easing: cubicIn };
 export const tweenFade = { duration: tweenMs(200), easing: expoOut };
 export const tweenCaret = { duration: tweenMs(200), easing: expoOut };
 
-/** True while the user has asked for reduced motion. */
-export function reducedMotion(): boolean {
-	return prefersReducedMotion.current;
-}
-
-// ── Springs, for the one surface a finger drives ────────────────────────────
-// A sheet under a finger cannot use a fixed-duration tween. A tween ignores
-// the speed the finger let go at and always takes the same time, so the sheet
-// visibly *catches* at the release instead of carrying on — and it cannot be
-// grabbed mid-flight without a jump, because it interpolates from where the
-// animation began rather than from where the sheet actually is.
-//
-// Parameterised the way Apple's designers are given it (Designing Fluid
-// Interfaces, WWDC 2018) rather than as mass/stiffness/damping:
-//   damping  — 1 settles with no overshoot; below 1 overshoots and bounces.
-//   response — roughly how long, in seconds, it takes to arrive. Not a
-//              duration: the settle time falls out of the parameters.
-// Bounce is only for motion a gesture threw; a sheet that merely appeared
-// settles flat.
+// ── Springs, for the sheet a finger drives ──────────────────────────────────
+// A tween ignores release velocity and can't be grabbed mid-flight, so the
+// sheet uses a spring parameterised like Apple's (WWDC 2018 "Designing Fluid
+// Interfaces"): `damping` 1 settles flat, below 1 bounces; `response` is
+// roughly the time to arrive, in seconds.
 
 export interface SpringOptions {
 	from: number;
@@ -80,16 +42,13 @@ export interface SpringOptions {
 	velocity?: number;
 	damping?: number;
 	response?: number;
-	/** Ends the spring the moment this is true of the value. For motion whose
-	 *  target is off screen, where waiting out an oscillation nobody can see
-	 *  only holds the page hostage. */
+	/** Ends the spring as soon as this holds, e.g. once it is off screen. */
 	until?: (value: number) => boolean;
 	onFrame: (value: number) => void;
 	onRest?: () => void;
 }
 
-/** Starts a spring and returns a stop handle. Under reduced motion it lands
- *  immediately — the value still arrives, it just doesn't travel. */
+/** Starts a spring and returns a stop handle. Lands instantly under reduced motion. */
 export function spring({
 	from,
 	to,
@@ -106,14 +65,13 @@ export function spring({
 		return () => {};
 	}
 
-	const w = (2 * Math.PI) / response; // natural angular frequency
+	const w = (2 * Math.PI) / response;
 	const z = damping;
-	const x0 = from - to; // displacement from rest
+	const x0 = from - to;
 	const v0 = velocity;
 
-	// Closed form, sampled against the wall clock every frame rather than
-	// integrated step by step: a dropped frame then changes what gets drawn,
-	// never where the spring has got to.
+	// Closed form sampled against the clock, so a dropped frame never changes
+	// where the spring is — only what gets drawn.
 	let displacement: (t: number) => number;
 	let speed: (t: number) => number;
 
@@ -136,24 +94,18 @@ export function spring({
 	let frame = 0;
 	let stopped = false;
 
+	const finish = (value: number) => {
+		onFrame(value);
+		stopped = true;
+		onRest?.();
+	};
+
 	const step = (now: number) => {
 		if (stopped) return;
 		const t = (now - start) / 1000;
 		const d = displacement(t);
-		if (until?.(to + d)) {
-			onFrame(to + d);
-			stopped = true;
-			onRest?.();
-			return;
-		}
-		// Rest when it is both within half a pixel and no longer moving enough
-		// to cross one in the next few frames.
-		if (Math.abs(d) < 0.5 && Math.abs(speed(t)) < 10) {
-			onFrame(to);
-			stopped = true;
-			onRest?.();
-			return;
-		}
+		if (until?.(to + d)) return finish(to + d);
+		if (Math.abs(d) < 0.5 && Math.abs(speed(t)) < 10) return finish(to);
 		onFrame(to + d);
 		frame = requestAnimationFrame(step);
 	};
@@ -165,58 +117,24 @@ export function spring({
 	};
 }
 
-/**
- * Where a flick would come to rest if left to decay on its own, so an outcome
- * can be decided from where the gesture is *going* rather than from wherever
- * the finger happened to lift. Apple's exponential-decay projection, not the
- * textbook v²/2a. `velocity` in px/s, result in px.
- */
+/** Where a flick would come to rest (Apple's exponential decay). px/s in, px out. */
 export function projectMomentum(velocity: number, deceleration = 0.998): number {
 	return ((velocity / 1000) * deceleration) / (1 - deceleration);
 }
 
-/** Sheet settling after a throw — a touch of overshoot, because the gesture
- *  carried momentum into it. */
+/** After a throw: a touch of overshoot, since the gesture carried momentum. */
 export const SHEET_SETTLE = { damping: 0.82, response: 0.32 };
-/**
- * Sheet arriving on a tap. Under-damped, so it carries past its resting place
- * and comes back — the skirt under the panel is what that overshoot uncovers,
- * rather than a gap at the bottom of the screen.
- */
+/** On a tap: bouncy arrival; the skirt under the panel covers the overshoot. */
 export const SHEET_PRESENT = { damping: 0.7, response: 0.34 };
-/**
- * Sheet leaving. Under-damped again, which here buys speed rather than a
- * visible bounce: the overshoot is past the bottom of the screen, so what
- * shows is a sheet that leaves with more energy. The close ends at the screen
- * edge instead of waiting for that off-screen oscillation to decay.
- */
+/** Leaving: the overshoot happens off screen, so it reads as speed. */
 export const SHEET_DISMISS = { damping: 0.75, response: 0.24 };
 
-/**
- * How far below its resting place revealed content starts. Small on purpose:
- * enough to read as arrival, not enough to look like a second layout change
- * happening next to the box's own.
- */
 export const REVEAL_RISE = 8;
 
 /**
- * Content arriving inside a box that is opening.
- *
- * A height slide on its own reads as a curtain going up: the content is
- * already sitting in its final place and the edge merely uncovers it. Here the
- * content starts a few pixels low and rises as the box opens, so it arrives
- * under its own steam instead of being revealed by something else. The rise
- * shares the height's `expoOut`, so the offset stays proportional to the
- * distance the box has left to travel and the two stop together — a separate
- * curve would have the content still drifting after the box had settled.
- *
- * Opacity is not on that curve. It waits out `fadeDelay` first, so the box is
- * most of the way open before anything is legible inside it: text fading in
- * across a two-pixel sliver is the part that reads as jitter. The defaults are
- * the delayed fade every reveal used to spell out for itself.
- *
- * Intro only. Leaving is a fade in place (`fadeOut`) — the content clears out
- * before the box collapses, and a rise on the way out only competes with it.
+ * Content arriving inside a box that is opening: it rises the last few pixels
+ * on the same `expoOut` as the height, and fades in only once the box is most
+ * of the way open. Intro only; pair with `fadeOut` for the exit.
  */
 export function reveal(
 	_node: Element,
@@ -240,8 +158,6 @@ export function reveal(
 	const fadeStart = ms(fadeDelay);
 	const fadeSpan = ms(fadeDuration);
 
-	// `linear`, because `t` has to stay the raw time fraction: the rise and the
-	// fade are eased separately below, off the same clock.
 	return {
 		delay: ms(delay),
 		duration: total,
@@ -263,32 +179,24 @@ export const fadeOut = {
 	get duration() { return ms(120); },
 	easing: cubicIn
 };
-/** Entrance height slide. */
 export const slideY = {
 	get duration() { return ms(300); },
 	easing: expoOut
 };
-/** Exit height slide. */
 export const slideYOut = {
 	get duration() { return ms(200); },
 	easing: cubicIn
 };
-/** Bidirectional width slide — one easing has to serve both directions. */
 export const slideX = {
 	axis: 'x' as const,
 	get duration() { return ms(300); },
 	easing: cubicOut
 };
-/** Bidirectional height slide, for panels that must reverse mid-flight. */
 export const slideYBoth = {
 	get duration() { return ms(300); },
 	easing: cubicOut
 };
-/**
- * Enter only after a sibling has finished leaving the same grid cell.
- * Without the wait the arriving control paints on top of the one still
- * collapsing underneath it.
- */
+/** Waits for a sibling leaving the same grid cell, so the two never overlap. */
 export const fadeInAfter = {
 	get duration() { return ms(150); },
 	get delay() { return ms(160); },
@@ -305,14 +213,10 @@ export const flyHelperOut = {
 	get duration() { return ms(120); },
 	easing: cubicIn
 };
+
 /**
- * Fade a label in or out while it softens.
- *
- * Used where the element sits inside a clipping box (a morphing button), which
- * rules out moving it: a `fly` there gets sliced by the clip edge and the hard
- * cut through the glyphs is more distracting than the swap it was meant to
- * soften. Blur dissolves instead of cutting, so the box can keep clipping the
- * width while the label reads as fading out of focus.
+ * Fade with a soft blur, for labels inside a clipping box where a `fly`
+ * would be sliced by the clip edge.
  */
 export function blurFade(
 	_node: Element,

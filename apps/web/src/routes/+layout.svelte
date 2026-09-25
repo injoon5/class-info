@@ -26,18 +26,12 @@
 		return Boolean(to && to !== from);
 	});
 
-	// Keep the current page for a beat so a preloaded nav doesn't flash a spinner.
+	// Wait a beat before showing a spinner, then keep it up long enough not to flash.
 	const PENDING_DELAY_MS = 80;
-	// …and once the spinner is up, keep it up. A 200ms navigation rendered
-	// content → spinner → content, and a frame of spinner between two frames of
-	// the real page reads as a glitch rather than as loading — it costs more
-	// than the wait it saved.
 	const PENDING_MIN_MS = 320;
 
 	let showPending = $state(false);
-	// Plain locals: the effect below decides what to do based on what is already
-	// on screen, and reading the state it also writes would make it depend on
-	// itself.
+	// Plain locals, so the effect does not depend on state it writes.
 	let shown = false;
 	let shownAt = 0;
 
@@ -73,11 +67,8 @@
 		});
 	});
 
-	// Every page works out "today" — and the 4pm and dinner cutoffs — once, in
-	// its load. A tab or home-screen app left open overnight kept showing
-	// yesterday's timetable and meals, so re-run the loads whenever the clock
-	// has crossed one of those lines since: on return to the tab, and once a
-	// minute while it is in view.
+	// Loads compute "today" and the 4pm/dinner cutoffs once. Re-run them when the
+	// clock crosses one, so a tab left open overnight doesn't show yesterday.
 	onMount(() => {
 		const clockKey = () => {
 			const now = getNowInKst();
@@ -102,10 +93,8 @@
 		};
 	});
 
-	// Press feedback scales the control down, and Chrome applies `:active` on
-	// touchstart — before it knows whether the finger is pressing or starting
-	// a scroll. Flag the scroll so app.css can stand the transform down.
-	// Capturing, so nested scrollers (tables, the drawer body) count too.
+	// Chrome applies :active before it knows a touch is a scroll; flag scrolling
+	// so app.css can drop the press transform. Capturing, for nested scrollers.
 	onMount(() => {
 		const root = document.documentElement;
 		let timer: ReturnType<typeof setTimeout> | null = null;

@@ -1,6 +1,5 @@
-// One event = one chrome. Calendar chips, home dots, and the day-drawer
-// used to each invent the same palette. Full Tailwind strings stay in these
-// maps so the compiler can see every class.
+// Colours for an event everywhere it appears (calendar chip, home dot, day
+// drawer). Full class strings so Tailwind can see them.
 
 export type EventChrome = {
 	chip: string;
@@ -101,8 +100,7 @@ export const CUSTOM_COLOR_LABEL: Record<CustomEventColor, string> = {
 	teal: '청록',
 };
 
-// Picker swatches. Orange/pink sit one step lighter so they don't read as
-// "selected" before a check is drawn on them.
+// Picker swatches. Orange/pink a step lighter so they don't look selected.
 export const CUSTOM_COLOR_SWATCH: Record<CustomEventColor, string> = {
 	blue: 'bg-blue-500',
 	green: 'bg-green-500',

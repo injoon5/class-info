@@ -4,19 +4,9 @@ import { reducedMotion, slideY, slideYOut } from '$lib/transitions';
 import DisclosureCaret from './DisclosureCaret.svelte';
 import type { Snippet } from 'svelte';
 
-// A section that opens. `open` is owned by the page — the past-notice lists
-// keep one month open at a time — so this cannot toggle itself; it reports the
-// click and animates whatever the page decides.
-//
-// `<details>` stops painting everything but the summary the instant `open`
-// goes false, which would swallow the collapse before its first frame. So the
-// element stays open until the outro has finished, and the content's presence
-// is the `{#if}` below rather than the attribute. The attribute still moves,
-// because it is what tells assistive tech the section is expanded.
-//
-// The page can close this one without the click landing here — opening
-// another month closes it — so the close is caught on the `open` edge rather
-// than in the handler.
+// A section the page opens and closes (one past month at a time). The
+// <details> stays open until the collapse finishes, since it stops painting
+// its content the instant `open` goes false.
 
 const {
 	open,
@@ -38,10 +28,7 @@ let wasOpen = open;
 $effect(() => {
 	if (open === wasOpen) return;
 	wasOpen = open;
-	// Runs before paint, so the attribute never flickers shut for a frame.
-	// Under reduced motion there is no collapse to wait for and Svelte never
-	// reports an `outroend` for the zero-length one, so nothing would ever
-	// clear this again.
+	// Reduced motion never fires `outroend` for the zero-length collapse.
 	closing = !open && !reducedMotion();
 });
 </script>

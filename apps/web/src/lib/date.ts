@@ -1,79 +1,72 @@
-// Calendar parse/KST math lives in the backend dates module (Convex is UTC).
-// Re-export it so the client doesn't keep a second, local-Date copy of the
-// same functions. Timestamp formatters stay here — they're UI-only.
+// Calendar math lives in the backend's dates module so server and client share
+// one implementation. Display formatters live here.
 
 import {
-	WEEKDAYS_KR,
 	getNowKst as getNowInKst,
 	parseIsoDate,
 	parseYyyymmdd,
 	addDaysYyyymmdd,
-	toIsoDate,
 	toYyyymmdd as yyyymmdd,
-	weekdayKr,
 	weekdayKrUtc,
 	ymdWeekday,
 	weekOffsetBetween,
-	daysBetweenYmd,
 	relativeDayLabel,
 	ddayLabel,
 	isAtOrAfterDinnerEnd,
 	noticeClock,
 	schoolDisplayClock,
 	scheduleWindow,
-	mondayYyyymmddOf,
+	mondayYyyymmddOf
 } from '@class-info/backend/convex/dates';
 import { TIMEZONE_OFFSET_HOURS } from '@class-info/backend/convex/config';
 
 export {
-	WEEKDAYS_KR,
 	getNowInKst,
 	parseIsoDate,
 	parseYyyymmdd,
 	addDaysYyyymmdd,
-	toIsoDate,
 	yyyymmdd,
-	weekdayKr,
 	weekdayKrUtc,
 	ymdWeekday,
 	weekOffsetBetween,
-	daysBetweenYmd,
 	relativeDayLabel,
 	ddayLabel,
 	isAtOrAfterDinnerEnd,
 	noticeClock,
 	schoolDisplayClock,
 	scheduleWindow,
-	mondayYyyymmddOf,
+	mondayYyyymmddOf
 };
 
-export function pad2(n: number): string {
+function pad2(n: number): string {
 	return String(n).padStart(2, '0');
 }
 
-export function todayIso(now: Date = getNowInKst()): string {
-	return toIsoDate(now);
-}
-
 export function thisMondayYyyymmdd(now: Date = getNowInKst()): string {
-	const day = now.getDay();
-	const monday = new Date(now);
-	monday.setDate(now.getDate() + (day === 0 ? -6 : 1 - day));
-	return yyyymmdd(monday);
+	return mondayYyyymmddOf(yyyymmdd(now));
 }
 
-// YYYYMMDD from explicit parts (month is 0-indexed). Distinct from `yyyymmdd(Date)`.
-export function toYyyymmdd(year: number, month: number, day: number): string {
+/** YYYYMMDD from parts, month 0-indexed. */
+export function ymdFromParts(year: number, month: number, day: number): string {
 	return `${year}${pad2(month + 1)}${pad2(day)}`;
 }
 
-// ── Timestamps ───────────────────────────────────────────────────────────────
-// Absolute is the fallback and the tooltip; relative is what the cell shows.
-// Callers pass an explicit `now` so server-rendered output stays deterministic.
+export type DateParts = { year: number; month: number; day: number; weekday: string };
 
-// Pinned to the school's zone. The server renders in UTC, so without this an
-// SSR'd timestamp read nine hours early. `Etc/GMT` names count the other way
-// round (Etc/GMT-9 is UTC+9) and only take whole hours, as the config does.
+/** YYYYMMDD → calendar parts with the Korean weekday; null when malformed. */
+export function ymdParts(ymd: string): DateParts | null {
+	const p = parseYyyymmdd(ymd);
+	return p ? { year: p.y, month: p.m, day: p.d, weekday: weekdayKrUtc(p.y, p.m, p.d) } : null;
+}
+
+/** "9/21 (월)" */
+export function shortDate(ymd: string): string {
+	const p = ymdParts(ymd);
+	return p ? `${p.month}/${p.day} (${p.weekday})` : ymd;
+}
+
+// Pinned to the school's zone, or SSR (in UTC) renders times hours off.
+// `Etc/GMT-9` is UTC+9: the sign is inverted by convention.
 const TIME_ZONE = `Etc/GMT${TIMEZONE_OFFSET_HOURS >= 0 ? '-' : '+'}${Math.abs(TIMEZONE_OFFSET_HOURS)}`;
 
 export function formatAbsolute(ts: number | string | Date): string {
@@ -91,7 +84,6 @@ export function formatRelative(ts: number | string | Date, now: number = Date.no
 	const then = new Date(ts).getTime();
 	if (Number.isNaN(then)) return '';
 	const minutes = Math.floor((now - then) / 60_000);
-	if (minutes < 0) return '방금 전';
 	if (minutes < 1) return '방금 전';
 	if (minutes < 60) return `${minutes}분 전`;
 	const hours = Math.floor(minutes / 60);
@@ -99,7 +91,6 @@ export function formatRelative(ts: number | string | Date, now: number = Date.no
 	const days = Math.floor(hours / 24);
 	if (days < 7) return `${days}일 전`;
 	if (days < 28) return `${Math.floor(days / 7)}주 전`;
-	// Older than a month: an absolute date carries more than "5주 전" does.
 	return new Date(ts).toLocaleDateString('ko-KR', {
 		timeZone: TIME_ZONE,
 		year: 'numeric',
@@ -108,6 +99,7 @@ export function formatRelative(ts: number | string | Date, now: number = Date.no
 	});
 }
 
+/** YYYY-MM-DD → "2026년 9월 21일 (월)" */
 export function formatDate(dateString: string) {
 	const parsed = parseIsoDate(dateString);
 	if (!parsed) return dateString;

@@ -3,13 +3,8 @@ import { onMount } from 'svelte';
 import { slide } from 'svelte/transition';
 import { slideNone, slideX } from '$lib/transitions';
 
-// In-place confirm. 삭제 is a stable node — it rides the flex layout as 수정
-// collapses and 취소 grows. Flip+slide together were both translating 삭제,
-// so 취소's reverse stuttered. `transition:slide` (not in/out) so a fast
-// 삭제→취소→삭제 reverses instead of restarting — which is also why the slide
-// eases `cubicOut` rather than the `expoOut` the one-way moves use: one curve
-// has to read as motion in both directions. Gap lives as padding on the
-// sliding wrappers so it doesn't pop in as a second flex gap at t=0.
+// In-place delete confirmation. `transition:` (not in/out) so a quick
+// 삭제 → 취소 → 삭제 reverses instead of restarting.
 
 const {
 	confirming,
@@ -38,9 +33,7 @@ const btn = $derived(
 	`pressable touch-target shrink-0 whitespace-nowrap rounded-lg font-semibold border transition-colors duration-150 ${sizeClass}`
 );
 
-// Bound only while this row is the one asking. Every row holding a window
-// listener meant the page carried one per notice, and any row that happened
-// to be confirming answered the same Enter.
+// Enter confirms and Escape cancels while this row is asking.
 $effect(() => {
 	if (!confirming) return;
 	const onKeydown = (e: KeyboardEvent) => {
@@ -50,8 +43,7 @@ $effect(() => {
 			return;
 		}
 		if (e.key === 'Enter' && !e.isComposing) {
-			// A focused control answers Enter itself. Taking it here meant Enter
-			// on 취소 confirmed the delete instead of cancelling it.
+			// A focused control handles Enter itself (Enter on 취소 must cancel).
 			if (e.target instanceof Element && e.target.closest('button, a, input, textarea, select')) {
 				return;
 			}

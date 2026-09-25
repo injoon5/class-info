@@ -5,7 +5,7 @@ import type { DayGroup } from '$lib/notices';
 const { group, isPast = false }: { group: DayGroup; isPast?: boolean } = $props();
 </script>
 
-<div class="{isPast ? 'mb-3 sm:mb-4 last:mb-0' : 'mb-4 sm:mb-6'}">
+<section class={isPast ? 'mb-3 sm:mb-4 last:mb-0' : 'mb-4 sm:mb-6'}>
 	{#if isPast}
 		<h3 class="text-xs sm:text-sm font-semibold mb-1.5 sm:mb-2 text-muted-foreground border-l-2 border-border pl-2">
 			{group.displayDate}
@@ -15,10 +15,10 @@ const { group, isPast = false }: { group: DayGroup; isPast?: boolean } = $props(
 			{group.displayDate}
 		</h2>
 	{/if}
-	
+
 	<div class="grid gap-1.5 sm:gap-2">
 		{#each group.notices as notice (notice._id)}
 			<NoticeCard {notice} {isPast} />
 		{/each}
 	</div>
-</div>
+</section>

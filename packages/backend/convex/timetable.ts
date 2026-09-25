@@ -16,16 +16,11 @@ import { addDaysYyyymmdd, getNowKst, mondayYyyymmddOf, toYyyymmdd } from "./date
 
 type Slot = Infer<typeof timetableSlot>;
 
-// `/timetable` merges Comcigan and NEIS. `auto` is both the upstream default
-// and the only source this app wants — Comcigan supplies bell times, teachers
-// and the short subject nicknames, NEIS fills days and periods Comcigan never
-// published — but it is sent explicitly so a later change to that default
-// can't silently reshape the grid.
+// `auto` merges Comcigan (bell times, teachers, short names) with NEIS. It is
+// the upstream default, but pinned so a change there can't reshape the grid.
 const SOURCE = "auto";
 
-// A NEIS-only week carries the same keys with empty values: no teachers, no
-// bell times, no LOAD_DTM, and never a replacement. Everything below treats
-// those as ordinary data rather than a malformed payload.
+// A NEIS-only week has the same keys with empty values; that is valid data.
 function str(value: unknown): string {
   return typeof value === "string" ? value : "";
 }
@@ -66,9 +61,8 @@ function normalizeWeek(raw: unknown): Slot[][] {
   );
 }
 
-// Errors arrive as `{ ok: false, error: { code, message, details } }`. Older
-// deploys of the API answer some failures with a bare body, so a missing
-// envelope falls back to the status line.
+// Errors are `{ ok: false, error: { code, message } }`; older deploys may
+// send a bare body, so fall back to the status line.
 async function readError(res: Response): Promise<{ code: string; message: string }> {
   let body: unknown;
   try {
@@ -129,9 +123,8 @@ export const fetchAndSave = internalAction({
     week: v.number(),
     schoolcode: v.string(),
   },
-  // Null when the week has nothing to store — a break, or a payload that came
-  // back structurally fine but empty. Blanking a good week over either would
-  // leave the app with no timetable at all until the next poll.
+    // Null when there is nothing to store (a break or an empty grid), keeping
+    // the stored week rather than blanking it.
   returns: v.union(v.id("timetables"), v.null()),
   handler: async (
     ctx,
@@ -146,9 +139,7 @@ export const fetchAndSave = internalAction({
     const res = await fetch(url, { headers: { Accept: "application/json" } });
     if (!res.ok) {
       const { code, message } = await readError(res);
-      // Neither source has rows for this week: a break, or a school that
-      // publishes no timetable to Comcigan or NEIS at all. Both are ordinary
-      // answers, not faults worth failing the cron over.
+            // No rows from either source: a break, not a fault.
       if (code === "NEIS_DATA_NOT_FOUND") {
         console.log(`[timetable.fetchAndSave] no rows for week=${week} (${message})`);
         return null;
@@ -203,10 +194,8 @@ export const getByWeek = query({
   },
 });
 
-// ── Standing ("전체") timetable ───────────────────────────────────────────────
-// One row, edited by an admin. Kept apart from the fetched weeks: those are
-// overwritten by the cron every few hours, and a hand-made correction there
-// would not survive the next poll.
+// ── Standing ("전체") timetable ─────────────────────────────────────────────
+// One admin-edited row, kept apart from the fetched weeks the cron overwrites.
 
 const FULL_MAX_PERIODS = 12;
 const FULL_TEXT_MAX = 24;
@@ -264,9 +253,8 @@ export const getFull = query({
   },
 });
 
-// Seeds the standing timetable from a fetched week. A slot the feed marks as
-// replaced is copied as the class it replaced — a one-off substitution is not
-// part of the standing week.
+// Seeds the standing timetable from a fetched week, taking a substituted
+// slot's original class.
 export const snapshotFull = mutation({
   args: { sessionToken: v.string(), week: v.union(v.literal(0), v.literal(1)) },
   returns: v.null(),

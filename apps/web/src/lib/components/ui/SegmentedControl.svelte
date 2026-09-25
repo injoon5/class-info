@@ -2,9 +2,7 @@
 import { Tween } from 'svelte/motion';
 import { tweenMove } from '$lib/transitions';
 
-// Sliding segmented control (timetable week/전체 + meal type toggles). Any
-// number of segments: they share the track equally, and the thumb is one
-// segment wide, so it travels exactly 100% of itself per step.
+// Sliding segmented control; any number of equal segments.
 type Option = { value: Value; label: string; event?: string; eventProps?: string };
 
 let {
@@ -13,14 +11,9 @@ let {
 	onchange
 }: { options: Option[]; value: Value; onchange?: (v: Value) => void } = $props();
 
-// A value that matches no option (a meal type that stopped being served while
-// it was selected) leaves `findIndex` at -1, which sent the thumb sliding a
-// full width off the left edge of the track. Hold the first segment until the
-// owner reconciles the value.
+// An unknown value holds the first segment instead of sliding off the track.
 const activeIndex = $derived(Math.max(0, options.findIndex((o) => o.value === value)));
 const thumbX = Tween.of(() => activeIndex * 100, tweenMove);
-// The track's p-1 is inside the percentage the thumb resolves against, so the
-// padding has to come out of the share before it is divided.
 const thumbWidth = $derived(`calc((100% - 0.5rem) / ${Math.max(1, options.length)})`);
 
 function select(v: Value) {

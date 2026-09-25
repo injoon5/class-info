@@ -1,6 +1,4 @@
 <script lang="ts">
-	// 14 / 16 / 20. Stroke stays 1.5px at every size so the mark doesn't
-	// turn into a doughnut as it grows. No track — the arc is the whole thing.
 	const SIZES = { sm: 14, md: 16, lg: 20 } as const;
 
 	let {

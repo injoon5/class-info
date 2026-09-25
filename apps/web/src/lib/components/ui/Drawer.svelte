@@ -26,28 +26,21 @@ interface Props {
 
 const { open, onclose, header, children, footer }: Props = $props();
 
-// Unmount one frame's grace after the close tween lands. Derived from the
-// tween itself so retiming the dismiss can't leave the teardown behind — and
-// collapsed under reduced motion, where the tween is instant and a fixed wait
-// would just hold a finished sheet on screen.
+// Unmount a frame after the desktop close tween; immediately under reduced motion.
 const closeDelay = () => (reducedMotion() ? 0 : PANEL_CLOSE_MS + 30);
 
-// ── Animation state ─────────────────────────────────────────────────────────
 
 let mounted = $state(false);
 let isVisible = $state(false);
 let isClosing = false; // non-reactive guard
 
-// Drag writes transform on the node (Vaul: don't restyle children 60fps).
-// Open/close/snap-back are Tweens so they share expoOut with the rest of the app.
+// A drag writes transform straight to the node rather than through state.
 let dragY = 0;
 let isDragging = $state(false);
 let panelHeight = $state(800);
 
-// The sheet's Y is the one value a finger drives, so it is a spring rather
-// than a tween: it starts from wherever the sheet actually is and carries the
-// speed the finger let go at. Desktop's scale/fade is not gesture-driven and
-// stays a tween — a dialog that merely appeared has no momentum to express.
+// The sheet's Y is a spring (it carries release velocity and can be grabbed
+// mid-flight). Desktop's scale/fade is a plain tween.
 let panelY = $state(0);
 let panelResting = $state(true);
 let stopPanelSpring: (() => void) | null = null;
@@ -88,7 +81,6 @@ let contentEl = $state<HTMLElement | undefined>();
 let backdropEl = $state<HTMLElement | undefined>();
 let wrapperEl = $state<HTMLElement | undefined>();
 
-// Detect mobile for animation type (slide vs scale+fade)
 let isMobile = $state(true);
 $effect(() => {
   const mq = window.matchMedia('(min-width: 640px)');
@@ -98,40 +90,25 @@ $effect(() => {
   return () => mq.removeEventListener('change', handler);
 });
 
-// Track panel height whenever it mounts
 $effect(() => {
   if (panelEl) panelHeight = panelEl.offsetHeight;
 });
 
-// iOS Safari will not raise the keyboard for inputs inside a transformed
-// ancestor. Drop the transform once the sheet is parked.
-// A settling spring may overshoot through 0 on its way back. Parking the
-// transform the moment it crosses would drop the sheet a few pixels, so this
-// waits for the spring to actually stop.
+// iOS won't raise the keyboard inside a transformed ancestor, so the
+// transform is dropped once the spring has fully stopped.
 const sheetSettled = $derived(
   !isDragging && isVisible && panelResting && Math.abs(panelY) < 0.5
 );
 
-// On a phone the dim belongs to the sheet's position, not to a timer of its
-// own: however the sheet arrives or leaves — tapped, thrown, dragged halfway
-// and released — the scrim is exactly as far along as the sheet is.
+// On a phone the scrim tracks the sheet's position, however it moves.
 const scrimValue = $derived(
   isMobile && panelHeight > 0
     ? Math.max(0, Math.min(1, 1 - panelY / panelHeight))
     : scrimOpacity.current
 );
 
-// `backdrop-filter` re-samples the whole page behind the scrim on every frame
-// its opacity changes, which is the most expensive thing either animation
-// does on a phone. The tint alone carries the fade; the blur eases in on its
-// own over a separate CSS transition instead of riding the same tween.
-//
-// That transition still has to land on time. At a fixed 0.99 the blur used to
-// start only after the scrim was almost fully in, and its own SCRIM_BLUR_MS
-// then ran *after* the rest of the entrance had already settled — the blur
-// visibly catching up a beat late. Starting it SCRIM_BLUR_MS early instead
-// lets the two finish together: solving expoOut(t) = 1 - 2^(-10t) for the
-// threshold at which SCRIM_BLUR_MS remains gives the value below.
+// The backdrop blur is expensive to animate, so it eases in on its own CSS
+// transition, started early enough to finish with the scrim's expoOut.
 const SCRIM_BLUR_MS = 150; // matches the `duration-150` on the backdrop below
 const SCRIM_BLUR_THRESHOLD = 1 - Math.pow(2, -10 * (1 - SCRIM_BLUR_MS / PANEL_OPEN_MS));
 const scrimSettled = $derived(
@@ -148,7 +125,6 @@ const panelStyle = $derived(
       : `transform: translateY(0px) scale(${panelScale.current}); opacity: ${panelOpacity.current}`
 );
 
-// One write per frame, coalesced onto the animation frame.
 let dragFrame = 0;
 function paintDrag() {
   dragFrame = 0;
@@ -166,7 +142,6 @@ function scheduleDragPaint() {
   if (!dragFrame) dragFrame = requestAnimationFrame(paintDrag);
 }
 
-// ── Open / close ─────────────────────────────────────────────────────────────
 
 /**
  * Bring the sheet home. `velocity` is the speed the finger let go at, in px/s,
@@ -195,32 +170,21 @@ async function close(velocity = 0) {
   if (panelEl) panelEl.style.transform = '';
   if (backdropEl) backdropEl.style.opacity = '';
   (document.activeElement instanceof HTMLElement ? document.activeElement : null)?.blur();
-  // Re-measure: the panel grows after it opens (nutrient tables, the calendar
-  // add form sliding out), and closing by a height captured at open time left
-  // the bottom of the sheet still on screen when it unmounted.
+    // Re-measure: the panel may have grown since it opened.
   if (panelEl) panelHeight = panelEl.offsetHeight;
   if (isMobile) {
-    // A spring has no fixed duration, so the teardown waits on the sheet
-    // itself rather than on a clock that would have to guess. The timeout is
-    // only there so an interrupted spring can never strand the component.
+        // Teardown waits on the spring; the timeout only guards an interrupted one.
     await new Promise<void>((resolve) => {
       let settled = false;
       const finish = () => {
         if (settled) return;
         settled = true;
-        // Hand the last position a frame to paint before the node is torn
-        // out. The spring's final step and the unmount can otherwise land in
-        // the same flush, and the sheet vanishes from wherever it was drawn
-        // last instead — a sliver of it still on screen, varying by a dozen
-        // pixels with the frame timing.
+                // Let the last frame paint before unmounting.
         requestAnimationFrame(() => resolve());
       };
       springPanelY(
         panelHeight,
-        // Off the bottom of the screen is gone. Without this the under-damped
-        // dismiss would keep oscillating about a target nobody can see, and
-        // the scrim — invisible at zero opacity but still taking taps — would
-        // sit over the page for the rest of it.
+                // Stop once off screen instead of oscillating where no one can see.
         { ...SHEET_DISMISS, velocity, until: (y) => y >= panelHeight },
         finish
       );
@@ -260,17 +224,9 @@ $effect(() => {
   }
 });
 
-// iOS Safari tints its own chrome — the status bar, and with the keyboard up
-// the strip its URL and accessory bars float in — with `theme-color`. The page
-// sets that to the page background, so under a sheet the band directly below
-// the sheet stayed page-dark and read as a gap in it. While a sheet is up the
-// nearest surface to that chrome is the sheet, so the chrome takes the sheet's
-// colour and the two read as one surface.
-//
-// Resolved through a canvas rather than hardcoded: `--card` is an oklch token,
-// and `theme-color` predates that syntax in Safari. Painting it and reading
-// the pixel back gives sRGB whatever the token is written in, and cannot drift
-// from the token the way a second copy of the value would.
+// While a sheet is up, iOS Safari's chrome (status bar, keyboard accessory)
+// takes the sheet's colour via theme-color. The oklch token is resolved to hex
+// through a canvas, since Safari's theme-color doesn't accept oklch.
 function resolveToHex(color: string): string | null {
   const canvas = document.createElement('canvas');
   canvas.width = canvas.height = 1;
@@ -295,13 +251,10 @@ $effect(() => {
   };
   paint();
 
-  // Inserted ahead of the page's own, media-scoped tags: the browser takes the
-  // first one whose media matches, so appending would never win.
+    // Ahead of the page's media-scoped tags: the first match wins.
   document.head.insertBefore(meta, document.head.querySelector('meta[name="theme-color"]'));
 
-  // This tag carries one colour rather than a pair, so a sheet left open
-  // across a light/dark flip would hold the old one. Re-read on the next
-  // frame, once the class that drives the token has actually been swapped.
+    // Re-read after a light/dark flip.
   const mq = window.matchMedia('(prefers-color-scheme: dark)');
   const repaint = () => requestAnimationFrame(paint);
   mq.addEventListener('change', repaint);
@@ -312,7 +265,6 @@ $effect(() => {
   };
 });
 
-// Block body scroll while visible; release as soon as close animation begins
 $effect(() => {
   if (isVisible) {
     document.body.style.overflow = 'hidden';
@@ -320,10 +272,27 @@ $effect(() => {
   }
 });
 
-// Desktop only — focusing the sheet on iOS eats the next input tap
-// (field is focused, keyboard never comes up).
+// Desktop only: focusing the sheet on iOS eats the next input tap.
+// Focus goes back to whatever opened the sheet once it closes.
 $effect(() => {
-  if (isVisible && panelEl && !isMobile) panelEl.focus();
+  if (!isVisible || !panelEl || isMobile) return;
+  const opener = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+  panelEl.focus();
+  return () => {
+    if (opener?.isConnected) opener.focus({ preventScroll: true });
+  };
+});
+
+// Escape closes from anywhere, not only while focus is inside the panel.
+$effect(() => {
+  if (!isVisible) return;
+  const onKeydown = (e: KeyboardEvent) => {
+    if (e.key !== 'Escape' || e.defaultPrevented) return;
+    e.preventDefault();
+    close();
+  };
+  window.addEventListener('keydown', onKeydown);
+  return () => window.removeEventListener('keydown', onKeydown);
 });
 
 $effect(() => {
@@ -333,22 +302,17 @@ $effect(() => {
   let wasCovered = false;
   const update = () => {
     if (!wrapperEl) return;
-    // What the keyboard covers at the bottom of the layout viewport.
     const covered = Math.max(0, window.innerHeight - vv.height - vv.offsetTop);
     if (covered > 0) {
-      // Height alone: it already ends where the keyboard begins, and padding
-      // on top of it comes out of the same box and squeezes the panel.
       wrapperEl.style.height = `${vv.height + vv.offsetTop}px`;
       wrapperEl.style.paddingBottom = '';
-      // svh does not account for the keyboard, so cap the panel to what is
-      // actually left above it.
+            // svh ignores the keyboard, so cap the panel to what's left above it.
       if (panelEl) panelEl.style.maxHeight = `${Math.max(160, vv.height - 24)}px`;
     } else {
       wrapperEl.style.height = '';
       wrapperEl.style.paddingBottom = '';
       if (panelEl) panelEl.style.maxHeight = '';
-      // iOS leaves a composited `position: fixed` layer stuck after the
-      // keyboard hides until something invalidates it.
+            // iOS can leave a fixed layer stuck after the keyboard hides.
       if (wasCovered && panelEl && !isDragging) {
         const el = panelEl;
         el.style.transform = 'translate3d(0,0,0)';
@@ -376,23 +340,16 @@ $effect(() => {
   };
 });
 
-// ── Shared drag state ────────────────────────────────────────────────────────
 
 let pointerStartY = 0;
-// Where the sheet already was when the finger landed, so the drag moves it
-// from there rather than from the top of the screen.
 let dragOffset = 0;
 let lastPointerY = 0;
 let lastPointerTime = 0;
 let pointerVelocity = 0;
 
-// A pointer that hasn't moved in this long is standing still, whatever the
-// last sample said.
 const VELOCITY_STALE_MS = 60;
 
-// After the content reaches its top, a fast flick still has momentum in it.
-// Dragging within that window is almost always the tail of the scroll rather
-// than an attempt to dismiss, so the sheet ignores it.
+// A drag right after a scroll reaches the top is the scroll's tail, not a dismiss.
 const SCROLL_SETTLE_MS = 100;
 let reachedTopAt = 0;
 
@@ -400,9 +357,7 @@ function onContentScroll() {
   if (contentEl && contentEl.scrollTop <= 0) reachedTopAt = Date.now();
 }
 
-// Overdrag gives, then gives less — things in the world slow down before they
-// stop. Only when the content cannot scroll: where it can, an upward gesture
-// belongs to the scroller, not to the sheet.
+// Rubber-banded overdrag upward, only when the content can't scroll.
 const OVERDRAG_LIMIT = 120;
 const OVERDRAG_C = 0.55;
 function rubberBand(delta: number): number {
@@ -424,15 +379,12 @@ function startDrag(y: number) {
   lastPointerY = y;
   lastPointerTime = performance.now();
   pointerVelocity = 0;
-  // Take over from wherever the sheet is right now. Grabbing one still on its
-  // way in used to restart tracking from zero, which snapped it home under the
-  // finger before the drag had moved at all.
+    // Take over from wherever the sheet is right now.
   stopPanelSpring?.();
   stopPanelSpring = null;
   dragOffset = panelY;
   dragY = dragOffset;
   isDragging = true;
-  // Hold the current pose on the node before Svelte drops the Tween style.
   if (panelEl) {
     panelEl.style.transform = isMobile
       ? `translateY(${panelY}px)`
@@ -450,10 +402,8 @@ function moveDrag(y: number) {
   lastPointerY = y;
   lastPointerTime = now;
 
-  // An upward gesture is handed to the scroller, so the content can scroll out
-  // from under an in-flight drag. Rebase to where the finger is now: coming
-  // back down should start the sheet from rest, not jump it by the whole
-  // excursion the scroller already consumed.
+    // Upward gestures belong to the scroller; rebase so coming back down
+    // starts the sheet from rest.
   if (contentEl && contentEl.scrollTop > 0) {
     pointerStartY = y;
     if (dragY !== 0) {
@@ -471,10 +421,7 @@ function moveDrag(y: number) {
 function endDrag() {
   if (!isDragging) return;
   if (dragFrame) { cancelAnimationFrame(dragFrame); dragFrame = 0; }
-  // Velocity only updates while the pointer moves. Flicking down and then
-  // holding still before letting go left the flick's velocity standing, and
-  // the sheet dismissed out from under a finger that had deliberately
-  // stopped — so a pointer that has been at rest is at rest.
+    // A pointer that has been still before release has no velocity.
   const velocity =
     performance.now() - lastPointerTime > VELOCITY_STALE_MS ? 0 : pointerVelocity;
   const pxPerSecond = velocity * 1000;
@@ -486,12 +433,8 @@ function endDrag() {
   if (backdropEl) backdropEl.style.opacity = '';
   isDragging = false;
 
-  // Decide on where the throw is heading, not on where the finger happened to
-  // stop. A flick that has barely moved the sheet still dismisses it, and a
-  // sheet dragged most of the way down but held there does not — which is the
-  // difference between a threshold the user has to learn and one they already
-  // know from every other sheet on the phone. Only downward momentum counts;
-  // an upward flick leaves the decision to position alone.
+    // Decide on where the throw is heading, not where the finger stopped.
+    // Only downward momentum counts.
   const projected = y + Math.max(0, projectMomentum(pxPerSecond));
 
   setPanelY(y);
@@ -499,7 +442,6 @@ function endDrag() {
   else settleOpen(pxPerSecond);
 }
 
-// ── Touch drag (non-passive so we can preventDefault) ───────────────────────
 
 $effect(() => {
   const panel = panelEl;
@@ -516,9 +458,8 @@ $effect(() => {
   };
 });
 
-// Don't start a drag on the tap itself. iOS will not raise the keyboard
-// for a field inside a transformed ancestor, and even a 2px "drag" from a
-// tap re-applies translateY for the snap-back tween.
+// A tap is not a drag: even a 2px drag re-applies the transform, and iOS
+// won't raise the keyboard under one.
 const DRAG_SLOP = 10;
 let pendingTouch = false;
 let pendingStartY = 0;
@@ -546,8 +487,6 @@ function onTouchMove(e: TouchEvent) {
   if (!t) return;
   if (isDragging) {
     moveDrag(t.clientY);
-    // Downward drag and rubber-banded overdrag both belong to the sheet; a
-    // plain upward gesture is left to the scroller.
     if (dragY !== 0) e.preventDefault();
     return;
   }
@@ -560,29 +499,19 @@ function onTouchMove(e: TouchEvent) {
 }
 
 function onTouchEnd() {
-  // Re-stamped on the way out too: a long drag would otherwise age past the
-  // window before the replayed mousedown arrives.
   lastTouchAt = performance.now();
   pendingTouch = false;
   endDrag();
 }
 
-// ── Mouse drag ───────────────────────────────────────────────────────────────
 
-// A press is not a drag until it travels. Starting the drag on mousedown meant
-// `preventDefault` fired for every press that landed outside the scroller —
-// and preventing a mousedown's default cancels the focus it was about to give.
-// Browsers replay a tap as mousedown/mouseup/click once the touch ends, so on
-// a phone that swallowed the focus for anything in the header or footer: the
-// calendar's add-event field could be tapped, and nothing happened. Waiting
-// for the pointer to travel means a plain press keeps its default, and a real
-// drag still suppresses selection the moment it starts.
+// A press becomes a drag only once it travels, so a plain press keeps its
+// default (preventing mousedown's default cancels focus).
 const MOUSE_SLOP = 6;
 let pendingMouse = $state(false);
 let pendingMouseY = 0;
 
-// The replayed tap above is not a second gesture. Ignore mouse events that
-// arrive on the heels of a touch, so only one path drives the sheet.
+// Ignore the mouse events browsers replay after a touch.
 const SYNTHETIC_MOUSE_MS = 700;
 let lastTouchAt = 0;
 
@@ -603,8 +532,6 @@ $effect(() => {
   };
 });
 
-// Cursor and selection belong to a drag that is actually happening, not to a
-// press that might still turn out to be a click.
 $effect(() => {
   if (!isDragging) return;
   document.body.style.cursor = 'grabbing';
@@ -619,8 +546,6 @@ function onMouseDown(e: MouseEvent) {
   if (e.button !== 0) return;
   if (performance.now() - lastTouchAt < SYNTHETIC_MOUSE_MS) return;
   if (contentEl && contentEl.contains(e.target as Node)) return;
-  // Same fields the touch path leaves alone — dragging inside one is the user
-  // selecting text, not reaching for the sheet.
   if (isDragIgnored(e.target)) return;
   pendingMouse = true;
   pendingMouseY = e.clientY;
@@ -641,14 +566,9 @@ function onMouseUp() {
   endDrag();
 }
 
-// ── Keyboard: Escape to close, Tab to trap focus within the dialog ────────────
+// Tab stays inside the dialog.
 
 function onPanelKeydown(e: KeyboardEvent) {
-  if (e.key === 'Escape') {
-    e.stopPropagation();
-    close();
-    return;
-  }
   if (e.key !== 'Tab' || !panelEl) return;
   const focusables = panelEl.querySelectorAll<HTMLElement>(
     'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
@@ -669,7 +589,6 @@ function onPanelKeydown(e: KeyboardEvent) {
 </script>
 
 {#if mounted}
-  <!-- Backdrop -->
   <div
     bind:this={backdropEl}
     class="fixed inset-0 bg-black/40 dark:bg-black/60 z-50
@@ -680,7 +599,6 @@ function onPanelKeydown(e: KeyboardEvent) {
     onclick={() => close()}
   ></div>
 
-  <!-- Wrapper -->
   <div
     bind:this={wrapperEl}
     class="fixed inset-0 z-50 pointer-events-none flex flex-col justify-end sm:items-center sm:justify-center sm:p-4"
@@ -701,22 +619,16 @@ function onPanelKeydown(e: KeyboardEvent) {
       onclick={(e) => e.stopPropagation()}
       onkeydown={onPanelKeydown}
     >
-      <!-- The entrance overshoots its resting place, which on a sheet pinned
-           to the bottom edge would lift it and show a band of scrim underneath.
-           This hangs the sheet's own surface below the screen so the overshoot
-           uncovers more sheet instead. Absolute, so it adds nothing to the
-           panel's height and nothing to the distance a dismiss has to travel. -->
+      <!-- Hangs below the sheet so the entrance overshoot uncovers more sheet. -->
       <div
         class="sm:hidden absolute inset-x-0 top-full h-14 bg-card border-x border-border"
         aria-hidden="true"
       ></div>
 
-      <!-- Drag handle (mobile only) -->
       <div class="sm:hidden flex justify-center pt-3 pb-1 flex-shrink-0 touch-none select-none cursor-grab active:cursor-grabbing">
         <div class="w-10 h-1 rounded-full bg-border"></div>
       </div>
 
-      <!-- Header: custom content + close button -->
       <div class="px-4 pt-3 pb-4 sm:pt-4 flex items-start justify-between gap-3 flex-shrink-0 border-b border-border">
         <div class="flex-1 min-w-0">
           {@render header()}
@@ -732,7 +644,6 @@ function onPanelKeydown(e: KeyboardEvent) {
         </button>
       </div>
 
-      <!-- Scrollable body -->
       <div
         bind:this={contentEl}
         onscroll={onContentScroll}
@@ -741,7 +652,6 @@ function onPanelKeydown(e: KeyboardEvent) {
         {@render children()}
       </div>
 
-      <!-- Optional footer -->
       {#if footer}
         <div class="flex-shrink-0 border-t border-border px-4 py-4">
           {@render footer()}

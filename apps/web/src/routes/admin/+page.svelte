@@ -1,198 +1,133 @@
 <script lang="ts">
-import { useConvexClient } from 'convex-svelte';
-import { api } from "@class-info/backend/convex/_generated/api";
-import type { Id } from "@class-info/backend/convex/_generated/dataModel";
-import { CLASS_LABEL, SITE_NAME } from '@class-info/backend/convex/config';
+import { useConvexClient, useQuery } from 'convex-svelte';
+import { tick } from 'svelte';
+import { SvelteSet } from 'svelte/reactivity';
+import { slide } from 'svelte/transition';
 import { enhance } from '$app/forms';
-import FileUpload from './FileUpload.svelte';
-import { noticeTypeClass, type DayGroup, type MinimalNotice } from '$lib/notices';
-import { formatAbsolute, formatRelative } from '$lib/date';
+import { api } from '@class-info/backend/convex/_generated/api';
+import type { Id } from '@class-info/backend/convex/_generated/dataModel';
+import { CLASS_LABEL } from '@class-info/backend/convex/config';
+import PageMeta from '$lib/components/PageMeta.svelte';
 import LoadingState from '$lib/components/ui/LoadingState.svelte';
 import PillButton from '$lib/components/ui/PillButton.svelte';
-import ConfirmDeleteActions from '$lib/components/ui/ConfirmDeleteActions.svelte';
-import AdminPastMonthDetails from './AdminPastMonthDetails.svelte';
 import Disclosure from '$lib/components/ui/Disclosure.svelte';
-import { autosize } from '$lib/actions/autosize';
-import { onMount, tick } from 'svelte';
-import { SvelteSet } from 'svelte/reactivity';
-import { fade, slide } from 'svelte/transition';
-import { fadeOut, reveal, slideNone, slideY, slideYOut } from '$lib/transitions';
-import { useQuery } from 'convex-svelte';
-import { followCollapsing } from '$lib/scroll';
+import RelativeTime from '$lib/components/ui/RelativeTime.svelte';
 import { adminErrorMessage } from '$lib/errors';
-import type { PageData, ActionData } from './$types';
+import { followCollapsing } from '$lib/scroll';
+import { slideNone, slideY, slideYOut } from '$lib/transitions';
+import AdminNoticeRow from './AdminNoticeRow.svelte';
+import AdminPastMonthDetails from './AdminPastMonthDetails.svelte';
+import NoticeEditor, { emptyNoticeForm, type NoticeForm } from './NoticeEditor.svelte';
+import type { ActionData, PageData } from './$types';
 
 const { data, form }: { data: PageData; form: ActionData } = $props();
 const client = useConvexClient();
 
-// Bearer token for privileged mutations; present only when authenticated.
 const sessionToken = $derived(data.sessionToken ?? '');
 
-// null = closed, 'new' = adding, anything else = the id of the notice being
-// edited. One value, so the editor can never be open on nothing or open twice.
-let editorTarget = $state<string | null>(null);
-const isEditing = $derived(editorTarget !== null && editorTarget !== 'new');
-
-// Deleting is confirmed in the row that owns the notice, not in a modal.
-let confirmingDeleteId = $state<string | null>(null);
-let dismissedIds = new SvelteSet<string>();
-
-let noticeForm = $state({
-	title: '',
-	subject: '',
-	type: '숙제' as MinimalNotice['type'],
-	description: '',
-	dueDate: '',
-	files: [] as Id<'files'>[]
-});
-
-// PIN form state
-let pin = $state('');
-
-const noticeTypes = ['수행평가', '숙제', '준비물', '기타'] as const;
-
-// Server now provides grouped current notices; fetch past months on demand
 const overview = useQuery(
 	api.notices.overview,
 	() => ({ cutoff: data.cutoff, today: data.today }),
-	() => ({
-		initialData: data.overview,
-		keepPreviousData: true
-	})
+	() => ({ initialData: data.overview, keepPreviousData: true })
 );
 let openMonthKey = $state<string | null>(null);
 
-// Expected problems with the editor sit with the editor's actions; failures
-// that come from the list sit under the header. Neither interrupts the page.
+// null = closed, 'new' = adding, otherwise the id of the notice being edited.
+let editorTarget = $state<string | null>(null);
+const isEditing = $derived(editorTarget !== null && editorTarget !== 'new');
+let noticeForm = $state<NoticeForm>(emptyNoticeForm());
 let formError = $state<string | null>(null);
 let panelError = $state<string | null>(null);
+let isSubmitting = $state(false);
 
-const EMPTY_NOTICE = {
-	title: '',
-	subject: '',
-	type: '숙제' as MinimalNotice['type'],
-	description: '',
-	dueDate: '',
-	files: [] as Id<'files'>[]
-};
+// Deletes are confirmed in the row; one id at a time across current and past lists.
+let confirmingDeleteId = $state<string | null>(null);
+// Rows hidden on confirm, so the outro starts before the mutation returns.
+const dismissedIds = new SvelteSet<string>();
 
-// The attachments the open notice had when the editor opened, and the files
-// uploaded since. Removing an attachment only detaches it; what is actually
-// deleted is settled when the editor closes — dropped originals once a save
-// lands, unsaved uploads when it is abandoned — so cancelling loses nothing
-// and nothing is left behind in storage.
+// Attachments are only detached while editing. Files dropped from a saved
+// notice are deleted once the save lands; uploads that never get saved are
+// deleted when the editor is abandoned.
 let savedFiles: Id<'files'>[] = [];
 let freshUploads: Id<'files'>[] = [];
-let isSubmitting = $state(false);
 
 function deleteFiles(ids: Id<'files'>[]) {
 	for (const fileId of ids) {
-		client.mutation(api.files.deleteFile, { sessionToken, fileId }).catch(() => {
-			// Best effort: the notice itself is already consistent.
-		});
+		client.mutation(api.files.deleteFile, { sessionToken, fileId }).catch(() => {});
 	}
 }
 
-function openEditor(target: string, form: typeof noticeForm) {
-	discardUploads();
-	noticeForm = form;
-	savedFiles = [...form.files];
-	freshUploads = [];
-	editorTarget = target;
-	formError = null;
-	confirmingDeleteId = null;
-}
-
-// Uploads that never made it into a saved notice.
 function discardUploads() {
 	deleteFiles(freshUploads);
 	freshUploads = [];
 }
 
+function openEditor(target: string, next: NoticeForm) {
+	discardUploads();
+	noticeForm = next;
+	savedFiles = [...next.files];
+	editorTarget = target;
+	formError = null;
+	confirmingDeleteId = null;
+}
+
 function closeEditor() {
 	followCollapsing(document.getElementById('notice-editor'));
-	noticeForm = { ...EMPTY_NOTICE };
+	noticeForm = emptyNoticeForm();
 	savedFiles = [];
 	freshUploads = [];
 	editorTarget = null;
 	formError = null;
 }
 
-// Toggling the header button must open an empty editor, not inherit whatever
-// notice happened to be open.
 function cancelEditor() {
 	discardUploads();
 	closeEditor();
 }
 
-async function startNewNotice() {
-	if (editorTarget === 'new') {
-		cancelEditor();
-		return;
-	}
-	openEditor('new', { ...EMPTY_NOTICE, files: [] });
+async function toggleNewNotice() {
+	if (editorTarget === 'new') return cancelEditor();
+	openEditor('new', emptyNoticeForm());
 	await tick();
 	document.getElementById('notice-editor')?.scrollIntoView({ block: 'nearest' });
 }
 
+// Loads the full record: the list only has the summary projection, and saving
+// from that would wipe the description and files.
 async function editNotice(id: Id<'notices'>) {
-	// Always load the authoritative record. The list/overview projection is a
-	// MinimalNotice (no description/files), so editing from it and saving would
-	// wipe those fields — never fall back to it.
 	try {
-		const { notice: full } = await client.query(api.notices.detail, { id });
-		if (!full) {
-			panelError = '공지를 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.';
-			return;
-		}
+		const { notice } = await client.query(api.notices.detail, { id });
+		if (!notice) throw new Error('missing');
 		panelError = null;
 		openEditor(id, {
-			title: full.title || '',
-			subject: full.subject || '',
-			type: full.type || '숙제',
-			description: typeof full.description === 'string' ? full.description : '',
-			dueDate: full.dueDate || '',
-			files: Array.isArray(full.files) ? full.files : []
+			title: notice.title,
+			subject: notice.subject,
+			type: notice.type,
+			description: notice.description,
+			dueDate: notice.dueDate,
+			files: notice.files ?? []
 		});
 	} catch {
 		panelError = '공지를 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.';
 	}
 }
 
-function handleFilesChange(fileIds: Id<'files'>[]) {
-	noticeForm = { ...noticeForm, files: fileIds };
-}
-
-function handleUploaded(fileIds: Id<'files'>[]) {
-	freshUploads = [...freshUploads, ...fileIds];
-}
-
 async function handleSubmit() {
-	// A second press while the first save is in flight created the notice twice.
 	if (isSubmitting) return;
-	const payload = {
-		...noticeForm,
-		title: noticeForm.title.trim(),
-		subject: noticeForm.subject.trim(),
-		description: typeof noticeForm.description === 'string' ? noticeForm.description : ''
-	};
-
+	const payload = { ...noticeForm, title: noticeForm.title.trim(), subject: noticeForm.subject.trim() };
 	if (!payload.title || !payload.subject || !payload.dueDate) {
 		formError = '제목, 과목, 마감일을 모두 입력해 주세요.';
 		return;
 	}
 	formError = null;
 	isSubmitting = true;
-
 	try {
 		if (isEditing) {
 			await client.mutation(api.notices.update, { sessionToken, id: editorTarget as Id<'notices'>, ...payload });
 		} else {
 			await client.mutation(api.notices.create, { sessionToken, ...payload });
 		}
-		// Saved: whatever was detached from the notice is now attached to nothing.
-		deleteFiles(savedFiles.filter((id) => !payload.files.includes(id)));
-		deleteFiles(freshUploads.filter((id) => !payload.files.includes(id)));
+		deleteFiles([...savedFiles, ...freshUploads].filter((id) => !payload.files.includes(id)));
 		closeEditor();
 	} catch (err) {
 		formError = adminErrorMessage(err, '저장하지 못했습니다. 잠시 후 다시 시도해 주세요.');
@@ -203,14 +138,11 @@ async function handleSubmit() {
 
 async function handleDelete(id: Id<'notices'>) {
 	const key = String(id);
-	// Drop it from the list now so the row outro starts on confirm, not after
-	// the mutation round-trip (which just snapped the row away).
 	dismissedIds.add(key);
 	confirmingDeleteId = null;
 	try {
 		await client.mutation(api.notices.remove, { sessionToken, id });
 		panelError = null;
-		// The notice took its saved attachments with it; only unsaved uploads remain.
 		if (editorTarget === key) cancelEditor();
 	} catch (err) {
 		dismissedIds.delete(key);
@@ -218,46 +150,28 @@ async function handleDelete(id: Id<'notices'>) {
 	}
 }
 
-function hideDismissed(groups: DayGroup[] | undefined) {
-	return (groups ?? [])
-		.map((g) => ({
-			...g,
-			notices: g.notices.filter((n) => !dismissedIds.has(String(n._id)))
-		}))
-		.filter((g) => g.notices.length > 0);
-}
+const allGroups = $derived(overview.data?.currentGroups ?? []);
+const visibleGroups = $derived(
+	allGroups
+		.map((g) => ({ ...g, notices: g.notices.filter((n) => !dismissedIds.has(String(n._id))) }))
+		.filter((g) => g.notices.length > 0)
+);
+const pastMonths = $derived(overview.data?.pastMonths ?? []);
 
-// Grouped notices from overview
-const allGroupedNotices = $derived(overview.data?.currentGroups || []);
-const visibleGroups = $derived(hideDismissed(allGroupedNotices));
-
-// First paint of the list is silent so a page of date groups doesn't all
-// slide in at once. Gated on the query rather than on mount: with initialData
-// the list is already there at mount, without it the whole page arrives later
-// and would otherwise animate in as one block.
+// The first paint of the list is silent, so the page doesn't slide in as one block.
 let live = $state(false);
 $effect(() => {
 	if (overview.isLoading) {
 		live = false;
 		return;
 	}
-	const frame = requestAnimationFrame(() => {
-		live = true;
-	});
+	const frame = requestAnimationFrame(() => (live = true));
 	return () => cancelAnimationFrame(frame);
 });
 const listSlide = $derived(live ? slideY : slideNone);
 
-// Relative time is resolved after mount so SSR and hydration agree on the markup.
-let now = $state<number | null>(null);
-onMount(() => {
-	now = Date.now();
-});
-
-// Most recent notice timestamp, or null when there are none (avoids Math.max()
-// returning -Infinity → "Invalid Date").
 const lastUpdatedTs = $derived.by(() => {
-	const ts = allGroupedNotices
+	const ts = allGroups
 		.flatMap((g) => g.notices)
 		.map((n) => n.updatedAt ?? n.createdAt)
 		.filter((t): t is number => typeof t === 'number');
@@ -265,141 +179,27 @@ const lastUpdatedTs = $derived.by(() => {
 });
 </script>
 
-<svelte:head>
-	<title>관리자 페이지 - {CLASS_LABEL} 공지</title>
-	<meta name="description" content="{CLASS_LABEL} 공지 관리자 페이지입니다. " />
-
-	<!-- Open Graph -->
-	<meta property="og:title" content="관리자 페이지 - {CLASS_LABEL} 공지" />
-	<meta property="og:description" content="{CLASS_LABEL} 공지 관리자 페이지입니다. " />
-	<meta property="og:type" content="website" />
-	<meta property="og:site_name" content={SITE_NAME} />
-
-	<!-- Twitter Card -->
-	<meta name="twitter:card" content="summary_large_image" />
-	<meta name="twitter:title" content="관리자 페이지 - {CLASS_LABEL} 공지" />
-	<meta name="twitter:description" content="{CLASS_LABEL} 공지 관리자 페이지입니다. " />
-	
-	<!-- Additional meta tags -->	
-	<meta name="robots" content="noindex, nofollow" />
-</svelte:head>
+<PageMeta
+	title="관리자 페이지 - {CLASS_LABEL} 공지"
+	description="{CLASS_LABEL} 공지 관리자 페이지입니다."
+	robots="noindex, nofollow"
+/>
 
 {#snippet noticeEditor()}
-	<div id="notice-editor" in:slide={slideY} out:slide={slideYOut}>
-		<div
-			class="bg-card border border-border rounded-3xl p-4 mb-6"
-			in:reveal
-			out:fade={fadeOut}
-		>
-			<h2 class="text-lg font-semibold mb-4 text-foreground">
-				{isEditing ? '공지 수정' : '새 공지 추가'}
-			</h2>
-
-			<form class="grid gap-4" onsubmit={(e) => { e.preventDefault(); handleSubmit(); }}>
-				<div>
-					<label for="notice-title" class="block text-sm font-semibold mb-1.5 text-muted-foreground">제목 *</label>
-					<input
-						id="notice-title"
-						type="text"
-						bind:value={noticeForm.title}
-						onkeydown={(e) => { if (e.key === 'Enter' && e.isComposing) e.preventDefault(); }}
-						class="w-full h-11 px-3.5 rounded-lg bg-muted text-base text-foreground placeholder:text-muted-foreground break-words"
-						placeholder="예: 수학 과제 제출"
-					/>
-				</div>
-
-				<div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-					<div>
-						<label for="notice-subject" class="block text-sm font-semibold mb-1.5 text-muted-foreground">과목 *</label>
-						<input
-							id="notice-subject"
-							type="text"
-							bind:value={noticeForm.subject}
-							onkeydown={(e) => { if (e.key === 'Enter' && e.isComposing) e.preventDefault(); }}
-							class="w-full h-11 px-3.5 rounded-lg bg-muted text-base text-foreground placeholder:text-muted-foreground break-words"
-							placeholder="예: 수학"
-						/>
-					</div>
-
-					<div>
-						<label for="notice-type" class="block text-sm font-semibold mb-1.5 text-muted-foreground">종류 *</label>
-						<div class="relative">
-							<select
-								id="notice-type"
-								bind:value={noticeForm.type}
-								class="w-full h-11 pl-3.5 pr-10 rounded-lg bg-muted text-base text-foreground appearance-none"
-							>
-								{#each noticeTypes as type}
-									<option value={type}>{type}</option>
-								{/each}
-							</select>
-							<svg
-								viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2"
-								class="pointer-events-none absolute right-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground"
-								aria-hidden="true"
-							>
-								<path stroke-linecap="round" stroke-linejoin="round" d="M5 7.5l5 5 5-5"/>
-							</svg>
-						</div>
-					</div>
-				</div>
-
-				<div class="min-w-0 overflow-hidden">
-					<label for="notice-date" class="block text-sm font-semibold mb-1.5 text-muted-foreground">마감일 *</label>
-					<input
-						id="notice-date"
-						type="date"
-						bind:value={noticeForm.dueDate}
-						class="date-input w-full min-w-0 max-w-full h-11 px-3.5 rounded-lg bg-muted text-base text-foreground"
-					/>
-				</div>
-
-				<div>
-					<label for="notice-description" class="block text-sm font-semibold mb-1.5 text-muted-foreground">설명 (마크다운 지원)</label>
-					<textarea
-						id="notice-description"
-						bind:value={noticeForm.description}
-						use:autosize={noticeForm.description}
-						rows="8"
-						class="w-full px-3.5 py-2.5 rounded-lg bg-muted text-base text-foreground font-mono placeholder:text-muted-foreground resize-none break-words overflow-hidden"
-						placeholder="상세 설명 또는 준비물 목록&#10;&#10;마크다운 사용 가능:&#10;**굵게** *기울임* `코드`&#10;# 제목 ## 부제목&#10;- 목록 항목&#10;> 인용구&#10;![이미지](URL)&#10;유튜브 링크는 자동 변환됩니다"
-					></textarea>
-					<p class="text-xs text-muted-foreground mt-1.5">마크다운 문법을 사용할 수 있습니다. 상세 페이지에서 형식화되어 표시됩니다.</p>
-				</div>
-
-				<div>
-					<div class="text-sm font-semibold mb-1.5 text-muted-foreground">파일 첨부</div>
-					<FileUpload
-						files={noticeForm.files}
-						onFilesChange={handleFilesChange}
-						onUploaded={handleUploaded}
-						{sessionToken}
-					/>
-				</div>
-
-				{#if formError}
-					<p class="text-sm font-semibold text-destructive" role="alert">{formError}</p>
-				{/if}
-
-				<div class="flex gap-2">
-					<PillButton
-						type="submit"
-						morph
-						text={isSubmitting ? '저장 중…' : isEditing ? '수정' : '추가'}
-						pending={isSubmitting}
-						disabled={isSubmitting}
-						class="px-5 py-2.5"
-					/>
-					<PillButton type="button" text="취소" variant="secondary" onclick={cancelEditor} disabled={isSubmitting} class="px-5 py-2.5" />
-				</div>
-			</form>
-		</div>
-	</div>
+	<NoticeEditor
+		bind:form={noticeForm}
+		{isEditing}
+		{isSubmitting}
+		error={formError}
+		{sessionToken}
+		onsubmit={handleSubmit}
+		oncancel={cancelEditor}
+		onUploaded={(ids) => (freshUploads = [...freshUploads, ...ids])}
+	/>
 {/snippet}
 
 {#if !data.isAuthenticated}
-	<!-- PIN Authentication Form -->
-	<div class="flex items-center justify-center min-h-[calc(100vh-8rem)] px-4">
+	<div class="flex items-center justify-center min-h-[calc(100svh-8rem)] px-4">
 		<div class="bg-card p-8 border border-border rounded-3xl max-w-sm w-full">
 			<h1 class="text-2xl font-bold tracking-tight text-foreground mb-6 text-center">관리자 로그인</h1>
 
@@ -412,15 +212,14 @@ const lastUpdatedTs = $derived.by(() => {
 						type="password"
 						inputmode="numeric"
 						autocomplete="current-password"
-						bind:value={pin}
-						class="w-full h-12 px-3.5 rounded-lg bg-muted text-base text-foreground placeholder:text-muted-foreground"
+						class="field h-12"
 						placeholder="관리자 PIN을 입력하세요"
 						required
 					/>
 				</div>
 
 				{#if form?.error}
-					<div class="mb-4 text-destructive text-sm">{form.error}</div>
+					<p class="mb-4 text-destructive text-sm" role="alert">{form.error}</p>
 				{/if}
 
 				<button
@@ -437,149 +236,106 @@ const lastUpdatedTs = $derived.by(() => {
 		</div>
 	</div>
 {:else}
-	<!-- Admin Panel -->
 	<div class="min-h-screen">
 		<div class="max-w-4xl mx-auto px-4 pt-5 pb-4">
-		<!-- Header -->
-		<div class="flex items-center justify-between gap-3 mb-5">
-			<h1 class="text-xl font-bold text-foreground">공지 관리</h1>
-			<div class="flex items-center gap-2">
-				<PillButton
-					morph
-					text={editorTarget === 'new' ? '취소' : '새 공지 추가'}
-					onclick={startNewNotice}
-					emphasized={!overview.isLoading && allGroupedNotices.length === 0}
-				/>
-
-				<form method="POST" action="?/logout" use:enhance class="inline">
-					<PillButton type="submit" text="로그아웃" variant="secondary" />
-				</form>
-			</div>
-		</div>
-
-		{#if panelError}
-			<p class="mb-4 rounded-xl border border-destructive/30 bg-destructive/10 px-3.5 py-2.5 text-sm font-semibold text-destructive" role="alert">
-				{panelError}
-			</p>
-		{/if}
-
-		{#if editorTarget === 'new'}
-			{@render noticeEditor()}
-		{/if}
-
-		<!-- Notice List -->
-		{#if overview.isLoading}
-			<LoadingState />
-        {:else if overview.error}
-			<div class="text-center py-8 text-destructive">
-				<p>공지를 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.</p>
-				<PillButton text="다시 시도" onclick={() => window.location.reload()} class="mt-3" />
-			</div>
-        {:else}
-			<!-- Current and Future Notices. Else on the each so the last date
-			     group can outro instead of a length check tearing it down.
-
-			     No FLIP animation on these rows. Svelte keeps a leaving node in
-			     flow while it slides shut, so FLIP measures the survivors before
-			     the gap has begun to close, computes a delta of about zero, and
-			     then lets them drift down un-animated behind the collapse. The
-			     slide already carries that layout change on its own — and a flip
-			     on the rows inside a flipping group double-counted the group's
-			     travel, because getBoundingClientRect already includes it. -->
-            {#each visibleGroups as group (group.date)}
-				<div class="mb-6" in:slide={listSlide} out:slide={slideYOut}>
-					<h2 class="text-base font-semibold mb-3 text-foreground border-l-[3px] border-foreground pl-3">
-						{group.displayDate}
-					</h2>
-
-                    <div class="grid gap-2">
-                        {#each group.notices as notice (notice._id)}
-                            <div in:slide={listSlide} out:slide={slideYOut}>
-                            {#if editorTarget === String(notice._id)}
-                                {@render noticeEditor()}
-                            {:else}
-                            <div class="bg-card border border-border rounded-xl p-3 overflow-hidden">
-                                <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
-                                    <div class="flex-1 min-w-0">
-                                        <div class="flex items-center gap-1.5 sm:gap-2 mb-1">
-                                            <span class="px-1.5 py-0.5 text-xs sm:text-sm font-semibold rounded-md {noticeTypeClass(notice.type)}">
-                                                {notice.type}
-                                            </span>
-                                            <span class="text-sm font-semibold text-muted-foreground">
-                                                {notice.subject}
-                                            </span>
-                                        </div>
-                                        <div class="flex items-center gap-1.5 sm:mb-1 mb-0.5">
-                                            <h3 class="font-semibold text-foreground text-base break-words">
-                                                {notice.title}
-                                            </h3>
-                                            {#if notice.hasFiles}
-                                                <svg class="w-3 h-3 text-muted-foreground flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
-                                                    <path fill-rule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 0 1 1.414 1.414l-3 3a1 1 0 0 1-1.414 0l-3-3a1 1 0 0 1 0-1.414z" clip-rule="evenodd"/>
-                                                </svg>
-                                            {/if}
-                                        </div>
-										{#if notice.summary}
-                                        <p class="text-muted-foreground text-xs sm:text-sm line-clamp-2 overflow-hidden text-ellipsis break-all">
-                                            {notice.summary}
-                                        </p>
-										{/if}
-                                    </div>
-                                    <ConfirmDeleteActions
-                                        confirming={confirmingDeleteId === String(notice._id)}
-                                        onEdit={() => editNotice(notice._id)}
-                                        onAskDelete={() => (confirmingDeleteId = String(notice._id))}
-                                        onConfirmDelete={() => handleDelete(notice._id)}
-                                        onCancel={() => (confirmingDeleteId = null)}
-                                    />
-                                </div>
-                            </div>
-                            {/if}
-                            </div>
-                        {/each}
-                    </div>
+			<div class="flex items-center justify-between gap-3 mb-5">
+				<h1 class="text-xl font-bold text-foreground">공지 관리</h1>
+				<div class="flex items-center gap-2">
+					<PillButton
+						morph
+						text={editorTarget === 'new' ? '취소' : '새 공지 추가'}
+						onclick={toggleNewNotice}
+						emphasized={!overview.isLoading && allGroups.length === 0}
+					/>
+					<form method="POST" action="?/logout" use:enhance class="inline">
+						<PillButton type="submit" text="로그아웃" variant="secondary" />
+					</form>
 				</div>
-            {:else}
-                <div class="text-center py-16 text-sm text-muted-foreground">등록된 공지가 없습니다</div>
-            {/each}
+			</div>
 
-			<!-- Past Notices by Month (lazy) -->
-			{#if overview.data?.pastMonths && overview.data.pastMonths.length > 0}
-                <div class="mt-6 pt-6 border-t border-border" in:slide={listSlide} out:slide={slideYOut}>
-                    <h2 class="text-base sm:text-lg font-semibold mb-3 text-muted-foreground">지난 공지</h2>
-                    {#each overview.data.pastMonths as m (m.monthKey)}
-                        <div class="mb-1.5 sm:mb-2" in:slide={listSlide} out:slide={slideYOut}>
-                        <Disclosure
-                            open={openMonthKey === m.monthKey}
-                            label="{m.monthName} ({m.total}개)"
-                            onToggle={() => (openMonthKey = openMonthKey === m.monthKey ? null : m.monthKey)}
-                        >
-                            <AdminPastMonthDetails
-                                monthKey={m.monthKey}
-                                cutoff={data.cutoff}
-                                today={data.today}
-                                {dismissedIds}
-                                {editorTarget}
-                                bind:confirmingDeleteId
-                                editor={noticeEditor}
-                                onEdit={editNotice}
-                                onDelete={handleDelete}
-                            />
-                        </Disclosure>
-                        </div>
-                    {/each}
-                </div>
-            {/if}
-		{/if}
-
-		<!-- Footer -->
-		<div class="text-center py-4 text-xs text-muted-foreground border-t border-border mt-8 tabular-nums">
-			{#if lastUpdatedTs !== null}
-				마지막 업데이트: <span title={formatAbsolute(lastUpdatedTs)}>{now === null ? formatAbsolute(lastUpdatedTs) : formatRelative(lastUpdatedTs, now)}</span>
-			{:else}
-				마지막 업데이트: 없음
+			{#if panelError}
+				<p
+					class="mb-4 rounded-xl border border-destructive/30 bg-destructive/10 px-3.5 py-2.5 text-sm font-semibold text-destructive"
+					role="alert"
+				>
+					{panelError}
+				</p>
 			{/if}
+
+			{#if editorTarget === 'new'}
+				{@render noticeEditor()}
+			{/if}
+
+			{#if overview.isLoading}
+				<LoadingState />
+			{:else if overview.error}
+				<div class="text-center py-8 text-destructive">
+					<p>공지를 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.</p>
+					<PillButton text="다시 시도" onclick={() => window.location.reload()} class="mt-3" />
+				</div>
+			{:else}
+				<!-- `{:else}` on the each, so the last group can play its outro. No FLIP:
+				     it measures survivors before the leaving row collapses. -->
+				{#each visibleGroups as group (group.date)}
+					<section class="mb-6" in:slide={listSlide} out:slide={slideYOut}>
+						<h2 class="text-base font-semibold mb-3 text-foreground border-l-[3px] border-foreground pl-3">
+							{group.displayDate}
+						</h2>
+						<div class="grid gap-2">
+							{#each group.notices as notice (notice._id)}
+								<div in:slide={listSlide} out:slide={slideYOut}>
+									{#if editorTarget === String(notice._id)}
+										{@render noticeEditor()}
+									{:else}
+										<AdminNoticeRow
+											{notice}
+											confirming={confirmingDeleteId === String(notice._id)}
+											onEdit={editNotice}
+											onAskDelete={(id) => (confirmingDeleteId = String(id))}
+											onDelete={handleDelete}
+											onCancel={() => (confirmingDeleteId = null)}
+										/>
+									{/if}
+								</div>
+							{/each}
+						</div>
+					</section>
+				{:else}
+					<div class="text-center py-16 text-sm text-muted-foreground">등록된 공지가 없습니다</div>
+				{/each}
+
+				{#if pastMonths.length > 0}
+					<div class="mt-6 pt-6 border-t border-border" in:slide={listSlide} out:slide={slideYOut}>
+						<h2 class="text-base sm:text-lg font-semibold mb-3 text-muted-foreground">지난 공지</h2>
+						{#each pastMonths as m (m.monthKey)}
+							<div class="mb-1.5 sm:mb-2" in:slide={listSlide} out:slide={slideYOut}>
+								<Disclosure
+									open={openMonthKey === m.monthKey}
+									label="{m.monthName} ({m.total}개)"
+									onToggle={() => (openMonthKey = openMonthKey === m.monthKey ? null : m.monthKey)}
+								>
+									<AdminPastMonthDetails
+										monthKey={m.monthKey}
+										cutoff={data.cutoff}
+										today={data.today}
+										{dismissedIds}
+										{editorTarget}
+										bind:confirmingDeleteId
+										editor={noticeEditor}
+										onEdit={editNotice}
+										onDelete={handleDelete}
+									/>
+								</Disclosure>
+							</div>
+						{/each}
+					</div>
+				{/if}
+			{/if}
+
+			<div class="text-center py-4 text-xs text-muted-foreground border-t border-border mt-8 tabular-nums">
+				마지막 업데이트:
+				{#if lastUpdatedTs !== null}<RelativeTime ts={lastUpdatedTs} />{:else}없음{/if}
+			</div>
 		</div>
 	</div>
-</div>
 {/if}

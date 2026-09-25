@@ -162,3 +162,4 @@ export type MealDay = Infer<typeof mealDay>;
 export type PublicEvent = Infer<typeof publicEvent>;
 export type FullTimetableSlot = Infer<typeof fullTimetableSlot>;
 export type FullTimetableDoc = Infer<typeof fullTimetableDoc>;
+export type FileDoc = Infer<typeof fileDoc>;

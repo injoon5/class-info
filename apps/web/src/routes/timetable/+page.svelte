@@ -1,213 +1,140 @@
 <script lang="ts">
 import { useConvexClient, useQuery } from 'convex-svelte';
-import { api } from "@class-info/backend/convex/_generated/api";
-import { CLASS_LABEL, SITE_NAME, SITE_URL } from '@class-info/backend/convex/config';
+import { api } from '@class-info/backend/convex/_generated/api';
+import { CLASS_LABEL } from '@class-info/backend/convex/config';
+import PageMeta from '$lib/components/PageMeta.svelte';
 import LoadingState from '$lib/components/ui/LoadingState.svelte';
 import ErrorState from '$lib/components/ui/ErrorState.svelte';
 import EmptyState from '$lib/components/ui/EmptyState.svelte';
 import Drawer from '$lib/components/ui/Drawer.svelte';
 import PillButton from '$lib/components/ui/PillButton.svelte';
+import RelativeTime from '$lib/components/ui/RelativeTime.svelte';
 import SegmentedControl from '$lib/components/ui/SegmentedControl.svelte';
 import { createBlurPulse } from '$lib/blurPulse.svelte';
 import { focusOnElement } from '$lib/actions/focus';
-import {
-	addDaysYyyymmdd,
-	formatAbsolute,
-	formatRelative,
-	parseYyyymmdd
-} from '$lib/date';
-import { timetableForWeek } from '$lib/timetable';
-import { onMount } from 'svelte';
+import { blurActiveElement, holdComposingEnter } from '$lib/dom';
+import { addDaysYyyymmdd, ymdParts } from '$lib/date';
 import { adminErrorMessage } from '$lib/errors';
+import { timetableForWeek } from '$lib/timetable';
 import type { PageData } from './$types.js';
 
 const { data }: { data: PageData } = $props();
 const client = useConvexClient();
 
-// 0: this week, 1: next week, 'full': the standing timetable.
+// 0 = this week, 1 = next week, 'full' = the standing timetable.
 type Tab = 0 | 1 | 'full';
 let selectedTab = $state<Tab>(0);
 const isFull = $derived(selectedTab === 'full');
 const selectedWeek = $derived<0 | 1>(selectedTab === 1 ? 1 : 0);
 
-// Derived: an expired session reloads the page data and must drop the controls.
-const isAuthenticated = $derived(data.isAuthenticated as boolean);
-const sessionToken = $derived((data.sessionToken as string | null) ?? '');
-// Editing is only ever of the standing timetable — the fetched weeks are
-// overwritten by the cron a few times a day.
+const isAuthenticated = $derived(data.isAuthenticated);
+const sessionToken = $derived(data.sessionToken ?? '');
+// Only the standing timetable is editable; the fetched weeks are overwritten by the cron.
 const canEdit = $derived(isAuthenticated && isFull);
 
-// Relative time is resolved after mount so SSR and hydration agree on the markup.
-let now = $state<number | null>(null);
-
-onMount(() => {
-	now = Date.now();
+const blur = createBlurPulse();
+$effect(() => {
+	selectedTab;
+	blur.pulse();
 });
 
-const blur = createBlurPulse();
-$effect(() => { selectedTab; blur.pulse(); });
-
-// Both stored weeks, always: either row can turn out to hold the week a tab
-// asks for (see timetableForWeek), so neither can be fetched on demand.
+// Both weeks, always: either stored row may hold the week a tab asks for.
 const week0Query = useQuery(api.timetable.getByWeek, () => ({ week: 0 as const }));
 const week1Query = useQuery(api.timetable.getByWeek, () => ({ week: 1 as const }));
 const fullQuery = useQuery(api.timetable.getFull, () => ({}));
 
-// convex-svelte tests `initialData` for truthiness, so it cannot carry the
-// `null` that means "nothing stored yet" — a page whose server load already
-// answered `null` would sit on a spinner until the socket connected. Hold the
-// server's answer here instead and let the live result replace it.
+// convex-svelte ignores a falsy `initialData`, so the server's `null` is held here.
 const week0 = $derived(week0Query.data !== undefined ? week0Query.data : data.timetable);
 const week1 = $derived(week1Query.data !== undefined ? week1Query.data : data.nextWeek);
 const fullData = $derived(fullQuery.data !== undefined ? fullQuery.data : data.full);
 
-// The Monday each tab means, from the reader's own KST clock.
-const selectedMonday = $derived(addDaysYyyymmdd(data.thisMonday, selectedWeek * 7));
-const weekData = $derived(
-	week0 === undefined || week1 === undefined
-		? undefined
-		: timetableForWeek([week0, week1], selectedMonday, selectedWeek)
-);
+function mondayFor(offset: 0 | 1): string {
+	return addDaysYyyymmdd(data.thisMonday, offset * 7);
+}
 
-// "9/21 – 9/25": which week a tab is showing is otherwise never said.
+const weekData = $derived(timetableForWeek([week0, week1], mondayFor(selectedWeek), selectedWeek));
+
 const weekRangeLabel = $derived.by(() => {
-	const mon = parseYyyymmdd(selectedMonday);
-	const fri = parseYyyymmdd(addDaysYyyymmdd(selectedMonday, 4));
-	return mon && fri ? `${mon.m}/${mon.d} – ${fri.m}/${fri.d}` : '';
+	const mon = ymdParts(mondayFor(selectedWeek));
+	const fri = ymdParts(addDaysYyyymmdd(mondayFor(selectedWeek), 4));
+	return mon && fri ? `${mon.month}/${mon.day} – ${fri.month}/${fri.day}` : '';
 });
 
-// Undefined means neither source has answered yet; null is an answer.
-const pending = $derived(isFull ? fullData === undefined : weekData === undefined);
+const pending = $derived(isFull ? fullData === undefined : week0 === undefined || week1 === undefined);
 const queryError = $derived(
 	pending ? (isFull ? fullQuery.error : (week0Query.error ?? week1Query.error)) : undefined
 );
 
-// Saturday only ever appears when the timetable source published it, so the
-// column is grown from the data rather than always reserved. The standing
-// timetable is fixed at Mon–Fri.
 const dayNames = ['월', '화', '수', '목', '금', '토'];
 const WEEKDAYS = 5;
+const MAX_PERIODS = 12;
 
-// One shape for both views. The standing timetable has no substitutions to
-// report, so its cells are never `replaced` — that is what makes it the
-// baseline the weekly view's amber is measured against.
 type Cell = { period: number; subject: string; teacher: string; replaced: boolean };
 
+// The standing timetable is positional (gaps are padded with blanks); a fetched
+// week is addressed by 교시, since the merged feed can skip a period.
 const days = $derived<Cell[][]>(
 	isFull
 		? (fullData?.timetable ?? []).map((day) =>
-				day.map((slot, i) => ({
-					period: i + 1,
-					subject: slot.subject,
-					teacher: slot.teacher,
-					replaced: false
-				}))
+				day.map((slot, i) => ({ period: i + 1, ...slot, replaced: false }))
 			)
 		: (weekData?.timetable ?? []).map((day) =>
-				day.map((slot) => ({
-					period: slot.period,
-					subject: slot.subject,
-					teacher: slot.teacher,
-					replaced: slot.replaced
-				}))
+				day.map(({ period, subject, teacher, replaced }) => ({ period, subject, teacher, replaced }))
 			)
 );
-
-// A fetched week is addressed by 교시, not by position: the merged grid can
-// skip a period on one day and not another, which would otherwise shift every
-// later subject a row up. The standing timetable pads its gaps with blanks, so
-// there the two coincide — which is also why editing stays positional.
 const byPeriod = $derived(days.map((day) => new Map(day.map((c) => [c.period, c]))));
 
-const dayTimes = $derived(isFull ? (fullData?.day_time ?? []) : (weekData?.day_time ?? []));
-// NEIS publishes no bell times, so a week it alone covers has none to show.
-const hasBellTimes = $derived(dayTimes.length > 0);
+const dayTimes = $derived((isFull ? fullData?.day_time : weekData?.day_time) ?? []);
 
-const columns = $derived(
-	dayNames.slice(
-		0,
-		isFull
-			? WEEKDAYS
-			: Math.min(
-					Math.max(
-						days.reduce((last, day, i) => (day.length > 0 ? i + 1 : last), 0),
-						WEEKDAYS
-					),
-					dayNames.length
-				)
-	)
-);
+// Saturday shows only when the feed published it; 전체 is always Mon–Fri.
+const columns = $derived.by(() => {
+	if (isFull) return dayNames.slice(0, WEEKDAYS);
+	const lastDay = days.reduce((last, day, i) => (day.length > 0 ? i + 1 : last), 0);
+	return dayNames.slice(0, Math.min(Math.max(lastDay, WEEKDAYS), dayNames.length));
+});
 
-const maxPeriods = $derived(
-	days.reduce((max, day) => day.reduce((m, c) => Math.max(m, c.period), max), 0)
-);
-// An all-blank timetable is nothing to show, however many rows it has.
+const maxPeriods = $derived(days.reduce((max, day) => day.reduce((m, c) => Math.max(m, c.period), max), 0));
 const hasData = $derived(maxPeriods > 0);
-// …except to an admin on 전체: the grid's per-day length row is the way to
-// build a standing timetable by hand, and hiding it behind the empty state
-// left an emptied one recoverable only by re-importing a week.
+// An admin on 전체 still gets the grid, whose length row builds a timetable by hand.
 const showGrid = $derived(hasData || canEdit);
 
-const editedAt = $derived(
-	isFull ? (fullData?.updatedAt ?? null) : (weekData?.editedAt ?? null)
-);
+const editedAt = $derived(isFull ? (fullData?.updatedAt ?? null) : (weekData?.editedAt ?? null));
 
-// Korean counts by code point here, not UTF-16 unit.
+// By code point, so Korean counts per syllable.
 function subjectSizeClass(subject: string): string {
-	const n = [...subject].length;
-	if (n <= 3) return 'text-list sm:text-xl';
-	if (n === 4) return 'text-sm sm:text-xl';
-	return 'text-xs sm:text-xl';
+	return [...subject].length <= 3 ? 'text-list sm:text-xl' : 'text-xs sm:text-xl';
 }
 
-// "1교시(08:40~09:30)" → "08:40". The end time is the next period's start,
-// so it earns nothing in the app's narrowest column.
-function getPeriodLabel(period: number): string {
+// "1교시(08:40~09:30)" → "08:40"
+function periodStart(period: number): string {
 	const label = dayTimes[period - 1];
 	if (!label) return '';
 	const inParens = label.match(/\(([^)]+)\)/)?.[1] ?? label;
-	return inParens.split(/[~-]/)[0].trim();
+	return inParens.split(/[~-]/)[0]?.trim() ?? '';
 }
 
-// Padding lives on the inner box, not the cell, so the editing button can fill
-// the cell and still measure the same as the static view. The substituted wash
-// lives on the cell itself — the inner box only sizes to its content, so a
-// dash next to a two-line subject would otherwise leave a --card gap at the
-// bottom of the row.
+// Padding sits on the inner box so the edit button can fill the cell.
 const CELL_PAD = 'py-3 sm:py-6 px-1';
-const REPLACED_BG = 'bg-amber-100/70 dark:bg-amber-900/20';
 
-// ── Admin: snapshot a fetched week into the standing timetable ───────────────
-
-const MAX_PERIODS = 12;
+// ── Admin ────────────────────────────────────────────────────────────────────
 
 let adminError = $state<string | null>(null);
 let isSnapshotting = $state(false);
 
-// `offset` is the tab (0 = 이번 주, 1 = 다음 주); the row that actually holds
-// that week may be stored under the other offset, so it is looked up first.
-function storedWeekFor(offset: 0 | 1): 0 | 1 | null {
-	const monday = addDaysYyyymmdd(data.thisMonday, offset * 7);
-	const row = timetableForWeek([week0, week1], monday, offset);
-	return row ? (row.week === 1 ? 1 : 0) : null;
-}
-
 async function handleSnapshot(offset: 0 | 1) {
 	if (isSnapshotting) return;
-	const week = storedWeekFor(offset);
-	if (week === null) {
+	const row = timetableForWeek([week0, week1], mondayFor(offset), offset);
+	if (!row) {
 		adminError = '가져올 시간표가 없어요.';
 		return;
 	}
 	const hasStanding = (fullData?.timetable ?? []).some((day) => day.length > 0);
 	const label = offset === 1 ? '다음 주' : '이번 주';
-	// Overwriting hand-made corrections is the one destructive thing here, so
-	// it asks — and only when there is something to lose.
 	if (hasStanding && !confirm(`전체 시간표를 ${label} 시간표로 덮어쓸까요?`)) return;
 	isSnapshotting = true;
 	adminError = null;
 	try {
-		await client.mutation(api.timetable.snapshotFull, { sessionToken, week });
+		await client.mutation(api.timetable.snapshotFull, { sessionToken, week: row.week === 1 ? 1 : 0 });
 		selectedTab = 'full';
 	} catch (err) {
 		adminError = adminErrorMessage(err, '전체 시간표를 저장하지 못했어요. 잠시 후 다시 시도해 주세요.');
@@ -227,39 +154,33 @@ async function changeDayLength(day: number, delta: number) {
 	}
 }
 
-// ── Admin: edit one cell ─────────────────────────────────────────────────────
-
-type SlotDraft = { day: number; period: number; subject: string; teacher: string };
-let editingSlot = $state<SlotDraft | null>(null);
+// The draft outlives `editorOpen` so the sheet keeps its content while closing.
+let editorOpen = $state(false);
+let draft = $state({ day: 0, period: 1, subject: '', teacher: '' });
 let isSavingSlot = $state(false);
 let slotError = $state<string | null>(null);
 
 function openSlotEditor(day: number, period: number) {
-	if (!canEdit) return;
 	const current = days[day]?.[period - 1];
-	editingSlot = {
-		day,
-		period,
-		subject: current?.subject ?? '',
-		teacher: current?.teacher ?? ''
-	};
+	draft = { day, period, subject: current?.subject ?? '', teacher: current?.teacher ?? '' };
 	slotError = null;
+	editorOpen = true;
 }
 
 async function writeSlot(subject: string, teacher: string) {
-	if (!editingSlot || isSavingSlot) return;
+	if (isSavingSlot) return;
 	isSavingSlot = true;
 	slotError = null;
 	try {
 		await client.mutation(api.timetable.setFullSlot, {
 			sessionToken,
-			day: editingSlot.day,
-			period: editingSlot.period,
+			day: draft.day,
+			period: draft.period,
 			subject,
 			teacher
 		});
-		if (document.activeElement instanceof HTMLElement) document.activeElement.blur();
-		editingSlot = null;
+		blurActiveElement();
+		editorOpen = false;
 	} catch (err) {
 		slotError = adminErrorMessage(err, '저장하지 못했어요. 잠시 후 다시 시도해 주세요.');
 	} finally {
@@ -268,31 +189,23 @@ async function writeSlot(subject: string, teacher: string) {
 }
 </script>
 
-
-<svelte:head>
-	<title>시간표 - {CLASS_LABEL}</title>
-	<meta name="description" content="정확한 시간표를 변경사항까지 한 번에 확인하세요. " />
-
-	<!-- Open Graph -->
-	<meta property="og:title" content="시간표 - {CLASS_LABEL}" />
-	<meta property="og:description" content="정확한 시간표를 변경사항까지 한 번에 확인하세요. " />
-	<meta property="og:url" content="{SITE_URL}/timetable" />
-	<meta property="og:type" content="website" />
-	<meta property="og:site_name" content={SITE_NAME} />
-
-	<!-- Twitter Card -->
-	<meta name="twitter:card" content="summary_large_image" />
-	<meta name="twitter:title" content="시간표 - {CLASS_LABEL}" />
-	<meta name="twitter:description" content="정확한 시간표를 변경사항까지 한 번에 확인하세요. " />
-	<meta name="robots" content="noindex" />
-</svelte:head>
+<PageMeta
+	title="시간표 - {CLASS_LABEL}"
+	description="정확한 시간표를 변경사항까지 한 번에 확인하세요."
+	path="/timetable"
+	robots="noindex"
+/>
 
 {#snippet cell(slot: Cell | undefined)}
-	{#if slot && slot.subject}
+	{#if slot?.subject}
 		<div
-			class="truncate {subjectSizeClass(slot.subject)} font-semibold {slot.replaced ? 'text-amber-700 dark:text-amber-300' : 'text-foreground'}"
+			class="truncate {subjectSizeClass(slot.subject)} font-semibold {slot.replaced
+				? 'text-amber-700 dark:text-amber-300'
+				: 'text-foreground'}"
 			title={slot.subject}
-		>{slot.subject}</div>
+		>
+			{slot.subject}
+		</div>
 		{#if slot.teacher}
 			<div class="truncate text-sm sm:text-base mt-0.5 text-muted-foreground">{slot.teacher}</div>
 		{/if}
@@ -302,16 +215,24 @@ async function writeSlot(subject: string, teacher: string) {
 	{/if}
 {/snippet}
 
-<div class="max-w-4xl mx-auto px-4 pt-4 pb-1 sm:pt-5 sm:pb-0 sm:px-4 print-sheet">
-	<h1 class="sr-only print:hidden">시간표</h1>
+{#snippet lengthButton(label: string, glyph: string, disabled: boolean, onclick: () => void)}
+	<button
+		type="button"
+		{onclick}
+		{disabled}
+		aria-label={label}
+		class="pressable touch-target w-6 h-6 flex items-center justify-center rounded-full border border-border text-muted-foreground transition-colors duration-150 enabled:pointer:hover:text-foreground enabled:pointer:hover:bg-muted disabled:opacity-40"
+	>
+		{glyph}
+	</button>
+{/snippet}
 
-	<!-- Printed heading. Screen readers already have the h1 above, and on paper
-	     this is the only thing identifying the sheet. -->
+<div class="max-w-4xl mx-auto px-4 pt-4 pb-1 sm:pt-5 sm:pb-0 print-sheet">
+	<h1 class="sr-only print:hidden">시간표</h1>
 	<h1 class="hidden print:block mb-5 text-center text-2xl font-bold tracking-tight text-foreground">
 		{CLASS_LABEL} 시간표
 	</h1>
 
-	<!-- Header: week / standing selector -->
 	<div class="mb-3 print:hidden">
 		<SegmentedControl
 			bind:value={selectedTab}
@@ -330,50 +251,45 @@ async function writeSlot(subject: string, teacher: string) {
 	{:else if !showGrid}
 		<EmptyState message={isFull ? '전체 시간표가 아직 없어요' : '시간표가 없어요'} />
 	{:else}
-		<!-- Same hairline construction as the calendar: a real box per row
-		     (not display:contents — Safari still generates one), border-bottom
-		     on the row, border-right on every cell but the last. Each interior
-		     line is painted once. --grid-line is opaque, so the 1px corner
-		     where they meet cannot alpha-stack into a plus.
-		     No HScroll: the grid is always five/six equal columns and fits the
-		     page width; pan-x would only fight vertical scroll on phones. -->
+		<!-- A real box per row with one-sided hairlines, so each line is painted once. -->
 		<div
 			class="timetable-grid overflow-hidden print:overflow-visible rounded-xl mx-auto"
-			style="--cols: {columns.length + 1}; transition: filter 150ms ease-out, opacity 150ms ease-out; {blur.blurred
-				? 'filter: blur(4px); opacity: 0.7;'
-				: ''}"
+			style="--cols: {columns.length + 1}; {blur.style}"
 			role="table"
 		>
 			<div role="row" class="timetable-row">
 				<div role="columnheader" class="px-1 py-3 bg-muted"><span class="sr-only">교시</span></div>
 				{#each columns as name (name)}
-					<div role="columnheader" class="px-1 py-2.5 text-center text-sm font-semibold sm:text-base text-muted-foreground bg-muted">{name}</div>
+					<div role="columnheader" class="px-1 py-2.5 text-center text-sm font-semibold sm:text-base text-muted-foreground bg-muted">
+						{name}
+					</div>
 				{/each}
 			</div>
-			{#each Array(maxPeriods) as _, i (i)}
+			{#each { length: maxPeriods } as _, i (i)}
+				{@const period = i + 1}
 				<div role="row" class="timetable-row">
 					<div role="rowheader" class="px-0.5 py-3 sm:py-6 text-center bg-muted">
-						<div class="text-sm sm:text-lg font-semibold text-foreground whitespace-nowrap">{i + 1}교시</div>
-						{#if hasBellTimes && getPeriodLabel(i + 1)}
-							<div class="text-[11px] sm:text-base text-muted-foreground tabular-nums leading-tight">{getPeriodLabel(i + 1)}</div>
+						<div class="text-sm sm:text-lg font-semibold text-foreground whitespace-nowrap">{period}교시</div>
+						{#if periodStart(period)}
+							<div class="text-[11px] sm:text-base text-muted-foreground tabular-nums leading-tight">{periodStart(period)}</div>
 						{/if}
 					</div>
 					{#each columns as dayName, d (dayName)}
-						{@const slot = byPeriod[d]?.get(i + 1)}
+						{@const slot = byPeriod[d]?.get(period)}
 						<div
 							role="cell"
 							data-replaced={slot?.replaced ? '' : undefined}
-							class="p-0 text-center flex flex-col {slot?.replaced ? REPLACED_BG : 'bg-card'}"
+							class="p-0 text-center flex flex-col {slot?.replaced ? 'bg-amber-100/70 dark:bg-amber-900/20' : 'bg-card'}"
 						>
-							<!-- The whole cell is the hit area while editing, so what
-							     is pressed is exactly what opens. -->
 							{#if canEdit}
 								<button
 									type="button"
-									onclick={() => openSlotEditor(d, i + 1)}
-									aria-label="{dayName}요일 {i + 1}교시 수정"
+									onclick={() => openSlotEditor(d, period)}
+									aria-label="{dayName}요일 {period}교시 수정"
 									class="block w-full flex-1 {CELL_PAD} cursor-pointer transition-colors duration-150 pointer:hover:bg-muted"
-								>{@render cell(slot)}</button>
+								>
+									{@render cell(slot)}
+								</button>
 							{:else}
 								<div class="flex-1 {CELL_PAD}">{@render cell(slot)}</div>
 							{/if}
@@ -382,8 +298,6 @@ async function writeSlot(subject: string, teacher: string) {
 				</div>
 			{/each}
 
-			<!-- Per-day length. A day is as long as it is: Friday routinely
-			     ends before Monday does. -->
 			{#if canEdit}
 				<div role="row" class="timetable-row edit-row">
 					<div role="rowheader" class="px-0.5 py-2 text-center bg-muted">
@@ -393,21 +307,9 @@ async function writeSlot(subject: string, teacher: string) {
 						{@const length = days[d]?.length ?? 0}
 						<div role="cell" class="bg-card px-1 py-2">
 							<div class="flex items-center justify-center gap-1">
-								<button
-									type="button"
-									onclick={() => changeDayLength(d, -1)}
-									disabled={length <= 0}
-									aria-label="{dayName}요일 교시 줄이기"
-									class="pressable touch-target w-6 h-6 flex items-center justify-center rounded-full border border-border text-muted-foreground transition-colors duration-150 enabled:pointer:hover:text-foreground enabled:pointer:hover:bg-muted disabled:opacity-40"
-								>−</button>
+								{@render lengthButton(`${dayName}요일 교시 줄이기`, '−', length <= 0, () => changeDayLength(d, -1))}
 								<span class="w-5 text-center text-sm font-semibold tabular-nums text-foreground">{length}</span>
-								<button
-									type="button"
-									onclick={() => changeDayLength(d, 1)}
-									disabled={length >= MAX_PERIODS}
-									aria-label="{dayName}요일 교시 늘리기"
-									class="pressable touch-target w-6 h-6 flex items-center justify-center rounded-full border border-border text-muted-foreground transition-colors duration-150 enabled:pointer:hover:text-foreground enabled:pointer:hover:bg-muted disabled:opacity-40"
-								>+</button>
+								{@render lengthButton(`${dayName}요일 교시 늘리기`, '+', length >= MAX_PERIODS, () => changeDayLength(d, 1))}
 							</div>
 						</div>
 					{/each}
@@ -426,7 +328,7 @@ async function writeSlot(subject: string, teacher: string) {
 					{#if editedAt !== null}<span aria-hidden="true"> · </span>{/if}
 				{/if}
 				{#if editedAt !== null}
-					업데이트: <span title={formatAbsolute(editedAt)}>{now === null ? formatAbsolute(editedAt) : formatRelative(editedAt, now)}</span>
+					업데이트: <RelativeTime ts={editedAt} />
 				{/if}
 			</p>
 			<div class="flex items-center gap-3">
@@ -445,99 +347,77 @@ async function writeSlot(subject: string, teacher: string) {
 					type="button"
 					onclick={() => window.print()}
 					class="pressable touch-target text-xs font-semibold text-muted-foreground pointer:hover:text-foreground"
-				>인쇄</button>
+				>
+					인쇄
+				</button>
 			</div>
 		</div>
-	{/if}
 
-	<!-- An empty standing timetable still offers the import: the grid above
-	     is only its length row, and importing a week is the quick start. -->
-	{#if canEdit && !hasData && !pending && !queryError}
-		<div class="flex flex-wrap justify-center gap-2 pb-10 print:hidden">
-			<PillButton
-				variant="secondary"
-				text="이번 주에서 가져오기"
-				disabled={isSnapshotting}
-				onclick={() => handleSnapshot(0)}
-			/>
-			<PillButton
-				variant="secondary"
-				text="다음 주에서 가져오기"
-				disabled={isSnapshotting}
-				onclick={() => handleSnapshot(1)}
-			/>
-		</div>
+		{#if canEdit && !hasData}
+			<div class="flex flex-wrap justify-center gap-2 pb-10 print:hidden">
+				<PillButton variant="secondary" text="이번 주에서 가져오기" disabled={isSnapshotting} onclick={() => handleSnapshot(0)} />
+				<PillButton variant="secondary" text="다음 주에서 가져오기" disabled={isSnapshotting} onclick={() => handleSnapshot(1)} />
+			</div>
+		{/if}
 	{/if}
 </div>
 
-<!-- Cell editor -->
-<Drawer open={editingSlot !== null} onclose={() => (editingSlot = null)}>
+<Drawer open={editorOpen} onclose={() => (editorOpen = false)}>
 	{#snippet header()}
-		{#if editingSlot}
-			<p class="text-sm font-semibold text-muted-foreground mb-1">전체 시간표</p>
-			<div class="flex items-baseline gap-2">
-				<h2 class="text-2xl font-bold leading-tight text-foreground">
-					{dayNames[editingSlot.day]}요일
-				</h2>
-				<span class="text-base text-muted-foreground leading-tight tabular-nums">{editingSlot.period}교시</span>
-			</div>
-		{/if}
+		<p class="text-sm font-semibold text-muted-foreground mb-1">전체 시간표</p>
+		<div class="flex items-baseline gap-2">
+			<h2 class="text-2xl font-bold leading-tight text-foreground">{dayNames[draft.day]}요일</h2>
+			<span class="text-base text-muted-foreground leading-tight tabular-nums">{draft.period}교시</span>
+		</div>
 	{/snippet}
 
-	{#if editingSlot}
-		<form
-			class="space-y-3.5"
-			onsubmit={(e) => {
-				e.preventDefault();
-				if (editingSlot) writeSlot(editingSlot.subject, editingSlot.teacher);
-			}}
-		>
-			<div>
-				<label for="slot-subject" class="block text-sm font-semibold mb-1.5 text-muted-foreground">과목</label>
-				<input
-					id="slot-subject"
-					type="text"
-					bind:value={editingSlot.subject}
-					use:focusOnElement={320}
-					placeholder="예: 수학"
-					class="w-full h-11 px-3.5 rounded-lg bg-muted text-base text-foreground placeholder:text-muted-foreground"
-					onkeydown={(e) => { if (e.key === 'Enter' && e.isComposing) e.preventDefault(); }}
-				/>
-			</div>
-			<div>
-				<label for="slot-teacher" class="block text-sm font-semibold mb-1.5 text-muted-foreground">선생님</label>
-				<input
-					id="slot-teacher"
-					type="text"
-					bind:value={editingSlot.teacher}
-					placeholder="예: 김철수"
-					class="w-full h-11 px-3.5 rounded-lg bg-muted text-base text-foreground placeholder:text-muted-foreground"
-					onkeydown={(e) => { if (e.key === 'Enter' && e.isComposing) e.preventDefault(); }}
-				/>
-			</div>
+	<form
+		class="space-y-3.5"
+		onsubmit={(e) => {
+			e.preventDefault();
+			writeSlot(draft.subject, draft.teacher);
+		}}
+	>
+		<div>
+			<label for="slot-subject" class="block text-sm font-semibold mb-1.5 text-muted-foreground">과목</label>
+			<input
+				id="slot-subject"
+				type="text"
+				bind:value={draft.subject}
+				use:focusOnElement={320}
+				placeholder="예: 수학"
+				class="field"
+				onkeydown={holdComposingEnter}
+			/>
+		</div>
+		<div>
+			<label for="slot-teacher" class="block text-sm font-semibold mb-1.5 text-muted-foreground">선생님</label>
+			<input
+				id="slot-teacher"
+				type="text"
+				bind:value={draft.teacher}
+				placeholder="예: 김철수"
+				class="field"
+				onkeydown={holdComposingEnter}
+			/>
+		</div>
 
-			{#if slotError}
-				<p class="text-sm font-semibold text-destructive" role="alert">{slotError}</p>
-			{/if}
+		{#if slotError}
+			<p class="text-sm font-semibold text-destructive" role="alert">{slotError}</p>
+		{/if}
 
-			<div class="flex gap-2 pt-1">
-				<PillButton
-					type="submit"
-					morph
-					text={isSavingSlot ? '저장 중…' : '저장'}
-					pending={isSavingSlot}
-					disabled={isSavingSlot}
-					class="flex-1"
-				/>
-				<PillButton
-					text="비우기"
-					variant="secondary"
-					disabled={isSavingSlot}
-					onclick={() => writeSlot('', '')}
-				/>
-			</div>
-		</form>
-	{/if}
+		<div class="flex gap-2 pt-1">
+			<PillButton
+				type="submit"
+				morph
+				text={isSavingSlot ? '저장 중…' : '저장'}
+				pending={isSavingSlot}
+				disabled={isSavingSlot}
+				class="flex-1"
+			/>
+			<PillButton text="비우기" variant="secondary" disabled={isSavingSlot} onclick={() => writeSlot('', '')} />
+		</div>
+	</form>
 </Drawer>
 
 <style>

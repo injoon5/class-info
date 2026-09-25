@@ -1,8 +1,7 @@
 <script lang="ts">
 import PillButton from './PillButton.svelte';
 
-// The raw error goes to the console, not the page: a Convex stack line means
-// nothing to a student and only crowds out the retry.
+// The raw error goes to the console; on the page it only crowds out the retry.
 const { error }: { error: unknown } = $props();
 $effect(() => {
 	if (error) console.error(error);
