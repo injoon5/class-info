@@ -27,3 +27,9 @@ export function summarizeDescription(description: string): string {
   }
   return "";
 }
+
+// The meal feed tags dish names with a trailing "y" ("현미밥y"). Only a "y"
+// after a non-Latin character is the tag, so English words ending in y survive.
+export function cleanDishName(name: string): string {
+  return name.trim().replace(/(?<=[^A-Za-z\s])y$/, "").trim();
+}

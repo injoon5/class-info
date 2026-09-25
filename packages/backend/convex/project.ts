@@ -1,5 +1,6 @@
 import type { Doc } from "./_generated/dataModel";
 import type { Infer } from "convex/values";
+import { cleanDishName } from "./text";
 import {
   fullTimetableDoc,
   publicEvent,
@@ -33,7 +34,9 @@ export function projectMeal(m: Doc<"meals">): Infer<typeof publicMeal> | null {
   return {
     date,
     mealType,
-    dishes: Array.isArray(m.dishes) ? m.dishes.filter((d) => typeof d === "string") : [],
+    dishes: Array.isArray(m.dishes)
+      ? m.dishes.filter((d) => typeof d === "string").map(cleanDishName).filter(Boolean)
+      : [],
     originInfo: str(m.originInfo),
     calories: textOrNull(m.calories),
     nutrients: textOrNull(m.nutrients),

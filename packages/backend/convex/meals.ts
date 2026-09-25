@@ -3,6 +3,7 @@ import { v } from "convex/values";
 import { internal } from "./_generated/api";
 import { addDaysYyyymmdd, getWeekRangeKst, parseYyyymmdd, toYyyymmdd } from "./dates";
 import { projectMeal } from "./project";
+import { cleanDishName } from "./text";
 import { mealWeek } from "./validators";
 import { SCHOOL_API_BASE_URL } from "./config";
 
@@ -99,7 +100,7 @@ async function pullMeals(
     .map((d) => ({
       date: d.MLSV_YMD,
       mealType: d.MMEAL_SC_NM,
-      dishes: d.DDISH_NM.split("\n").map((s) => s.trim()).filter(Boolean),
+      dishes: d.DDISH_NM.split("\n").map(cleanDishName).filter(Boolean),
       originInfo: d.ORPLC_INFO ?? "",
       calories: d.CAL_INFO ?? null,
       nutrients: d.NTR_INFO ?? null,
