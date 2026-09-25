@@ -1,278 +1,233 @@
 <script lang="ts">
 import { useConvexClient } from 'convex-svelte';
-import { api } from "@class-info/backend/convex/_generated/api";
-import type { Id } from "@class-info/backend/convex/_generated/dataModel";
 import { fly } from 'svelte/transition';
+import { api } from '@class-info/backend/convex/_generated/api';
+import type { Id } from '@class-info/backend/convex/_generated/dataModel';
+import type { FileDoc } from '@class-info/backend/convex/validators';
 import { flyHelper, flyHelperOut } from '$lib/transitions';
+import { formatFileSize } from '$lib/format';
+import FileIcon from '$lib/components/ui/FileIcon.svelte';
 import PillButton from '$lib/components/ui/PillButton.svelte';
 import Spinner from '$lib/components/ui/Spinner.svelte';
-import { formatFileSize } from '$lib/format';
 
 const {
-  files = [],
-  onFilesChange,
-  sessionToken = ''
-}: { files: Id<'files'>[]; onFilesChange: (fileIds: Id<'files'>[]) => void; sessionToken?: string } = $props();
+	files = [],
+	onFilesChange,
+	onUploaded,
+	sessionToken = ''
+}: {
+	files: Id<'files'>[];
+	onFilesChange: (fileIds: Id<'files'>[]) => void;
+	/** Reports fresh uploads, so the owner can delete them if never saved. */
+	onUploaded?: (fileIds: Id<'files'>[]) => void;
+	sessionToken?: string;
+} = $props();
+
+const ALLOWED_TYPES = ['image/', 'application/pdf'];
+const MAX_BYTES = 10 * 1024 * 1024;
 
 const client = useConvexClient();
 let isUploading = $state(false);
 let dragOver = $state(false);
-// Upload problems belong on the drop zone, not in a browser modal.
 let uploadError = $state<string | null>(null);
 let copiedFileId = $state<Id<'files'> | null>(null);
-let lastCopied = 0;
+let copyTimer: ReturnType<typeof setTimeout> | null = null;
+let uploadedFiles = $state<FileDoc[]>([]);
 
-interface UploadedFile {
-  _id: Id<'files'>;
-  name: string;
-  type: string;
-  size: number;
-  url: string;
-}
-
-let uploadedFiles = $state<UploadedFile[]>([]);
-
-// Keep the displayed list in sync with the `files` prop. Reload when it has
-// entries; clear when it empties (e.g. after cancelling/resetting the form) so
-// a previous notice's attachments don't linger. A load token guards against
-// overlapping async loads clobbering each other.
+// Mirror the `files` prop; the token drops a slower, superseded load.
 let loadToken = 0;
 $effect(() => {
-  const ids = files;
-  if (ids.length === 0) {
-    uploadedFiles = [];
-    return;
-  }
-  loadFiles(ids);
+	const ids = files;
+	const token = ++loadToken;
+	if (ids.length === 0) {
+		uploadedFiles = [];
+		return;
+	}
+	client
+		.query(api.files.getFiles, { fileIds: ids })
+		.then((results) => {
+			if (token === loadToken) uploadedFiles = results;
+		})
+		.catch(() => {
+			if (token === loadToken) uploadedFiles = [];
+		});
 });
 
-async function loadFiles(ids: Id<'files'>[]) {
-  const token = ++loadToken;
-  try {
-    const results = await client.query(api.files.getFiles, {
-      fileIds: ids,
-    });
-    if (token !== loadToken) return; // a newer load superseded this one
-    uploadedFiles = results;
-  } catch {
-    if (token === loadToken) uploadedFiles = [];
-  }
+async function uploadOne(file: File): Promise<Id<'files'>> {
+	const { key, url } = await client.mutation(api.files.generateUploadUrl, { sessionToken });
+	const put = await fetch(url, { method: 'PUT', body: file });
+	if (!put.ok) throw new Error('Upload failed');
+	return await client.mutation(api.files.updateFileMetadataByStorageId, {
+		sessionToken,
+		storageId: key,
+		name: file.name,
+		type: file.type,
+		size: file.size
+	});
 }
 
 async function handleFileUpload(fileList: FileList) {
-  if (!fileList.length) return;
-  if (!sessionToken) {
-    uploadError = '로그인이 필요합니다.';
-    return;
-  }
+	if (!fileList.length) return;
+	if (!sessionToken) {
+		uploadError = '로그인이 필요합니다.';
+		return;
+	}
 
-  isUploading = true;
-  uploadError = null;
-  const rejected: string[] = [];
+	isUploading = true;
+	uploadError = null;
+	const rejected: string[] = [];
 
-  try {
-    const uploadPromises = Array.from(fileList).map(async (file) => {
-      // Validate file type
-      const allowedTypes = ['image/', 'application/pdf'];
-      if (!allowedTypes.some(type => file.type.startsWith(type))) {
-        rejected.push(`${file.name} — 이미지 또는 PDF만 올릴 수 있습니다`);
-        return null;
-      }
-      
-      // Validate file size (10MB max)
-      if (file.size > 10 * 1024 * 1024) {
-        rejected.push(`${file.name} — 10MB를 넘습니다`);
-        return null;
-      }
-      
-      const { key, url } = await client.mutation(api.files.generateUploadUrl, { sessionToken });
-      const put = await fetch(url, { method: 'PUT', body: file });
-      if (!put.ok) throw new Error('Upload failed');
+	// Each file stands alone, so one failure doesn't strand the ones that landed.
+	const ids = await Promise.all(
+		Array.from(fileList).map(async (file) => {
+			if (!ALLOWED_TYPES.some((type) => file.type.startsWith(type))) {
+				rejected.push(`${file.name} — 이미지 또는 PDF만 올릴 수 있습니다`);
+				return null;
+			}
+			if (file.size > MAX_BYTES) {
+				rejected.push(`${file.name} — 10MB를 넘습니다`);
+				return null;
+			}
+			try {
+				return await uploadOne(file);
+			} catch {
+				rejected.push(`${file.name} — 업로드하지 못했습니다`);
+				return null;
+			}
+		})
+	);
 
-      const fileId = await client.mutation(api.files.updateFileMetadataByStorageId, {
-        sessionToken,
-        storageId: key,
-        name: file.name,
-        type: file.type,
-        size: file.size,
-      });
-      
-      return fileId;
-    });
-    
-    const newFileIds = (await Promise.all(uploadPromises)).filter((id): id is Id<'files'> => id !== null);
-    const updatedFiles = [...files, ...newFileIds];
-    onFilesChange(updatedFiles);
-    if (rejected.length > 0) uploadError = rejected.join('\n');
-  } catch {
-    uploadError = '업로드하지 못했습니다. 잠시 후 다시 시도해 주세요.';
-  } finally {
-    isUploading = false;
-  }
+	const newIds = ids.filter((id): id is Id<'files'> => id !== null);
+	if (newIds.length > 0) {
+		onUploaded?.(newIds);
+		onFilesChange([...files, ...newIds]);
+	}
+	if (rejected.length > 0) uploadError = rejected.join('\n');
+	isUploading = false;
 }
 
-async function removeFile(fileId: Id<'files'>) {
-  try {
-    await client.mutation(api.files.deleteFile, { sessionToken, fileId });
-    const updatedFiles = files.filter(id => id !== fileId);
-    onFilesChange(updatedFiles);
-    // Also update the local uploadedFiles array immediately
-    uploadedFiles = uploadedFiles.filter(file => file._id !== fileId);
-  } catch {
-    uploadError = '파일을 삭제하지 못했습니다. 잠시 후 다시 시도해 주세요.';
-  }
+// Detach only; the editor deletes the file once the notice is saved without it.
+function removeFile(fileId: Id<'files'>) {
+	onFilesChange(files.filter((id) => id !== fileId));
 }
 
-function copyMarkdownToClipboard(file: UploadedFile) {
-  const markdown = file.type.startsWith('image/') 
-    ? `![${file.name}](${file.url})`
-    : `[${file.name}](${file.url})`;
-
-  // No clipboard outside a secure context, and reaching through the missing
-  // object threw past the catch below instead of showing the error.
-  if (!navigator.clipboard || !window.isSecureContext) {
-    uploadError = '복사하지 못했습니다.';
-    return;
-  }
-
-  navigator.clipboard.writeText(markdown).then(() => {
-    const stamp = Date.now();
-    lastCopied = stamp;
-    copiedFileId = file._id;
-    setTimeout(() => {
-      if (lastCopied === stamp) copiedFileId = null;
-    }, 1000);
-  }).catch(() => {
-    uploadError = '복사하지 못했습니다.';
-  });
+async function copyMarkdown(file: FileDoc) {
+	const markdown = file.type.startsWith('image/') ? `![${file.name}](${file.url})` : `[${file.name}](${file.url})`;
+	try {
+		if (!navigator.clipboard || !window.isSecureContext) throw new Error('no clipboard');
+		await navigator.clipboard.writeText(markdown);
+		copiedFileId = file._id;
+		if (copyTimer) clearTimeout(copyTimer);
+		copyTimer = setTimeout(() => (copiedFileId = null), 1000);
+	} catch {
+		uploadError = '복사하지 못했습니다.';
+	}
 }
 
-function handleDragOver(e: DragEvent) {
-  e.preventDefault();
-  dragOver = true;
-}
-
-function handleDragLeave(e: DragEvent) {
-  e.preventDefault();
-  dragOver = false;
-}
+$effect(() => () => {
+	if (copyTimer) clearTimeout(copyTimer);
+});
 
 function handleDrop(e: DragEvent) {
-  e.preventDefault();
-  dragOver = false;
-  if (e.dataTransfer?.files) {
-    handleFileUpload(e.dataTransfer.files);
-  }
+	e.preventDefault();
+	dragOver = false;
+	if (e.dataTransfer?.files) handleFileUpload(e.dataTransfer.files);
 }
 </script>
 
 <div class="space-y-3">
-  {#if uploadError}
-    <p class="whitespace-pre-line rounded-2xl border border-destructive/30 bg-destructive/10 px-3.5 py-2.5 text-sm font-semibold text-destructive" role="alert">
-      {uploadError}
-    </p>
-  {/if}
+	{#if uploadError}
+		<p
+			class="whitespace-pre-line rounded-2xl border border-destructive/30 bg-destructive/10 px-3.5 py-2.5 text-sm font-semibold text-destructive"
+			role="alert"
+		>
+			{uploadError}
+		</p>
+	{/if}
 
-  <div
-    role="group"
-    aria-label="파일 업로드"
-    class="border-2 border-dashed rounded-2xl {dragOver ? 'border-ring bg-muted' : 'border-border'} p-5 text-center transition-colors duration-150"
-    ondragover={handleDragOver}
-    ondragleave={handleDragLeave}
-    ondrop={handleDrop}
-  >
-    <input
-      type="file"
-      multiple
-      accept="image/*,application/pdf"
-      onchange={(e) => { const t = e.currentTarget as HTMLInputElement; if (t.files) handleFileUpload(t.files); }}
-      class="hidden"
-      id="file-upload"
-      disabled={isUploading}
-    />
+	<div
+		role="group"
+		aria-label="파일 업로드"
+		class="border-2 border-dashed rounded-2xl p-5 text-center transition-colors duration-150 {dragOver
+			? 'border-ring bg-muted'
+			: 'border-border'}"
+		ondragover={(e) => {
+			e.preventDefault();
+			dragOver = true;
+		}}
+		ondragleave={(e) => {
+			// Moving onto a child fires dragleave too; only leaving the zone counts.
+			if (!e.currentTarget.contains(e.relatedTarget as Node | null)) dragOver = false;
+		}}
+		ondrop={handleDrop}
+	>
+		<input
+			type="file"
+			multiple
+			accept="image/*,application/pdf"
+			onchange={async (e) => {
+				const input = e.currentTarget;
+				if (input.files) await handleFileUpload(input.files);
+				input.value = '';
+			}}
+			class="hidden"
+			id="file-upload"
+			disabled={isUploading}
+		/>
 
-    {#if isUploading}
-      <div class="flex items-center justify-center gap-2.5 text-sm text-muted-foreground" role="status" aria-live="polite">
-        <Spinner size="md" />
-        <span>파일 업로드 중…</span>
-      </div>
-    {:else}
-      <label for="file-upload" class="cursor-pointer">
-        <p class="text-sm text-muted-foreground mb-3">
-          이미지나 PDF 파일을 드래그하거나 클릭해서 업로드하세요
-        </p>
-        <PillButton
-          text="파일 추가"
-          variant="secondary"
-          onclick={() => document.getElementById('file-upload')?.click()}
-        />
-      </label>
-    {/if}
-  </div>
+		{#if isUploading}
+			<div class="flex items-center justify-center gap-2.5 text-sm text-muted-foreground" role="status" aria-live="polite">
+				<Spinner size="md" />
+				<span>파일 업로드 중…</span>
+			</div>
+		{:else}
+			<p class="text-sm text-muted-foreground mb-3">이미지나 PDF 파일을 드래그하거나 클릭해서 업로드하세요</p>
+			<PillButton text="파일 추가" variant="secondary" onclick={() => document.getElementById('file-upload')?.click()} />
+		{/if}
+	</div>
 
-  <!-- File List -->
-  {#if uploadedFiles.length > 0}
-    <div class="space-y-2">
-      <h4 class="text-sm font-semibold text-muted-foreground">첨부된 파일</h4>
-      <div class="space-y-1.5">
-        {#each uploadedFiles as file (file._id)}
-          <div
-            class="flex items-center justify-between gap-2 p-2 rounded-2xl bg-muted/50 border border-border group"
-            title="클릭하면 마크다운 코드를 복사할 수 있습니다"
-          >
-            <div class="flex items-center gap-2 flex-1 min-w-0">
-              <div class="flex-shrink-0">
-                {#if file.type.startsWith('image/')}
-                  <svg class="w-4 h-4 text-muted-foreground" fill="currentColor" viewBox="0 0 20 20">
-                    <path fill-rule="evenodd" d="M4 3a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V5a2 2 0 00-2-2H4zm12 12H4l4-8 3 6 2-4 3 6z" clip-rule="evenodd"/>
-                  </svg>
-                {:else}
-                  <svg class="w-4 h-4 text-red-500" fill="currentColor" viewBox="0 0 20 20">
-                    <path fill-rule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4z" clip-rule="evenodd"/>
-                  </svg>
-                {/if}
-              </div>
-              <div class="flex-1 min-w-0">
-                <p class="text-sm text-foreground truncate">{file.name}</p>
-                <p class="text-xs text-muted-foreground tabular-nums">{formatFileSize(file.size)}</p>
-              </div>
-            </div>
-            <div class="flex items-center gap-1.5 flex-shrink-0">
-              <button
-                type="button"
-                onclick={() => copyMarkdownToClipboard(file)}
-                class="pressable rounded-lg px-2.5 py-1.5 text-sm font-semibold border border-border text-foreground transition-colors duration-150 pointer:hover:bg-muted"
-                title="마크다운 복사"
-              >
-                <span class="relative inline-flex h-4 min-w-[2.5rem] items-center justify-center">
-                  {#key copiedFileId === file._id}
-                    <!-- Both directions: with only an intro the outgoing word
-                         was cut on the frame the new one started moving. -->
-                    <span
-                      class="absolute inset-0 flex items-center justify-center"
-                      in:fly={flyHelper}
-                      out:fly={flyHelperOut}
-                    >
-                      {copiedFileId === file._id ? '복사됨' : '복사'}
-                    </span>
-                  {/key}
-                </span>
-              </button>
-              <button
-                type="button"
-                onclick={() => removeFile(file._id)}
-                class="pressable rounded-lg px-2.5 py-1.5 text-sm font-semibold border border-border text-destructive transition-colors duration-150 pointer:hover:bg-destructive/10"
-                title="파일 삭제"
-              >
-                삭제
-              </button>
-            </div>
-          </div>
-        {/each}
-      </div>
-      <p class="text-xs text-muted-foreground hidden sm:block">
-        파일에 마우스를 올리면 마크다운 복사 버튼이 나타납니다.
-      </p>
-    </div>
-  {/if}
+	{#if uploadedFiles.length > 0}
+		<div class="space-y-2">
+			<h4 class="text-sm font-semibold text-muted-foreground">첨부된 파일</h4>
+			<ul class="space-y-1.5">
+				{#each uploadedFiles as file (file._id)}
+					<li class="flex items-center justify-between gap-2 p-2 rounded-2xl bg-muted/50 border border-border">
+						<div class="flex items-center gap-2 flex-1 min-w-0">
+							<FileIcon
+								mime={file.type}
+								class="w-4 h-4 shrink-0 {file.type.startsWith('image/') ? 'text-muted-foreground' : 'text-red-500'}"
+							/>
+							<div class="flex-1 min-w-0">
+								<p class="text-sm text-foreground truncate">{file.name}</p>
+								<p class="text-xs text-muted-foreground tabular-nums">{formatFileSize(file.size)}</p>
+							</div>
+						</div>
+						<div class="flex items-center gap-1.5 shrink-0">
+							<button
+								type="button"
+								onclick={() => copyMarkdown(file)}
+								class="pressable rounded-lg px-2.5 py-1.5 text-sm font-semibold border border-border text-foreground transition-colors duration-150 pointer:hover:bg-muted"
+								title="마크다운 복사"
+							>
+								<span class="relative inline-flex h-4 min-w-[2.5rem] items-center justify-center">
+									{#key copiedFileId === file._id}
+										<span class="absolute inset-0 flex items-center justify-center" in:fly={flyHelper} out:fly={flyHelperOut}>
+											{copiedFileId === file._id ? '복사됨' : '복사'}
+										</span>
+									{/key}
+								</span>
+							</button>
+							<button
+								type="button"
+								onclick={() => removeFile(file._id)}
+								class="pressable rounded-lg px-2.5 py-1.5 text-sm font-semibold border border-border text-destructive transition-colors duration-150 pointer:hover:bg-destructive/10"
+							>
+								삭제
+							</button>
+						</div>
+					</li>
+				{/each}
+			</ul>
+		</div>
+	{/if}
 </div>

@@ -4,10 +4,7 @@
 @custom-variant pointer (@media (hover: hover) and (pointer: fine));
 @custom-variant touch (@media (pointer: coarse));
 
-/* ── Design tokens ──────────────────────────────────────────────────────────
-   OKLCH neutral ramp. A "tool/dashboard" direction: hairline borders, quiet
-   neutrals, one near-neutral primary. Status hues (red/amber/sky) stay in the
-   pages that carry meaning and never collide with the primary. */
+/* Neutral OKLCH ramp; status hues (red/amber/sky) live in the pages. */
 :root {
 	--sat: env(safe-area-inset-top);
 	--sar: env(safe-area-inset-right);
@@ -21,8 +18,7 @@
 	--muted: oklch(0.955 0 0);
 	--muted-foreground: oklch(0.49 0 0);
 	--border: oklch(0.905 0 0);
-	/* Opaque copy of --border for 2D grids. Translucent hairlines stack into a
-	   brighter plus where they cross; this one cannot. */
+	/* Opaque, so grid hairlines don't stack into a brighter plus at crossings. */
 	--grid-line: var(--border);
 	--primary: oklch(0.24 0 0);
 	--primary-foreground: oklch(0.99 0 0);
@@ -39,15 +35,12 @@
 	--muted: oklch(0.27 0 0);
 	--muted-foreground: oklch(0.708 0 0);
 	--border: oklch(1 0 0 / 9%);
-	/* Mixed against --muted, not --card: header/rowheader cells (bg-muted) sit
-	   on the grid's outer top and left edges, and a line tuned only for
-	   contrast against --card all but disappears there. */
+	/* Mixed against --muted so it still shows beside the grid's header cells. */
 	--grid-line: color-mix(in oklch, white 9%, var(--muted));
 	--primary: oklch(0.92 0 0);
 	--primary-foreground: oklch(0.2 0 0);
 	--destructive: oklch(0.65 0.19 25);
 	--ring: oklch(0.6 0 0);
-	/* Lighter than --muted (0.27) so it reads as lifted, not recessed. */
 	--elevated: oklch(0.325 0 0);
 }
 
@@ -56,17 +49,9 @@
 		'Apple SD Gothic Neo', 'Noto Sans KR', 'Malgun Gothic', 'Segoe UI', Roboto,
 		'Apple Color Emoji', 'Segoe UI Emoji', sans-serif;
 
-	/* ── Type ramp ────────────────────────────────────────────────────────────
-	   12 / 14 / 15 / 16 / 20 / 24 / 30. `text-list` (15px) is the size for row
-	   titles and list bodies — the step between a 14px caption and a 16px field.
-	   16px is reserved for inputs and must not go lower: iOS zooms the viewport
-	   when a focused field is under 16px.
-	   Weights are 400 body / 600 emphasis and labels / 700 display. Nothing in
-	   between: at these sizes a 500 reads as a slightly muddy 400 and spends a
-	   variable to say nothing.
-	   `tracking-tight` is a display correction — it belongs at 24px and up. On
-	   Korean at 16–20px it removes breathing room that the syllable blocks need. */
-  --text-list: 0.9375rem;
+	/* 15px, for row titles and list bodies. Inputs stay at 16px: iOS zooms
+	   into a focused field smaller than that. */
+	--text-list: 0.9375rem;
 	--color-background: var(--background);
 	--color-foreground: var(--foreground);
 	--color-card: var(--card);
@@ -104,7 +89,8 @@ html {
 		margin: 0;
 		min-height: 100vh;
 		min-width: 320px;
-		padding-top: env(safe-area-inset-top);
+		/* Top inset belongs to the sticky header, so it also clears the status
+		   bar once scrolled; body padding would scroll away beneath it. */
 		padding-bottom: env(safe-area-inset-bottom);
 		padding-left: env(safe-area-inset-left);
 		padding-right: env(safe-area-inset-right);
@@ -117,7 +103,6 @@ html {
 		text-wrap: pretty;
 	}
 
-	/* Heading anchor offset so ids aren't hidden under any sticky chrome */
 	h1[id], h2[id], h3[id], h4[id], h5[id], h6[id] {
 		scroll-margin-top: 96px;
 	}
@@ -128,9 +113,7 @@ html {
 	}
 }
 
-/* Keyboard-only focus ring using the ring token. This is the app's only focus
-   treatment — controls must not add their own, or they stack. The outline
-   follows each element's own border-radius, so none is set here. */
+/* The app's only focus treatment; controls must not add their own. */
 :focus {
 	outline: none;
 }
@@ -138,17 +121,14 @@ html {
 	outline: 2px solid var(--ring);
 	outline-offset: 2px;
 }
-/* A filled field already draws its own edge. Offsetting the ring leaves a gap
-   of page colour between the two, which reads as a second border rather than
-   as focus — so on fields the ring sits flush against the fill. */
+/* Flush on filled fields, where an offset reads as a second border. */
 input:focus-visible,
 textarea:focus-visible,
 select:focus-visible {
 	outline-offset: 0;
 }
 
-/* iOS Safari's native date control has an implicit min-width that blows
-   past the card. Kill appearance and pin the webkit internals to the field. */
+/* iOS Safari's date control has an implicit min-width that overflows the card. */
 .date-input {
 	display: block;
 	width: 100%;
@@ -170,8 +150,13 @@ select:focus-visible {
 	width: 100%;
 }
 
+@layer components {
+	.field {
+		@apply w-full h-11 px-3.5 rounded-lg bg-muted text-base text-foreground placeholder:text-muted-foreground;
+	}
+}
+
 @layer utilities {
-	/* Buttons and rows. */
 	.pressable,
 	.pressable-lg {
 		@apply transition-transform duration-150 ease-out;
@@ -180,16 +165,14 @@ select:focus-visible {
 	.pressable-lg:active {
 		@apply scale-95;
 	}
-	/* Large tappable surfaces — a full card travelling 5% reads as a lurch. */
+	/* Cards: 5% on a whole card reads as a lurch. */
 	.pressable-xl {
 		@apply transition-transform duration-150 ease-out;
 	}
 	.pressable-xl:active {
 		@apply scale-[0.97];
 	}
-	/* Guarantees a 44px touch target on coarse pointers without changing how big
-	   the control looks — the layout stays exactly where it is and the tappable
-	   area grows underneath it. */
+	/* 44px hit area on touch without changing the control's size. */
 	.touch-target {
 		position: relative;
 	}
@@ -207,7 +190,6 @@ select:focus-visible {
 		}
 	}
 
-	/* 32px icon buttons, which need a deeper press to register at that size. */
 	.pressable-icon {
 		@apply transition-transform duration-150 ease-out;
 	}
@@ -215,9 +197,6 @@ select:focus-visible {
 		@apply scale-90;
 	}
 
-	/* Hairline arc. 0.65s linear reads faster than the default 1s spin
-	   without looking hurried. Stroke is 1.5px at every size so it matches
-	   the rest of the chrome instead of scaling into a doughnut. */
 	.spinner-mark {
 		animation: spinner-rotate 0.65s linear infinite;
 	}
@@ -233,10 +212,8 @@ select:focus-visible {
 	}
 }
 
-/* Chrome applies `:active` the moment a finger lands and only drops it once
-   it has decided the touch was a scroll, so a card shrinks and springs back
-   as the list starts moving under it. The layout script flags an in-flight
-   scroll; press feedback sits it out. */
+/* Chrome applies :active before it knows a touch is a scroll; the layout
+   flags scrolling so cards don't shrink as the list moves under the finger. */
 [data-scrolling] .pressable:active,
 [data-scrolling] .pressable-lg:active,
 [data-scrolling] .pressable-xl:active,
@@ -249,8 +226,7 @@ select:focus-visible {
 		animation-duration: 0.001ms !important;
 		animation-iteration-count: 1 !important;
 		scroll-behavior: auto !important;
-		/* Movement goes; color/opacity feedback stays, so controls still
-		   answer a press. */
+		/* Colour and opacity feedback stays so presses still register. */
 		transition-property: color, background-color, border-color,
 			text-decoration-color, fill, stroke, opacity, box-shadow !important;
 	}
@@ -260,7 +236,7 @@ select:focus-visible {
 	.pressable-icon:active {
 		transform: none;
 	}
-	/* A frozen 1/4-arc looks broken. Sit as a quiet ring instead. */
+	/* A frozen arc looks broken; show a quiet ring instead. */
 	.spinner-mark {
 		animation: none !important;
 	}
@@ -270,11 +246,7 @@ select:focus-visible {
 	}
 }
 
-/* ── Print ──────────────────────────────────────────────────────────────────
-   Paper has no theme, so the reader's dark mode is overridden with the light
-   palette verbatim — the same hairline borders and near-white surfaces the app
-   already draws, not a separate print styling. Only the page's subject prints;
-   the chrome is hidden below. */
+/* ── Print: light palette always, page subject only ─────────────────────── */
 @media print {
 	.dark {
 		--background: oklch(0.981 0 0);
@@ -283,8 +255,7 @@ select:focus-visible {
 		--card-foreground: oklch(0.21 0 0);
 		--muted: oklch(0.955 0 0);
 		--muted-foreground: oklch(0.49 0 0);
-		/* A hairline that reads on a backlit screen comes out faint on paper, so
-		   print takes the same grey a step darker. */
+		/* A step darker: screen hairlines come out faint on paper. */
 		--border: oklch(0.84 0 0);
 		--primary: oklch(0.24 0 0);
 		--primary-foreground: oklch(0.99 0 0);
@@ -305,7 +276,6 @@ select:focus-visible {
 	html,
 	body {
 		background: #ffffff !important;
-		/* Safe-area padding is a device concern; on paper it just shifts things. */
 		padding: 0 !important;
 		margin: 0 !important;
 		height: 100% !important;
@@ -317,24 +287,19 @@ select:focus-visible {
 		flex-direction: column !important;
 	}
 
-	/* Keep the fills the tokens ask for — browsers drop backgrounds by default,
-	   which would erase the header row and the substituted-lesson highlight. */
+	/* Browsers drop backgrounds by default, erasing header rows and highlights. */
 	* {
 		-webkit-print-color-adjust: exact !important;
 		print-color-adjust: exact !important;
 	}
 
-	/* App chrome never prints. The skip link is not a direct child of <body> —
-	   SvelteKit wraps the tree — so it is matched by its target. */
 	a[href='#main'],
 	header,
 	#aria-live-region {
 		display: none !important;
 	}
 
-	/* Fill the page box so .print-sheet can actually sit in the middle.
-	   A 297mm min-height plus @page margin plus this padding was taller
-	   than one sheet, so the "center" landed on the next page. */
+	/* Fill the page box so .print-sheet can centre on it. */
 	main {
 		flex: 1 1 auto !important;
 		display: flex !important;
@@ -342,10 +307,7 @@ select:focus-visible {
 		min-height: 0 !important;
 	}
 
-	/* The subject of the page sits as a block in the middle of the sheet.
-	   Padding lives on the element rather than only in @page, because a reader
-	   who sets "Margins: none" in the print dialog would otherwise weld the
-	   table to the corner. Vertical centering is opt-in via .print-sheet. */
+	/* Padding here as well as @page, in case the dialog sets "Margins: none". */
 	main :where(.max-w-4xl) {
 		max-width: none !important;
 		margin-inline: auto !important;
@@ -362,21 +324,16 @@ select:focus-visible {
 		width: 100% !important;
 	}
 
-	/* A horizontal scroller must not crop what it holds on paper. */
 	.overflow-x-auto {
 		overflow: visible !important;
 	}
 
-	/* Hard corners. The screen grids clip to rounded-xl, which eats the outer
-	   hairline and reads as leftover chrome on a sheet. */
 	*,
 	*::before,
 	*::after {
 		border-radius: 0 !important;
 	}
 
-	/* Hairlines are one-sided --grid-line borders, same as on screen. Don't
-	   paint a border on every side — that stacks at crossings. */
 	.timetable-grid {
 		overflow: visible !important;
 	}
@@ -384,9 +341,7 @@ select:focus-visible {
 		overflow: visible !important;
 	}
 
-	/* A substituted lesson is styled with hardcoded amber utilities including a
-	   dark: variant, which the token override above cannot reach — so printing
-	   from a dark browser put pale yellow on beige. Restate the light values. */
+	/* Substitutions use hardcoded amber with a dark: variant the tokens can't reach. */
 	[data-replaced] {
 		background-color: #fef7d8 !important;
 	}
@@ -394,7 +349,6 @@ select:focus-visible {
 		color: #b45309 !important;
 	}
 
-	/* Never split a row across sheets. */
 	tr,
 	td,
 	th,
@@ -409,7 +363,7 @@ select:focus-visible {
 	}
 }
 
-/* ── Markdown (notice detail) — driven by tokens ───────────────────────────── */
+/* ── Markdown (notice detail) ──────────────────────────────────────────── */
 .markdown-content h1,
 .markdown-content h2,
 .markdown-content h3,
@@ -533,4 +487,26 @@ select:focus-visible {
 	border: none;
 	border-top: 1px solid var(--border);
 	margin: 1.5rem 0;
+}
+.markdown-content table {
+	display: block;
+	max-width: 100%;
+	overflow-x: auto;
+	border-collapse: collapse;
+	margin-bottom: 0.75rem;
+	font-size: 0.875rem;
+}
+.markdown-content th,
+.markdown-content td {
+	border: 1px solid var(--border);
+	padding: 0.375rem 0.625rem;
+	text-align: left;
+}
+.markdown-content th {
+	background-color: var(--muted);
+	color: var(--foreground);
+	font-weight: 600;
+}
+.markdown-content td {
+	color: color-mix(in oklab, var(--foreground) 82%, var(--muted-foreground));
 }

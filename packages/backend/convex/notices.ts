@@ -1,7 +1,8 @@
-import { v } from "convex/values";
+import { ConvexError, v } from "convex/values";
 import { internalMutation, mutation, query, type QueryCtx } from "./_generated/server";
 import type { Doc, Id } from "./_generated/dataModel";
 import { requireAdmin } from "./auth";
+import { summarizeDescription } from "./text";
 import { deleteFilesByIds } from "./files";
 import {
   addDaysIso,
@@ -40,9 +41,11 @@ const noticeFields = {
   slug: v.optional(v.string()),
 };
 
-function assertLength(value: string, max: number, field: string): void {
-  if (value.length === 0) throw new Error(`${field} is required`);
-  if (value.length > max) throw new Error(`${field} is too long`);
+// Messages are ConvexErrors in Korean: they reach the admin editor as-is,
+// where a plain Error would be redacted to "Server Error" in production.
+function assertLength(value: string, max: number, label: string): void {
+  if (value.length === 0) throw new ConvexError(`${label}을 입력해 주세요.`);
+  if (value.length > max) throw new ConvexError(`${label}이 너무 길어요. ${max}자 이하로 줄여 주세요.`);
 }
 
 function normalizeSlug(slug: string | undefined): string | undefined {
@@ -63,10 +66,10 @@ function assertNoticeWrite(fields: {
   description: string;
   dueDate: string;
 }): void {
-  assertLength(fields.title.trim(), TITLE_MAX, "title");
-  assertLength(fields.subject.trim(), SUBJECT_MAX, "subject");
+  assertLength(fields.title.trim(), TITLE_MAX, "제목");
+  assertLength(fields.subject.trim(), SUBJECT_MAX, "과목");
   if (fields.description.length > DESCRIPTION_MAX) {
-    throw new Error("description is too long");
+    throw new ConvexError("설명이 너무 길어요.");
   }
   assertIsoDate(fields.dueDate, "dueDate");
 }
@@ -125,22 +128,6 @@ async function resolveNewSlug(
 }
 
 // ── Notice → minimal projection ────────────────────────────────────────────────
-
-function getUrlBasename(url: string): string {
-  const withoutQuery = url.split("?")[0].split("#")[0];
-  const parts = withoutQuery.split("/");
-  return parts[parts.length - 1] || url;
-}
-
-function summarizeDescription(description: string): string {
-  let firstLine = description.split("\n")[0] || "";
-  firstLine = firstLine.replace(/^#+\s*/, "");
-  return firstLine.replace(/!\[([^\]]*)\]\(([^)]+)\)/g, (_m, alt, link) => {
-    const trimmedAlt = String(alt || "").trim();
-    if (trimmedAlt.length > 0) return trimmedAlt;
-    return getUrlBasename(String(link || "").trim());
-  });
-}
 
 function toMinimalNotice(n: Doc<"notices">): MinimalNotice {
   return {

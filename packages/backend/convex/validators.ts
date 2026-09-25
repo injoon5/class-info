@@ -70,6 +70,7 @@ export const timetableDoc = v.object({
   timetable: v.array(v.array(timetableSlot)),
   update_date: v.string(),
   week: v.number(),
+  weekStart: v.optional(v.string()),
   editedAt: v.number(),
 });
 
@@ -161,3 +162,4 @@ export type MealDay = Infer<typeof mealDay>;
 export type PublicEvent = Infer<typeof publicEvent>;
 export type FullTimetableSlot = Infer<typeof fullTimetableSlot>;
 export type FullTimetableDoc = Infer<typeof fullTimetableDoc>;
+export type FileDoc = Infer<typeof fileDoc>;

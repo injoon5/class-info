@@ -12,19 +12,15 @@ import { requireAdmin } from "./auth";
 import { FULL_TIMETABLE_DAYS, projectFullTimetable, projectTimetable } from "./project";
 import { fullTimetableDoc, timetableDoc, timetableSlot } from "./validators";
 import { SCHOOL_API_BASE_URL } from "./config";
+import { addDaysYyyymmdd, getNowKst, mondayYyyymmddOf, toYyyymmdd } from "./dates";
 
 type Slot = Infer<typeof timetableSlot>;
 
-// `/timetable` merges Comcigan and NEIS. `auto` is both the upstream default
-// and the only source this app wants — Comcigan supplies bell times, teachers
-// and the short subject nicknames, NEIS fills days and periods Comcigan never
-// published — but it is sent explicitly so a later change to that default
-// can't silently reshape the grid.
+// `auto` merges Comcigan (bell times, teachers, short names) with NEIS. It is
+// the upstream default, but pinned so a change there can't reshape the grid.
 const SOURCE = "auto";
 
-// A NEIS-only week carries the same keys with empty values: no teachers, no
-// bell times, no LOAD_DTM, and never a replacement. Everything below treats
-// those as ordinary data rather than a malformed payload.
+// A NEIS-only week has the same keys with empty values; that is valid data.
 function str(value: unknown): string {
   return typeof value === "string" ? value : "";
 }
@@ -65,9 +61,8 @@ function normalizeWeek(raw: unknown): Slot[][] {
   );
 }
 
-// Errors arrive as `{ ok: false, error: { code, message, details } }`. Older
-// deploys of the API answer some failures with a bare body, so a missing
-// envelope falls back to the status line.
+// Errors are `{ ok: false, error: { code, message } }`; older deploys may
+// send a bare body, so fall back to the status line.
 async function readError(res: Response): Promise<{ code: string; message: string }> {
   let body: unknown;
   try {
@@ -89,11 +84,12 @@ export const upsert = internalMutation({
     day_time: v.array(v.string()),
     timetable: v.array(v.array(timetableSlot)),
     update_date: v.string(),
+    weekStart: v.optional(v.string()),
   },
   returns: v.id("timetables"),
   handler: async (
     ctx,
-    { week, day_time, timetable, update_date }
+    { week, day_time, timetable, update_date, weekStart }
   ): Promise<Id<"timetables">> => {
     const existing = await ctx.db
       .query("timetables")
@@ -102,12 +98,19 @@ export const upsert = internalMutation({
 
     const now = Date.now();
     if (existing) {
-      await ctx.db.patch(existing._id, { day_time, timetable, update_date, week, editedAt: now });
+      await ctx.db.patch(existing._id, { day_time, timetable, update_date, week, weekStart, editedAt: now });
       console.log(`[timetable.upsert] updated week=${week}`);
       return existing._id;
     }
 
-    const id = await ctx.db.insert("timetables", { day_time, timetable, update_date, week, editedAt: now });
+    const id = await ctx.db.insert("timetables", {
+      day_time,
+      timetable,
+      update_date,
+      week,
+      ...(weekStart ? { weekStart } : {}),
+      editedAt: now,
+    });
     console.log(`[timetable.upsert] inserted week=${week}`);
     return id;
   },
@@ -120,9 +123,8 @@ export const fetchAndSave = internalAction({
     week: v.number(),
     schoolcode: v.string(),
   },
-  // Null when the week has nothing to store — a break, or a payload that came
-  // back structurally fine but empty. Blanking a good week over either would
-  // leave the app with no timetable at all until the next poll.
+  // Null when there is nothing to store (a break or an empty grid), keeping
+  // the stored week rather than blanking it.
   returns: v.union(v.id("timetables"), v.null()),
   handler: async (
     ctx,
@@ -137,9 +139,7 @@ export const fetchAndSave = internalAction({
     const res = await fetch(url, { headers: { Accept: "application/json" } });
     if (!res.ok) {
       const { code, message } = await readError(res);
-      // Neither source has rows for this week: a break, or a school that
-      // publishes no timetable to Comcigan or NEIS at all. Both are ordinary
-      // answers, not faults worth failing the cron over.
+      // No rows from either source: a break, not a fault.
       if (code === "NEIS_DATA_NOT_FOUND") {
         console.log(`[timetable.fetchAndSave] no rows for week=${week} (${message})`);
         return null;
@@ -175,6 +175,9 @@ export const fetchAndSave = internalAction({
       day_time,
       timetable,
       update_date: str(data.update_date),
+      // The API counts weeks from the current Mon–Sun week in KST, the same
+      // week the home page's weekOffsetBetween assumes.
+      weekStart: addDaysYyyymmdd(mondayYyyymmddOf(toYyyymmdd(getNowKst())), week * 7),
     });
   },
 });
@@ -191,10 +194,8 @@ export const getByWeek = query({
   },
 });
 
-// ── Standing ("전체") timetable ───────────────────────────────────────────────
-// One row, edited by an admin. Kept apart from the fetched weeks: those are
-// overwritten by the cron every few hours, and a hand-made correction there
-// would not survive the next poll.
+// ── Standing ("전체") timetable ─────────────────────────────────────────────
+// One admin-edited row, kept apart from the fetched weeks the cron overwrites.
 
 const FULL_MAX_PERIODS = 12;
 const FULL_TEXT_MAX = 24;
@@ -252,9 +253,8 @@ export const getFull = query({
   },
 });
 
-// Seeds the standing timetable from a fetched week. A slot the feed marks as
-// replaced is copied as the class it replaced — a one-off substitution is not
-// part of the standing week.
+// Seeds the standing timetable from a fetched week, taking a substituted
+// slot's original class.
 export const snapshotFull = mutation({
   args: { sessionToken: v.string(), week: v.union(v.literal(0), v.literal(1)) },
   returns: v.null(),
@@ -267,12 +267,18 @@ export const snapshotFull = mutation({
     if (!source) throw new Error("That week has no timetable to snapshot");
 
     const fetched = projectTimetable(source);
-    const days = Array.from({ length: FULL_TIMETABLE_DAYS }, (_, i) =>
-      (fetched.timetable[i] ?? []).slice(0, FULL_MAX_PERIODS).map((slot) => {
+    // Placed by 교시, not by position: the merged feed can skip a period on
+    // one day, and copying positionally moved every later subject up a row.
+    const days = Array.from({ length: FULL_TIMETABLE_DAYS }, (_, i) => {
+      const day: FullSlot[] = [];
+      for (const slot of fetched.timetable[i] ?? []) {
+        if (slot.period < 1 || slot.period > FULL_MAX_PERIODS) continue;
+        while (day.length < slot.period) day.push({ subject: "", teacher: "" });
         const base = slot.original ?? slot;
-        return { subject: cleanText(base.subject), teacher: cleanText(base.teacher) };
-      })
-    );
+        day[slot.period - 1] = { subject: cleanText(base.subject), teacher: cleanText(base.teacher) };
+      }
+      return day;
+    });
 
     const { row } = await readFullDays(ctx);
     await writeFullDays(ctx, row, days, fetched.day_time);

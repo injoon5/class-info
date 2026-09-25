@@ -1,10 +1,6 @@
-// Shared KST (UTC+9) date helpers. Convex runs in UTC, so we shift a UTC
-// instant by the configured offset and then read its UTC-based fields as if
-// they were local. The "KST" naming matches this project's default class;
-// see config.ts to point it at a different timezone.
-//
-// Calendar dates (YYYY-MM-DD / YYYYMMDD) are always parsed via Date.UTC so
-// grouping and weekday never depend on the isolate's timezone.
+// Date helpers in the school's zone (KST by default, see config.ts). Convex
+// runs in UTC: instants are shifted by the offset and read as local, and
+// calendar dates are parsed via Date.UTC so weekdays never depend on the host.
 
 import {
   DAY_ROLLOVER_HOUR,
@@ -33,9 +29,8 @@ export function getNowKst(): Date {
 // Home timetable/meals and notice "past" both flip at this KST hour.
 export const DAY_ROLLOVER_HOUR_KST = DAY_ROLLOVER_HOUR;
 
-// Today's 석식 is still ahead of the reader until this KST hour. Between the
-// rollover and this hour home shows tomorrow, so tonight's dinner is listed
-// first — it is served before tomorrow's lunch.
+// Today's 석식 is still ahead until this hour, so home lists it before
+// tomorrow's lunch once the display day has rolled over.
 export const DINNER_END_HOUR_KST = DINNER_END_HOUR;
 
 export function calendarDate(date: Date): Date {
@@ -141,9 +136,7 @@ export function addDaysIso(iso: string, days: number): string {
   return toIsoDateUtc(dt.getUTCFullYear(), dt.getUTCMonth() + 1, dt.getUTCDate());
 }
 
-// After DAY_ROLLOVER_HOUR_KST this is tomorrow. Notices use it as the
-// current/past split (due today → past). Home uses the same hour via
-// isAtOrAfterDayRollover, then skips to the next school day.
+// Tomorrow once past the rollover hour: the notices current/past split.
 export function kstCutoffDateString(now: Date = getNowKst()): string {
   return toIsoDate(addCalendarDays(now, isAtOrAfterDayRollover(now) ? 1 : 0));
 }
@@ -159,9 +152,7 @@ export function schoolDisplayClock(now: Date = getNowKst()): {
   return { today: toYyyymmdd(now), afterRollover: isAtOrAfterDayRollover(now) };
 }
 
-// "오늘" / "내일" relative to the real today, or "" when the date is neither.
-// Deliberately not relative to the *display* day: after the rollover the page
-// shows a future day, and labelling that "오늘" is what this replaces.
+// "오늘"/"내일" against the real today (never the display day), else "".
 export function relativeDayLabel(ymd: string, todayYmd: string): string {
   if (ymd === todayYmd) return "오늘";
   if (ymd === addDaysYyyymmdd(todayYmd, 1)) return "내일";
@@ -213,16 +204,13 @@ export function isClosedEventType(eventType: string | null | undefined): boolean
   return CLOSED_EVENT_TYPES.has(eventType ?? "");
 }
 
-// Only NEIS rows drive break detection. Admin-authored custom events share this
-// table and routinely mention 방학 in passing ("방학 과제 제출일"), which must not
-// close the school.
+// Only NEIS rows drive break detection; custom events mention 방학 in passing.
 function isSchoolSourced(hint: ScheduleHint): boolean {
   return hint.source === "school";
 }
 
-// Anchored on purpose: a break marker is the whole title ("여름방학", "방학",
-// "겨울방학 시작"), never a title that merely contains the word. 방학식 is the
-// closing ceremony and is still a school day, so it must not match.
+// A break marker is the whole title ("여름방학", "겨울방학 시작"). 방학식 is
+// the closing ceremony, still a school day, so it must not match.
 const VACATION_TITLE = /^[가-힣]*방학(\s*시작)?$/;
 
 export function isVacationTitle(title: string): boolean {
@@ -240,14 +228,10 @@ function isWeekendYmd(s: string): boolean {
   return dow === 0 || dow === 6;
 }
 
-// Build the set of YYYYMMDD dates that are not school days in [rangeStart, rangeEnd].
-// 휴업일/공휴일 close that date. A 방학 title closes every day until the next 개학
-// (exclusive), because NEIS often tags only the first day of break.
-//
-// That span-fill is why rangeStart must reach back far enough to include the
-// marker of a break already under way — pass a start at least SCHOOL_DAY_LOOKAHEAD
-// days behind today, or every day from the second day of a break onward looks
-// like a school day.
+// YYYYMMDD dates in range that aren't school days. 휴업일/공휴일 close their
+// date; a 방학 title closes every day up to the next 개학, since NEIS often
+// tags only a break's first day. So rangeStart must reach back far enough to
+// include a break already under way (SCHOOL_DAY_LOOKAHEAD days).
 export function closedYmdsFromSchedule(
   events: ScheduleHint[],
   rangeStart: string,
@@ -298,12 +282,35 @@ export function resolveSchoolDisplayYmd(
     const ymd = addDaysYyyymmdd(today, i);
     if (isSchoolYmd(ymd, closed)) return ymd;
   }
-  // Nothing open in the whole lookahead — missing or malformed schedule data.
-  // Show the next weekday rather than a date three months out; the timetable
-  // and meal for it will simply be empty.
+  // No school day in the lookahead (bad data): show the next weekday.
   let fallback = addDaysYyyymmdd(today, 1);
   while (isWeekendYmd(fallback)) fallback = addDaysYyyymmdd(fallback, 1);
   return fallback;
+}
+
+// The school year (March–February) plus a month either side, keyed on the
+// school year so January and February still reach back to March. Months in
+// the result are 0-indexed, for the calendar UI.
+export function scheduleWindow(now: Date = getNowKst()): {
+  start: string;
+  end: string;
+  startYear: number;
+  startMonth: number;
+  endYear: number;
+  endMonth: number;
+} {
+  const y = now.getFullYear();
+  const schoolYear = now.getMonth() >= 2 ? y : y - 1;
+  const endYear = schoolYear + 1;
+  const lastFebDay = new Date(Date.UTC(endYear, 2, 0)).getUTCDate();
+  return {
+    start: `${schoolYear - 1}1201`,
+    end: `${endYear}02${pad2(lastFebDay)}`,
+    startYear: schoolYear - 1,
+    startMonth: 11,
+    endYear,
+    endMonth: 1,
+  };
 }
 
 // Monday–Friday of the KST week `offsetWeeks` away from today (times normalized

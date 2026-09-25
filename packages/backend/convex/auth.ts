@@ -1,4 +1,10 @@
+import { ConvexError } from "convex/values";
 import type { QueryCtx, MutationCtx } from "./_generated/server";
+
+// A ConvexError, not an Error: production redacts plain Error messages to
+// "Server Error", and the admin UI needs to tell an expired session apart
+// from any other failure so it can send the admin back to the PIN screen.
+export const UNAUTHORIZED = "Unauthorized";
 
 /**
  * Throws unless `token` matches a live (non-expired) admin session.
@@ -11,12 +17,12 @@ export async function requireAdmin(
   ctx: QueryCtx | MutationCtx,
   token: string | undefined | null
 ): Promise<void> {
-  if (!token) throw new Error("Unauthorized");
+  if (!token) throw new ConvexError(UNAUTHORIZED);
   const session = await ctx.db
     .query("sessions")
     .withIndex("by_token", (q) => q.eq("token", token))
     .first();
   if (!session || session.expiresAt <= Date.now()) {
-    throw new Error("Unauthorized");
+    throw new ConvexError(UNAUTHORIZED);
   }
 }

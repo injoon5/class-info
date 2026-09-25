@@ -1,5 +1,6 @@
 import { describe, expect, test } from "vitest";
 import {
+  scheduleWindow,
   addDaysYyyymmdd,
   closedYmdsFromSchedule,
   daysBetweenYmd,
@@ -199,5 +200,20 @@ describe("ddayLabel", () => {
 
   test("rejects a malformed date rather than counting nonsense", () => {
     expect(() => ddayLabel("2026-08-20", THU)).toThrow();
+  });
+});
+
+describe("scheduleWindow", () => {
+  test("covers the school year in progress, not the calendar year", () => {
+    // January 2027 is still the 2026 school year (March 2026 – February 2027).
+    const jan = scheduleWindow(new Date(2027, 0, 15));
+    expect([jan.start, jan.end]).toEqual(["20251201", "20270228"]);
+    const sep = scheduleWindow(new Date(2026, 8, 24));
+    expect([sep.start, sep.end]).toEqual(["20251201", "20270228"]);
+  });
+
+  test("rolls over in March and ends on a leap day when there is one", () => {
+    const mar = scheduleWindow(new Date(2027, 2, 1));
+    expect([mar.start, mar.end]).toEqual(["20261201", "20280229"]);
   });
 });

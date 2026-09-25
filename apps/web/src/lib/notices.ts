@@ -17,17 +17,20 @@ export function noticeTypeClass(type: MinimalNotice['type']) {
 	}
 }
 
+// The 수행평가 digest the class chat gets. Empty when there is none to share.
 export function generateCopyText(groups: DayGroup[]): string {
-	if (groups.length === 0) return '';
-	let text = '📢수행평가 안내\n';
+	const lines: string[] = [];
 	for (const group of groups) {
-		const performanceNotices = group.notices.filter((n) => n.type === '수행평가');
-		const first = performanceNotices[0];
+		const due = group.notices.filter((n) => n.type === '수행평가');
+		const first = due[0];
 		if (!first) continue;
 		const parsed = parseIsoDate(first.dueDate);
-		const weekday = parsed ? weekdayKrUtc(parsed.y, parsed.m, parsed.d) : '';
-		const dateStr = group.isToday ? '오늘' : parsed ? `${parsed.m}/${parsed.d}(${weekday})` : group.displayDate;
-		text += `${dateStr} ${performanceNotices.map((n) => `${n.subject} ${n.title}`).join(', ')}\n`;
+		const date = group.isToday
+			? '오늘'
+			: parsed
+				? `${parsed.m}/${parsed.d}(${weekdayKrUtc(parsed.y, parsed.m, parsed.d)})`
+				: group.displayDate;
+		lines.push(`${date} ${due.map((n) => `${n.subject} ${n.title}`).join(', ')}`);
 	}
-	return text.trim();
+	return lines.length > 0 ? `📢수행평가 안내\n${lines.join('\n')}` : '';
 }

@@ -13,9 +13,9 @@ import {
   addDaysYyyymmdd,
   assertYyyymmdd,
   closedYmdsFromSchedule,
-  getNowKst,
   parseYyyymmdd,
   resolveSchoolDisplayYmd,
+  scheduleWindow,
   SCHOOL_DAY_LOOKAHEAD,
 } from "./dates";
 import { projectSchedule } from "./project";
@@ -56,9 +56,7 @@ export const upsertManySchoolEvents = internalMutation({
   },
   returns: v.null(),
   handler: async (ctx, { events, startdate, enddate }) => {
-    // Never wipe the range on an empty payload — a transient upstream failure
-    // (INFO-200 / network) would otherwise delete every school event in the
-    // window with nothing to re-insert.
+    // An empty payload (upstream hiccup) must not wipe the range.
     if (events.length === 0) {
       console.log(`[schedule.upsertManySchoolEvents] range=${startdate}–${enddate} skipped (no events)`);
       return null;
@@ -71,9 +69,8 @@ export const upsertManySchoolEvents = internalMutation({
 
     const toDelete = existing.filter((ev) => ev.source !== "custom");
 
-    // A D-day an admin set on a school event has to outlive the row it was set
-    // on: every sync deletes and re-inserts the whole range. The feed has no
-    // stable id, so (date, title) is the identity that carries the flag over.
+    // Every sync re-inserts the range and the feed has no stable id, so a
+    // D-day set on a school event is carried over by (date, title).
     const carriedDdays = new Set(
       toDelete.filter((ev) => ev.dday === true).map((ev) => ddayKey(ev.date, ev.title))
     );
@@ -169,18 +166,13 @@ function splitInto3MonthChunks(startdate: string, enddate: string) {
   return chunks;
 }
 
-// Fetches last December through next February — the window shown to users.
+// Fetches the current school year plus a month either side — the same window
+// the calendar lets users page through (see dates.scheduleWindow).
 export const fetchScheduleWindow = internalAction({
   args: { schoolcode: v.string() },
   returns: v.null(),
   handler: async (ctx, { schoolcode }) => {
-    const now = getNowKst();
-    const y = now.getFullYear();
-    const m = now.getMonth() + 1; // 1-12
-    const startdate = `${y - 1}1201`;
-    const nextFebYear = m <= 2 ? y : y + 1;
-    const isLeap = (nextFebYear % 4 === 0 && nextFebYear % 100 !== 0) || nextFebYear % 400 === 0;
-    const enddate = `${nextFebYear}02${isLeap ? "29" : "28"}`;
+    const { start: startdate, end: enddate } = scheduleWindow();
 
     const chunks = splitInto3MonthChunks(startdate, enddate);
     for (const chunk of chunks) {
@@ -208,10 +200,8 @@ export const getEventsInRange = query({
   },
 });
 
-// One indexed pass over the schedule, wide enough to answer both questions the
-// home page asks. It reaches a full lookahead *behind* today because a break
-// already under way is only marked on its first day — see closedYmdsFromSchedule
-// — and forward far enough to also cover the event window.
+// One scan serving both home questions. It reaches a full lookahead behind
+// today because a break is only marked on its first day.
 async function scanSchoolDays(ctx: QueryCtx, today: string, afterRollover: boolean) {
   assertYyyymmdd(today, "today");
   const scanStart = addDaysYyyymmdd(today, -SCHOOL_DAY_LOOKAHEAD);
@@ -258,14 +248,8 @@ export const homeSchedule = query({
       .filter((row) => row.date >= today && row.date <= windowEnd)
       .map(projectSchedule)
       .filter((e): e is NonNullable<typeof e> => e !== null);
-    // Countdowns reach past the event window — that is the point of them — but
-    // only forward: a date already gone is no longer being counted down to.
-    //
-    // Read on their own index rather than out of `rows`. The day scan ends a
-    // fixed lookahead past today, so filtering it silently dropped every
-    // countdown further out than that — which is most of the ones worth
-    // pinning (수능, 기말고사, 졸업식). `by_dday_date` is already in date
-    // order, so this is a bounded read of exactly the rows that render.
+    // Forward-only countdowns, on their own index: the day scan ends a
+    // lookahead past today, and most D-days worth pinning are further out.
     const ddayRows = await ctx.db
       .query("schedules")
       .withIndex("by_dday_date", (q) => q.eq("dday", true).gte("date", today))

@@ -7,6 +7,8 @@
 	import { configure } from 'onedollarstats';
 	import LoadingState from '$lib/components/ui/LoadingState.svelte';
 	import { SITE_NAME } from '@class-info/backend/convex/config';
+	import { invalidateAll } from '$app/navigation';
+	import { getNowInKst, isAtOrAfterDinnerEnd, schoolDisplayClock } from '$lib/date';
 
 	const { children } = $props();
 	setupConvex(getConvexUrl());
@@ -24,18 +26,12 @@
 		return Boolean(to && to !== from);
 	});
 
-	// Keep the current page for a beat so a preloaded nav doesn't flash a spinner.
+	// Wait a beat before showing a spinner, then keep it up long enough not to flash.
 	const PENDING_DELAY_MS = 80;
-	// …and once the spinner is up, keep it up. A 200ms navigation rendered
-	// content → spinner → content, and a frame of spinner between two frames of
-	// the real page reads as a glitch rather than as loading — it costs more
-	// than the wait it saved.
 	const PENDING_MIN_MS = 320;
 
 	let showPending = $state(false);
-	// Plain locals: the effect below decides what to do based on what is already
-	// on screen, and reading the state it also writes would make it depend on
-	// itself.
+	// Plain locals, so the effect does not depend on state it writes.
 	let shown = false;
 	let shownAt = 0;
 
@@ -71,10 +67,34 @@
 		});
 	});
 
-	// Press feedback scales the control down, and Chrome applies `:active` on
-	// touchstart — before it knows whether the finger is pressing or starting
-	// a scroll. Flag the scroll so app.css can stand the transform down.
-	// Capturing, so nested scrollers (tables, the drawer body) count too.
+	// Loads compute "today" and the 4pm/dinner cutoffs once. Re-run them when the
+	// clock crosses one, so a tab left open overnight doesn't show yesterday.
+	onMount(() => {
+		const clockKey = () => {
+			const now = getNowInKst();
+			const { today, afterRollover } = schoolDisplayClock(now);
+			return `${today}|${afterRollover}|${isAtOrAfterDinnerEnd(now)}`;
+		};
+		let key = clockKey();
+
+		const check = () => {
+			if (document.visibilityState !== 'visible') return;
+			const next = clockKey();
+			if (next === key) return;
+			key = next;
+			void invalidateAll();
+		};
+
+		const interval = setInterval(check, 60_000);
+		document.addEventListener('visibilitychange', check);
+		return () => {
+			clearInterval(interval);
+			document.removeEventListener('visibilitychange', check);
+		};
+	});
+
+	// Chrome applies :active before it knows a touch is a scroll; flag scrolling
+	// so app.css can drop the press transform. Capturing, for nested scrollers.
 	onMount(() => {
 		const root = document.documentElement;
 		let timer: ReturnType<typeof setTimeout> | null = null;
@@ -98,8 +118,7 @@
 </script>
     <a href="#main" class="sr-only focus:not-sr-only focus:fixed focus:z-[1000] focus:top-2 focus:left-2 focus:bg-primary focus:text-primary-foreground focus:px-3 focus:py-2 focus:rounded-lg">본문으로 건너뛰기</a>
 
-	<!-- Global Header -->
-	<header class="sticky top-0 z-30 bg-background border-b border-border">
+	<header class="sticky top-0 z-30 pt-(--sat) bg-background border-b border-border">
 		<div class="max-w-4xl mx-auto flex items-center justify-between gap-3 px-4 h-14">
 			<a href="/" class="shrink-0 pressable" aria-label="홈" data-sveltekit-preload-data="hover">
 				<span class="text-xl font-bold tracking-tight text-foreground">{SITE_NAME}</span>

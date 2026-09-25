@@ -46,13 +46,14 @@ export default defineSchema({
     ),
     update_date: v.string(),
     week: v.number(),
+    // Monday (YYYYMMDD) this row holds. `week` is only an offset as of the
+    // fetch, so a row the cron hasn't refreshed would pass for this week.
+    weekStart: v.optional(v.string()),
     editedAt: v.number(),
   }).index("by_week", ["week"]),
 
-  // The standing weekly timetable, independent of the substitutions the
-  // upstream feed carries. A single row: an admin snapshots a fetched week
-  // into it, then corrects it by hand. Days are Mon–Fri; each day's length is
-  // its own, because Friday is routinely shorter than Monday.
+  // The standing Mon–Fri timetable: one row, snapshotted from a fetched week
+  // and corrected by hand. Each day has its own length.
   fullTimetable: defineTable({
     day_time: v.array(v.string()),
     timetable: v.array(
@@ -105,17 +106,14 @@ export default defineSchema({
     eventType: v.optional(v.string()), // SBTR_DD_SC_NM — school only
     schoolCode: v.optional(v.string()), // school only
     color: v.optional(v.string()), // "blue"|"green"|"purple"|"orange"|"pink"|"teal" — custom only
-    // Counted down to on the home page. Set on either source; school rows are
-    // wiped and re-inserted on every sync, so the flag is carried across by
-    // (date, title) — see schedule.upsertManySchoolEvents.
+    // Home page countdown. School rows are re-inserted on every sync, so the
+    // flag is carried over by (date, title); see schedule.upsertManySchoolEvents.
     dday: v.optional(v.boolean()),
     createdAt: v.number(),
     updatedAt: v.number(),
   })
     .index("by_date", ["date"])
-    // Countdowns are read forward from today with no far end — a D-day is
-    // routinely months out, past anything the home page's day scan covers.
-    // Binding `dday` first turns that into a bounded `.take()` over flagged
-    // rows in date order, rather than a scan of every day in between.
+    // D-days can be months out, past the home page's day scan; this index
+    // reads them forward from today as a bounded take.
     .index("by_dday_date", ["dday", "date"]),
 });

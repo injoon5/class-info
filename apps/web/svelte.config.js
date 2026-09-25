@@ -1,16 +1,26 @@
 import adapter from '@sveltejs/adapter-auto';
 import { vitePreprocess } from '@sveltejs/vite-plugin-svelte';
+import { loadEnv } from 'vite';
+
+// A local Convex backend (`npx convex dev` on a local deployment) serves from
+// localhost, which the cloud-only connect-src below would block.
+function convexOrigins() {
+	const raw = process.env.PUBLIC_CONVEX_URL ?? loadEnv('', process.cwd(), '').PUBLIC_CONVEX_URL;
+	try {
+		const url = new URL(raw ?? '');
+		if (url.hostname.endsWith('.convex.cloud')) return [];
+		const ws = url.protocol === 'https:' ? 'wss:' : 'ws:';
+		return [url.origin, `${ws}//${url.host}`];
+	} catch {
+		return [];
+	}
+}
 
 /** @type {import('@sveltejs/kit').Config} */
 const config = {
-	// Consult https://svelte.dev/docs/kit/integrations
-	// for more information about preprocessors
 	preprocess: vitePreprocess(),
 
 	kit: {
-		// adapter-auto only supports some environments, see https://svelte.dev/docs/kit/adapter-auto for a list.
-		// If your environment is not supported, or you settled on a specific environment, switch out the adapter.
-		// See https://svelte.dev/docs/kit/adapters for more information about adapters.
 		adapter: adapter(),
 		csp: {
 			mode: 'auto',
@@ -34,7 +44,8 @@ const config = {
 					// Keep in sync with FILES_BASE_URL in packages/backend/convex/config.ts —
 					// this file can't import that TS module, so it's a manual mirror.
 					'https://files.timefor.school',
-					'https://*.r2.cloudflarestorage.com'
+					'https://*.r2.cloudflarestorage.com',
+					...convexOrigins()
 				],
 				'frame-src': ['https://www.youtube.com', 'https://www.youtube-nocookie.com'],
 				'media-src': ['self', 'https:']

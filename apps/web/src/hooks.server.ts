@@ -47,8 +47,7 @@ export const handle: Handle = async ({ event, resolve }) => {
 	const isAdmin = event.url.pathname === '/admin' || event.url.pathname.startsWith('/admin/');
 
 	const response = await resolve(event, {
-		// app.html is static markup; %site.name% is our own placeholder (not a
-		// %sveltekit.*% built-in) so branding still comes from config.ts.
+		// %site.name% is our own placeholder so branding comes from config.ts.
 		transformPageChunk: ({ html }) => html.replace(/%site\.name%/g, SITE_NAME)
 	});
 	applySecurityHeaders(response);

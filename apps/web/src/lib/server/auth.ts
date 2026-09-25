@@ -24,8 +24,7 @@ export async function getAdminSession(
 		const valid = await convexHttp().mutation(api.settings.verifySession, { token });
 		if (valid) return { isAuthenticated: true, sessionToken: token };
 	} catch {
-		// Network/backend hiccup — treat as unauthenticated but keep the cookie so
-		// a transient failure doesn't force re-login.
+		// A backend hiccup keeps the cookie so it doesn't force a re-login.
 		return { isAuthenticated: false, sessionToken: null };
 	}
 
