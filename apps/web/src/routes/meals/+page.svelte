@@ -205,6 +205,5 @@ function openMeal(day: MealDay) {
 			</div>
 		{/if}
 		{@render infoGrid('영양', parseInfoRows(selected.meal.nutrients), 'grid-cols-2 sm:grid-cols-3')}
-		{@render infoGrid('원산지', parseInfoRows(selected.meal.originInfo), 'grid-cols-1 sm:grid-cols-2')}
 	{/if}
 </Drawer>
