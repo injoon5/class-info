@@ -6,6 +6,7 @@
 	import { onMount } from 'svelte';
 	import { configure } from 'onedollarstats';
 	import LoadingState from '#lib/components/ui/LoadingState.svelte';
+	import UpdateToast from '#lib/components/UpdateToast.svelte';
 	import { SITE_NAME } from '@class-info/backend/convex/config';
 	import { refreshAll } from '$app/navigation';
 	import { getNowInKst, isAtOrAfterDinnerEnd, schoolDisplayClock } from '#lib/date.js';
@@ -148,5 +149,7 @@
 			{@render children()}
 		{/if}
 	</main>
+
+	<UpdateToast />
 
     <div aria-live="polite" aria-atomic="true" class="sr-only" id="aria-live-region"></div>
