@@ -10,14 +10,16 @@
     "build": "turbo build",
     "check-types": "turbo check-types",
     "test": "turbo test",
-    "dev:native": "turbo -F native dev",
     "dev:web": "turbo -F web dev",
     "dev:server": "turbo -F @class-info/backend dev",
     "dev:setup": "turbo -F @class-info/backend dev:setup"
   },
   "devDependencies": {
-    "convex": "^1.44.0",
-    "turbo": "^2.5.4"
+    "convex": "^1.46.0",
+    "turbo": "^2.11.6"
   },
-  "packageManager": "pnpm@8.8.0"
+  "packageManager": "pnpm@10.34.6",
+  "engines": {
+    "node": ">=22.17"
+  }
 }

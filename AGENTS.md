@@ -52,12 +52,6 @@ consumer already imports from it. Don't reintroduce hardcoded values at call
 sites; if you find one config.ts should have covered but doesn't, add it
 there rather than inlining it locally.
 
-One exception worth knowing about: `apps/web/svelte.config.js`'s CSP
-`connect-src` hardcodes the default `FILES_BASE_URL` host as a literal
-string, because that file can't import from the `convex/` TS package. If you
-change `FILES_BASE_URL`, update the matching entry there too, or uploaded
-file requests will be blocked by the browser's CSP.
-
 Do not touch:
 - `packages/backend/convex/schema.ts` — unless the user explicitly wants to
   change the notice categories (수행평가/숙제/준비물/기타), which is a schema
@@ -124,3 +118,14 @@ npx convex run settings:setPin '{"newPin":"<value>"}'
 Only commit when the user asks. When you do, keep the config/branding change
 separate from any unrelated code changes so it's easy to review as "this is
 what makes it *their* class's site."
+
+<!-- BEGIN:turborepo-agent-rules -->
+
+# This is NOT the Turborepo you know
+
+Turborepo configuration, task behavior, and CLI commands can vary between installed versions and may differ from your training data. Resolve the `turbo` package from this file's directory or relevant workspace; in monorepos, it may not be visible from the repository root. For example, run `node -p "require.resolve('turbo/package.json')"` from a workspace that depends on `turbo`.
+
+Read `docs/README.md` inside that installed package first, then read the relevant pages from its `docs/` directory before changing Turborepo configuration or commands. Heed deprecation notices. These bundled docs match the installed package version and are available without network access.
+
+This block is written and re-added by `turbo` before repository-scoped commands when an AI agent is detected. In the Turborepo source repository, its template is defined in `crates/turborepo-cli/src/cli/agent_guidance.rs`. Removing the managed block while updates are enabled means a later qualifying invocation will add it again. Set `"agentGuidance": false` in the root `turbo.json` or `turbo.jsonc` to opt out; this does not remove an existing block. Keep the block committed with your work to avoid an uncommitted change on the next agent invocation.
+<!-- END:turborepo-agent-rules -->

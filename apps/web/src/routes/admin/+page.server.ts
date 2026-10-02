@@ -1,9 +1,9 @@
 import type { PageServerLoad, Actions } from './$types';
 import { redirect } from '@sveltejs/kit';
 import { api } from '@class-info/backend/convex/_generated/api';
-import { getAdminSession, SESSION_COOKIE, SESSION_MAX_AGE } from '$lib/server/auth';
-import { convexHttp } from '$lib/convex';
-import { noticeClock } from '$lib/date';
+import { getAdminSession, SESSION_COOKIE, SESSION_MAX_AGE } from '#lib/server/auth.js';
+import { convexHttp } from '#lib/convex.js';
+import { noticeClock } from '#lib/date.js';
 
 export const load: PageServerLoad = async ({ cookies }) => {
 	const { isAuthenticated, sessionToken } = await getAdminSession(cookies);
@@ -65,6 +65,6 @@ export const actions: Actions = {
 			sameSite: 'strict',
 			secure: url.protocol === 'https:'
 		});
-		throw redirect(302, '/');
+		redirect(302, '/');
 	}
 };

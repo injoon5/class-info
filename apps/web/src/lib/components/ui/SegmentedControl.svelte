@@ -1,6 +1,6 @@
 <script lang="ts" generics="Value extends string | number">
 import { Tween } from 'svelte/motion';
-import { tweenMove } from '$lib/transitions';
+import { tweenMove } from '#lib/transitions.js';
 
 // Sliding segmented control; any number of equal segments.
 type Option = { value: Value; label: string; event?: string; eventProps?: string };

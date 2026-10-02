@@ -15,10 +15,11 @@ class-info/
 ```
 
 ### Tech Stack
-- **Frontend**: SvelteKit with TypeScript, TailwindCSS v4, shadcn/ui components
+- **Frontend**: SvelteKit 3 with TypeScript, TailwindCSS v4
 - **Backend**: Convex (real-time database and backend functions)
 - **Build System**: Turborepo with pnpm workspaces
-- **Package Manager**: pnpm (v8.8.0)
+- **Package Manager**: pnpm (v10, pinned via `packageManager`)
+- **Node**: >= 22.17
 
 ## Essential Commands
 
@@ -87,7 +88,10 @@ Convex functions are automatically deployed when running `pnpm dev` or `pnpm dev
 ## Frontend Structure
 
 The SvelteKit app uses:
-- Svelte 5 with runes
+- SvelteKit 3: all kit config (adapter, CSP) is passed to `sveltekit()` in `apps/web/vite.config.ts` — there is no `svelte.config.js`
+- `#lib/...` subpath imports (declared in `apps/web/package.json` `imports`) instead of `$lib`, with explicit extensions (`#lib/date.js`, `#lib/components/ui/Spinner.svelte`)
+- Environment variables declared in `apps/web/src/env.ts` and imported from `$app/env/public`
+- Svelte 5 with runes; `$app/state` and `refreshAll()` from `$app/navigation`
 - TailwindCSS v4 (configured via Vite plugin)
 - TypeScript with strict type checking
 - Convex client integration via `convex-svelte`
@@ -95,6 +99,6 @@ The SvelteKit app uses:
 ## Key Configuration
 
 - Turborepo tasks defined in `turbo.json`
-- Web app build/dev configured in `apps/web/vite.config.ts`
+- Web app build/dev and SvelteKit config in `apps/web/vite.config.ts` (deployed with `@sveltejs/adapter-vercel`)
 - Convex backend configured automatically via CLI setup
 - TypeScript configs per workspace with shared settings

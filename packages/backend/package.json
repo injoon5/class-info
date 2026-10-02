@@ -1,6 +1,7 @@
 {
   "name": "@class-info/backend",
   "version": "1.0.0",
+  "type": "module",
   "scripts": {
     "dev": "convex dev",
     "dev:setup": "convex dev --configure --until-success",
@@ -13,14 +14,14 @@
   "description": "",
   "devDependencies": {
     "@edge-runtime/vm": "^5.0.0",
-    "@types/node": "^24.3.0",
-    "convex-test": "^0.0.56",
-    "typescript": "^5.9.2",
-    "vite": "^7.1.2",
-    "vitest": "^4.1.11"
+    "@types/node": "^24.19.1",
+    "convex-test": "^0.0.60",
+    "typescript": "^6.0.3",
+    "vite": "^8.3.2",
+    "vitest": "^5.0.3"
   },
   "dependencies": {
     "@convex-dev/r2": "^0.10.2",
-    "convex": "^1.44.0"
+    "convex": "^1.46.0"
   }
 }

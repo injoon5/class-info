@@ -1,8 +1,8 @@
 <script lang="ts">
 import { slide } from 'svelte/transition';
-import { reducedMotion, slideY, slideYOut } from '$lib/transitions';
+import { reducedMotion, slideY, slideYOut } from '#lib/transitions.js';
 import DisclosureCaret from './DisclosureCaret.svelte';
-import type { Snippet } from 'svelte';
+import { untrack, type Snippet } from 'svelte';
 
 // A section the page opens and closes (one past month at a time). The
 // <details> stays open until the collapse finishes, since it stops painting
@@ -23,7 +23,7 @@ const {
 } = $props();
 
 let closing = $state(false);
-let wasOpen = open;
+let wasOpen = untrack(() => open);
 
 $effect(() => {
 	if (open === wasOpen) return;

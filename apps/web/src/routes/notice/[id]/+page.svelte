@@ -4,15 +4,16 @@ import { api } from '@class-info/backend/convex/_generated/api';
 import { summarizeDescription } from '@class-info/backend/convex/text';
 import { CLASS_LABEL } from '@class-info/backend/convex/config';
 import { page } from '$app/state';
-import { noticeTypeClass } from '$lib/notices';
-import { renderMarkdown } from '$lib/markdown';
-import { formatAbsolute, formatDate } from '$lib/date';
-import { formatFileSize } from '$lib/format';
-import PageMeta from '$lib/components/PageMeta.svelte';
-import FileIcon from '$lib/components/ui/FileIcon.svelte';
-import LoadingState from '$lib/components/ui/LoadingState.svelte';
-import PillButton from '$lib/components/ui/PillButton.svelte';
-import ErrorState from '$lib/components/ui/ErrorState.svelte';
+import { untrack } from 'svelte';
+import { noticeTypeClass } from '#lib/notices.js';
+import { renderMarkdown } from '#lib/markdown.js';
+import { formatAbsolute, formatDate } from '#lib/date.js';
+import { formatFileSize } from '#lib/format.js';
+import PageMeta from '#lib/components/PageMeta.svelte';
+import FileIcon from '#lib/components/ui/FileIcon.svelte';
+import LoadingState from '#lib/components/ui/LoadingState.svelte';
+import PillButton from '#lib/components/ui/PillButton.svelte';
+import ErrorState from '#lib/components/ui/ErrorState.svelte';
 import type { PageData } from './$types.js';
 
 const { data }: { data: PageData } = $props();
@@ -30,7 +31,7 @@ const notice = $derived(detail.data?.notice ?? null);
 const files = $derived(detail.data?.files ?? []);
 
 // Server-rendered first; re-rendered when idle after a live edit.
-let html = $state<string | null>(data.prerenderedHtml || null);
+let html = $state<string | null>(untrack(() => data.prerenderedHtml) || null);
 
 $effect(() => {
 	const description = notice?.description;

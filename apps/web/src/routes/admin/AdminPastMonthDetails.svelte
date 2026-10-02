@@ -4,9 +4,9 @@ import type { Snippet } from 'svelte';
 import { fade, slide } from 'svelte/transition';
 import { api } from '@class-info/backend/convex/_generated/api';
 import type { Id } from '@class-info/backend/convex/_generated/dataModel';
-import { fadeOut, reveal, slideNone, slideY, slideYOut } from '$lib/transitions';
-import LoadingState from '$lib/components/ui/LoadingState.svelte';
-import FluidHeight from '$lib/components/ui/FluidHeight.svelte';
+import { fadeOut, reveal, slideNone, slideY, slideYOut } from '#lib/transitions.js';
+import LoadingState from '#lib/components/ui/LoadingState.svelte';
+import FluidHeight from '#lib/components/ui/FluidHeight.svelte';
 import AdminNoticeRow from './AdminNoticeRow.svelte';
 
 // Past notices are edited in their own row, with the page's editor.

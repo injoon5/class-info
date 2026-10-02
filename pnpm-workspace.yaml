@@ -1,3 +1,13 @@
 packages:
   - "apps/*"
   - "packages/*"
+
+# The Convex CLI bundles functions with esbuild.
+onlyBuiltDependencies:
+  - esbuild
+
+peerDependencyRules:
+  allowedVersions:
+    # convex-svelte -> runed only uses kit-agnostic helpers; runed has not
+    # widened its optional kit peer for SvelteKit 3 yet.
+    runed>@sveltejs/kit: "3"

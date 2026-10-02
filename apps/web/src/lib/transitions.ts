@@ -216,6 +216,18 @@ export const flyHelperOut = {
 	easing: cubicIn
 };
 
+// Floating toast: rises from below on entrance, sinks back on exit.
+export const toastIn = {
+	y: 16,
+	get duration() { return ms(360); },
+	easing: expoOut
+};
+export const toastOut = {
+	y: 8,
+	get duration() { return ms(180); },
+	easing: cubicIn
+};
+
 /**
  * Fade with a soft blur, for labels inside a clipping box where a `fly`
  * would be sliced by the clip edge.

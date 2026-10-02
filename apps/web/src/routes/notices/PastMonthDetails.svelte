@@ -2,10 +2,10 @@
 import { useQuery } from 'convex-svelte';
 import { api } from '@class-info/backend/convex/_generated/api';
 import { fade } from 'svelte/transition';
-import { fadeOut, reveal } from '$lib/transitions';
+import { fadeOut, reveal } from '#lib/transitions.js';
 import NoticeGroup from './NoticeGroup.svelte';
-import LoadingState from '$lib/components/ui/LoadingState.svelte';
-import FluidHeight from '$lib/components/ui/FluidHeight.svelte';
+import LoadingState from '#lib/components/ui/LoadingState.svelte';
+import FluidHeight from '#lib/components/ui/FluidHeight.svelte';
 
 const { monthKey, cutoff, today }: { monthKey: string; cutoff: string; today: string } = $props();
 

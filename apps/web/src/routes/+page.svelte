@@ -3,9 +3,9 @@ import { useQuery } from 'convex-svelte';
 import { api } from '@class-info/backend/convex/_generated/api';
 import { CLASS_LABEL } from '@class-info/backend/convex/config';
 import type { PublicEvent } from '@class-info/backend/convex/validators';
-import PageMeta from '$lib/components/PageMeta.svelte';
-import NoticeCard from '$lib/components/notices/NoticeCard.svelte';
-import SectionHeader from '$lib/components/ui/SectionHeader.svelte';
+import PageMeta from '#lib/components/PageMeta.svelte';
+import NoticeCard from '#lib/components/notices/NoticeCard.svelte';
+import SectionHeader from '#lib/components/ui/SectionHeader.svelte';
 import {
 	addDaysYyyymmdd,
 	ddayLabel,
@@ -15,10 +15,10 @@ import {
 	weekOffsetBetween,
 	ymdParts,
 	ymdWeekday
-} from '$lib/date';
-import { eventChrome } from '$lib/eventChrome';
-import type { DayGroup, MinimalNotice } from '$lib/notices';
-import { timetableForWeek } from '$lib/timetable';
+} from '#lib/date.js';
+import { eventChrome } from '#lib/eventChrome.js';
+import type { DayGroup, MinimalNotice } from '#lib/notices.js';
+import { timetableForWeek } from '#lib/timetable.js';
 import type { PageData } from './$types.js';
 
 const { data }: { data: PageData } = $props();

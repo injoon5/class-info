@@ -14,24 +14,27 @@
     "check-types": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json"
   },
   "devDependencies": {
-    "@sveltejs/adapter-auto": "^6.1.0",
-    "@sveltejs/kit": "^2.31.1",
-    "@sveltejs/vite-plugin-svelte": "^6.1.2",
-    "@tailwindcss/vite": "^4.1.12",
-    "svelte": "^5.38.1",
-    "svelte-check": "^4.3.1",
-    "tailwindcss": "^4.1.12",
-    "typescript": "^5.9.2",
-    "vite": "^7.1.2"
+    "@sveltejs/adapter-vercel": "^7.0.0",
+    "@sveltejs/kit": "^3.0.0",
+    "@sveltejs/vite-plugin-svelte": "^7.3.1",
+    "@tailwindcss/vite": "^4.3.3",
+    "svelte": "^5.57.1",
+    "svelte-check": "^4.7.6",
+    "tailwindcss": "^4.3.3",
+    "typescript": "^6.0.3",
+    "vite": "^8.3.2"
   },
   "dependencies": {
     "@class-info/backend": "workspace:*",
-    "@convex-dev/r2": "^0.10.2",
-    "@tanstack/svelte-form": "^1.19.2",
-    "convex": "^1.44.0",
-    "convex-svelte": "^0.0.11",
-    "marked": "^16.2.1",
-    "onedollarstats": "^0.0.19",
-    "zod": "^4.0.17"
+    "convex": "^1.46.0",
+    "convex-svelte": "^0.14.0",
+    "marked": "^18.0.14",
+    "onedollarstats": "^0.0.23"
+  },
+  "imports": {
+    "#lib/*": "./src/lib/*"
+  },
+  "engines": {
+    "node": ">=22.17"
   }
 }

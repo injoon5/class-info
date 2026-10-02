@@ -2,14 +2,14 @@
 import { useQuery } from 'convex-svelte';
 import { api } from '@class-info/backend/convex/_generated/api';
 import { CLASS_LABEL } from '@class-info/backend/convex/config';
-import PageMeta from '$lib/components/PageMeta.svelte';
+import PageMeta from '#lib/components/PageMeta.svelte';
 import NoticeGroup from './NoticeGroup.svelte';
 import PastMonthDetails from './PastMonthDetails.svelte';
 import NoticeFooter from './NoticeFooter.svelte';
-import LoadingState from '$lib/components/ui/LoadingState.svelte';
-import ErrorState from '$lib/components/ui/ErrorState.svelte';
-import EmptyState from '$lib/components/ui/EmptyState.svelte';
-import Disclosure from '$lib/components/ui/Disclosure.svelte';
+import LoadingState from '#lib/components/ui/LoadingState.svelte';
+import ErrorState from '#lib/components/ui/ErrorState.svelte';
+import EmptyState from '#lib/components/ui/EmptyState.svelte';
+import Disclosure from '#lib/components/ui/Disclosure.svelte';
 import type { PageData } from './$types.js';
 
 const { data }: { data: PageData } = $props();

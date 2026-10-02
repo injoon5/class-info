@@ -1,8 +1,8 @@
 import type { PageServerLoad } from './$types.js';
 import { api } from '@class-info/backend/convex/_generated/api';
-import { convexHttp, orFallback } from '$lib/convex';
-import { getAdminSession } from '$lib/server/auth';
-import { thisMondayYyyymmdd } from '$lib/date';
+import { convexHttp, orFallback } from '#lib/convex.js';
+import { getAdminSession } from '#lib/server/auth.js';
+import { thisMondayYyyymmdd } from '#lib/date.js';
 
 export const load = (async ({ cookies }) => {
 	const client = convexHttp();

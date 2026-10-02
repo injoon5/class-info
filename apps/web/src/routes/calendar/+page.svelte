@@ -5,23 +5,23 @@ import { api } from '@class-info/backend/convex/_generated/api';
 import type { Id } from '@class-info/backend/convex/_generated/dataModel';
 import { CLASS_LABEL } from '@class-info/backend/convex/config';
 import type { PublicEvent } from '@class-info/backend/convex/validators';
-import PageMeta from '$lib/components/PageMeta.svelte';
-import Drawer from '$lib/components/ui/Drawer.svelte';
-import HScroll from '$lib/components/ui/HScroll.svelte';
-import PillButton from '$lib/components/ui/PillButton.svelte';
-import Spinner from '$lib/components/ui/Spinner.svelte';
-import { focusOnElement } from '$lib/actions/focus';
-import { ddayLabel, getNowInKst, scheduleWindow, ymdFromParts, ymdParts } from '$lib/date';
-import { blurActiveElement } from '$lib/dom';
-import { adminErrorMessage } from '$lib/errors';
+import PageMeta from '#lib/components/PageMeta.svelte';
+import Drawer from '#lib/components/ui/Drawer.svelte';
+import HScroll from '#lib/components/ui/HScroll.svelte';
+import PillButton from '#lib/components/ui/PillButton.svelte';
+import Spinner from '#lib/components/ui/Spinner.svelte';
+import { focusOnElement } from '#lib/actions/focus.js';
+import { ddayLabel, getNowInKst, scheduleWindow, ymdFromParts, ymdParts } from '#lib/date.js';
+import { blurActiveElement } from '#lib/dom.js';
+import { adminErrorMessage } from '#lib/errors.js';
 import {
 	CUSTOM_COLOR_LABEL,
 	CUSTOM_COLOR_SWATCH,
 	CUSTOM_EVENT_COLORS,
 	eventChrome,
 	type CustomEventColor
-} from '$lib/eventChrome';
-import { fadeFast, fadeInAfter, fadeOut, reveal, slideYBoth } from '$lib/transitions';
+} from '#lib/eventChrome.js';
+import { fadeFast, fadeInAfter, fadeOut, reveal, slideYBoth } from '#lib/transitions.js';
 import type { PageData } from './$types.js';
 
 const { data }: { data: PageData } = $props();

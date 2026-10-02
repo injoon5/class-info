@@ -1,6 +1,6 @@
 import type { Cookies } from '@sveltejs/kit';
 import { api } from '@class-info/backend/convex/_generated/api';
-import { convexHttp } from '$lib/convex';
+import { convexHttp } from '#lib/convex.js';
 import { ADMIN_SESSION_TTL_MS } from '@class-info/backend/convex/config';
 
 export const SESSION_COOKIE = 'admin_session';

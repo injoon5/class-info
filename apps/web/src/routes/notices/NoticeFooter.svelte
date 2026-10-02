@@ -1,6 +1,6 @@
 <script lang="ts">
-import { generateCopyText, type DayGroup } from '$lib/notices';
-import MorphLabel from '$lib/components/ui/MorphLabel.svelte';
+import { generateCopyText, type DayGroup } from '#lib/notices.js';
+import MorphLabel from '#lib/components/ui/MorphLabel.svelte';
 
 const { notices }: { notices: DayGroup[] } = $props();
 

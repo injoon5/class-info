@@ -1,6 +1,6 @@
 <script lang="ts">
 import { Tween } from 'svelte/motion';
-import { tweenCaret } from '$lib/transitions';
+import { tweenCaret } from '#lib/transitions.js';
 
 const { open }: { open: boolean } = $props();
 const rotate = Tween.of(() => (open ? 90 : 0), tweenCaret);

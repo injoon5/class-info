@@ -40,7 +40,7 @@ value you're expected to change:
 | `SITE_NAME` | Header title, PWA home-screen name, and OpenGraph `site_name` |
 | `SITE_URL` | Canonical production URL, used in absolute `og:url` tags |
 | `CLASS_LABEL` | Class label shown in page titles/descriptions (e.g. "1학년 3반") |
-| `FILES_BASE_URL` | Public URL notice attachments are served from — **must** point at your own R2 bucket, or your uploads render from someone else's domain. Also update the matching entry in `apps/web/svelte.config.js`'s CSP `connect-src` (that file can't import `config.ts`, so it's a manual mirror) |
+| `FILES_BASE_URL` | Public URL notice attachments are served from — **must** point at your own R2 bucket, or your uploads render from someone else's domain. The web app's CSP `connect-src` picks it up automatically |
 | `TIMEZONE_OFFSET_HOURS` | Hours east of UTC (`9` for KST) |
 | `DAY_ROLLOVER_HOUR` | Local hour the home page/timetable/meals flip to "tomorrow" |
 | `DINNER_END_HOUR` | Local hour after which tonight's dinner stops being "today's" |

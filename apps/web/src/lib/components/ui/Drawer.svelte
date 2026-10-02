@@ -14,7 +14,7 @@ import {
   tweenFade,
   tweenPanel,
   tweenPanelClose
-} from '$lib/transitions';
+} from '#lib/transitions.js';
 
 interface Props {
   open: boolean;

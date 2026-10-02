@@ -1,8 +1,8 @@
 import type { PageServerLoad } from './$types.js';
 import { api } from '@class-info/backend/convex/_generated/api';
-import { getAdminSession } from '$lib/server/auth';
-import { convexHttp, orFallback } from '$lib/convex';
-import { getNowInKst, yyyymmdd } from '$lib/date';
+import { getAdminSession } from '#lib/server/auth.js';
+import { convexHttp, orFallback } from '#lib/convex.js';
+import { getNowInKst, yyyymmdd } from '#lib/date.js';
 
 export const load = (async ({ cookies }) => {
 	const now = getNowInKst();

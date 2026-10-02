@@ -1,6 +1,6 @@
 <script lang="ts">
-import NoticeCard from '$lib/components/notices/NoticeCard.svelte';
-import type { DayGroup } from '$lib/notices';
+import NoticeCard from '#lib/components/notices/NoticeCard.svelte';
+import type { DayGroup } from '#lib/notices.js';
 
 const { group, isPast = false }: { group: DayGroup; isPast?: boolean } = $props();
 </script>

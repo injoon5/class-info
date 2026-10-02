@@ -2,7 +2,7 @@
 import type { Snippet } from 'svelte';
 import { Tween } from 'svelte/motion';
 import { cubicIn } from 'svelte/easing';
-import { blurFade, tweenMove } from '$lib/transitions';
+import { blurFade, tweenMove } from '#lib/transitions.js';
 
 // A control label that changes ("새 공지 추가" → "취소"). An invisible sizer
 // holds the current label's width, the wrapper tweens to it, and the labels

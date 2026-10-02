@@ -1,13 +1,13 @@
 import type { PageLoad } from './$types.js';
 import { api } from '@class-info/backend/convex/_generated/api';
-import { convexHttp, orFallback } from '$lib/convex';
+import { convexHttp, orFallback } from '#lib/convex.js';
 import {
 	addDaysYyyymmdd,
 	getNowInKst,
 	isAtOrAfterDinnerEnd,
 	schoolDisplayClock,
 	thisMondayYyyymmdd
-} from '$lib/date';
+} from '#lib/date.js';
 
 export const load = (async ({ fetch }) => {
 	const now = getNowInKst();

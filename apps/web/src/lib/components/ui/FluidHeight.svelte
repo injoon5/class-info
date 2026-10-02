@@ -1,8 +1,8 @@
 <script lang="ts">
 import { Tween } from 'svelte/motion';
-import { tweenMove } from '$lib/transitions';
+import { tweenMove } from '#lib/transitions.js';
 import type { Snippet } from 'svelte';
-import { clampWindowScroll, scrollingEl, scrollIsTouchDriven, visibleTop } from '$lib/scroll';
+import { clampWindowScroll, scrollingEl, scrollIsTouchDriven, visibleTop } from '#lib/scroll.js';
 
 // Tweens height when `key` changes (spinner → list); follows other size
 // changes instantly. Uses `overflow: clip`, since `hidden` makes a scroll

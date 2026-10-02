@@ -1,4 +1,4 @@
-import { reducedMotion } from '$lib/transitions';
+import { reducedMotion } from '#lib/transitions.js';
 
 // Briefly blurs a region when a selection changes (skipping the first call,
 // which is the initial mount). Create during component init.
