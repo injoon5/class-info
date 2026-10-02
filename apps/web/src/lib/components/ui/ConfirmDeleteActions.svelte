@@ -1,7 +1,7 @@
 <script lang="ts">
 import { onMount } from 'svelte';
 import { slide } from 'svelte/transition';
-import { slideNone, slideX } from '$lib/transitions';
+import { slideNone, slideX } from '#lib/transitions.js';
 
 // In-place delete confirmation. `transition:` (not in/out) so a quick
 // 삭제 → 취소 → 삭제 reverses instead of restarting.

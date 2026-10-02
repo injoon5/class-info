@@ -13,17 +13,17 @@ jobs:
   check:
     runs-on: ubuntu-latest
     env:
-      # Only needed so $env/static/public resolves during svelte-check.
+      # Only needed so $app/env/public resolves during svelte-check.
       # Never used to reach a deployment — the checks make no network calls.
       PUBLIC_CONVEX_URL: https://example.convex.cloud
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
-      - uses: pnpm/action-setup@v4
+      - uses: pnpm/action-setup@v6
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
-          node-version: 22
+          node-version: 24
           cache: pnpm
 
       - run: pnpm install --frozen-lockfile

@@ -1,4 +1,4 @@
-import { reducedMotion } from '$lib/transitions';
+import { reducedMotion } from '#lib/transitions.js';
 
 // Focuses an element when it is revealed. `delay` waits out a height slide so
 // the focus ring isn't clipped by the opening box.

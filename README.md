@@ -43,7 +43,7 @@ to ask you. Setting it up yourself? Read on, or jump to
 
 ## 🛠️ Technology Stack
 
-- **Frontend**: SvelteKit 5 with TypeScript and Svelte Runes, TailwindCSS v4
+- **Frontend**: SvelteKit 3 (Svelte 5 runes, Vite 8) with TypeScript, TailwindCSS v4
 - **Backend**: Convex (real-time database and serverless functions)
 - **File storage**: Cloudflare R2, via the `@convex-dev/r2` component
 - **Data source**: [timefor.school](https://timefor.school) — a public NEIS-backed API for Korean school timetables/meals/calendars

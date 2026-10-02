@@ -1,5 +1,5 @@
 import { ConvexError } from 'convex/values';
-import { invalidateAll } from '$app/navigation';
+import { refreshAll } from '$app/navigation';
 
 // Must match UNAUTHORIZED in packages/backend/convex/auth.ts.
 const UNAUTHORIZED = 'Unauthorized';
@@ -16,7 +16,7 @@ export function isUnauthorized(err: unknown): boolean {
  */
 export function adminErrorMessage(err: unknown, fallback: string): string {
 	if (isUnauthorized(err)) {
-		void invalidateAll();
+		void refreshAll();
 		return '로그인이 만료됐어요. 다시 로그인해 주세요.';
 	}
 	if (err instanceof ConvexError && typeof err.data === 'string') return err.data;

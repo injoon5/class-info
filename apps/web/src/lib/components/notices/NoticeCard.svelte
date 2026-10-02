@@ -1,6 +1,6 @@
 <script lang="ts">
-import { noticeTypeClass, type MinimalNotice } from '$lib/notices';
-import FileIcon from '$lib/components/ui/FileIcon.svelte';
+import { noticeTypeClass, type MinimalNotice } from '#lib/notices.js';
+import FileIcon from '#lib/components/ui/FileIcon.svelte';
 
 const {
 	notice,

@@ -1,14 +1,14 @@
 <script lang="ts">
 	import '../app.css';
-	import { getConvexUrl } from '$lib/convex';
+	import { getConvexUrl } from '#lib/convex.js';
 	import { setupConvex } from 'convex-svelte';
 	import { navigating, page } from '$app/state';
 	import { onMount } from 'svelte';
 	import { configure } from 'onedollarstats';
-	import LoadingState from '$lib/components/ui/LoadingState.svelte';
+	import LoadingState from '#lib/components/ui/LoadingState.svelte';
 	import { SITE_NAME } from '@class-info/backend/convex/config';
-	import { invalidateAll } from '$app/navigation';
-	import { getNowInKst, isAtOrAfterDinnerEnd, schoolDisplayClock } from '$lib/date';
+	import { refreshAll } from '$app/navigation';
+	import { getNowInKst, isAtOrAfterDinnerEnd, schoolDisplayClock } from '#lib/date.js';
 
 	const { children } = $props();
 	setupConvex(getConvexUrl());
@@ -82,7 +82,7 @@
 			const next = clockKey();
 			if (next === key) return;
 			key = next;
-			void invalidateAll();
+			void refreshAll();
 		};
 
 		const interval = setInterval(check, 60_000);

@@ -1,8 +1,8 @@
 import { ConvexHttpClient } from 'convex/browser';
-import { PUBLIC_CONVEX_URL } from '$env/static/public';
+import { PUBLIC_CONVEX_URL } from '$app/env/public';
 
+// Validated in src/env.ts, so a missing or malformed URL fails the build.
 export function getConvexUrl(): string {
-	if (!PUBLIC_CONVEX_URL) throw new Error('Missing PUBLIC_CONVEX_URL');
 	return PUBLIC_CONVEX_URL;
 }
 

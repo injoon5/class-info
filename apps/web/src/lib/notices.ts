@@ -1,4 +1,4 @@
-import { parseIsoDate, weekdayKrUtc } from '$lib/date';
+import { parseIsoDate, weekdayKrUtc } from '#lib/date.js';
 import type { DayGroup, MinimalNotice } from '@class-info/backend/convex/validators';
 
 export type { DayGroup, MinimalNotice };

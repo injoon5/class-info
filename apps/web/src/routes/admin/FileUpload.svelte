@@ -4,11 +4,11 @@ import { fly } from 'svelte/transition';
 import { api } from '@class-info/backend/convex/_generated/api';
 import type { Id } from '@class-info/backend/convex/_generated/dataModel';
 import type { FileDoc } from '@class-info/backend/convex/validators';
-import { flyHelper, flyHelperOut } from '$lib/transitions';
-import { formatFileSize } from '$lib/format';
-import FileIcon from '$lib/components/ui/FileIcon.svelte';
-import PillButton from '$lib/components/ui/PillButton.svelte';
-import Spinner from '$lib/components/ui/Spinner.svelte';
+import { flyHelper, flyHelperOut } from '#lib/transitions.js';
+import { formatFileSize } from '#lib/format.js';
+import FileIcon from '#lib/components/ui/FileIcon.svelte';
+import PillButton from '#lib/components/ui/PillButton.svelte';
+import Spinner from '#lib/components/ui/Spinner.svelte';
 
 const {
 	files = [],

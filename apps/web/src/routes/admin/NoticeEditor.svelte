@@ -1,6 +1,6 @@
 <script lang="ts" module>
 import type { Id } from '@class-info/backend/convex/_generated/dataModel';
-import type { MinimalNotice } from '$lib/notices';
+import type { MinimalNotice } from '#lib/notices.js';
 
 export type NoticeForm = {
 	title: string;
@@ -18,10 +18,10 @@ export function emptyNoticeForm(): NoticeForm {
 
 <script lang="ts">
 import { fade, slide } from 'svelte/transition';
-import { autosize } from '$lib/actions/autosize';
-import { holdComposingEnter } from '$lib/dom';
-import { fadeOut, reveal, slideY, slideYOut } from '$lib/transitions';
-import PillButton from '$lib/components/ui/PillButton.svelte';
+import { autosize } from '#lib/actions/autosize.js';
+import { holdComposingEnter } from '#lib/dom.js';
+import { fadeOut, reveal, slideY, slideYOut } from '#lib/transitions.js';
+import PillButton from '#lib/components/ui/PillButton.svelte';
 import FileUpload from './FileUpload.svelte';
 
 let {

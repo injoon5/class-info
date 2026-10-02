@@ -1,6 +1,6 @@
 <script lang="ts">
 import { onMount } from 'svelte';
-import { formatAbsolute, formatRelative } from '$lib/date';
+import { formatAbsolute, formatRelative } from '#lib/date.js';
 
 // Absolute on the server, relative once mounted, so SSR and hydration agree.
 const { ts }: { ts: number } = $props();
