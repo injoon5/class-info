@@ -1,12 +1,8 @@
-// Central place for the "arbitrary" values a fork changes to run this for its
-// own class: which school it reads from, what hour the day flips over,
-// branding, admin defaults, and so on. Everything here is a plain constant —
-// edit this file and redeploy (`pnpm dev:server` / `npx convex deploy`), no
-// schema or call-site changes required elsewhere.
+// The values a fork changes to run this for its own class. Edit and redeploy
+// (`pnpm dev:server` / `npx convex deploy`); nothing else needs to change.
 //
 // Imported by both the Convex backend and the SvelteKit frontend (as
-// `@class-info/backend/convex/config`), so a value only needs to change once.
-// See SETUP.md for the full walkthrough of forking this for a new class.
+// `@class-info/backend/convex/config`). See SETUP.md for the full walkthrough.
 
 // ── School identity ─────────────────────────────────────────────────────
 // Feeds https://timefor.school (a NEIS-backed API). Find your own school's
@@ -37,28 +33,22 @@ export const SITE_NAME = "TimeforSchool";
 // trailing slash.
 export const SITE_URL = "https://timefor.school";
 
-// Class label shown in page titles and descriptions ("오늘 - 1학년 3반", "급식 -
-// 1학년 3반", ...). Keep this in sync with SCHOOL.grade/classno above — it's
-// separate only because the display format ("1학년 3반") isn't derivable from
-// the numbers alone in every school's convention.
+// Class label shown in page titles and descriptions. Keep it in sync with
+// SCHOOL.grade/classno: the display format isn't derivable from the numbers
+// in every school's convention.
 export const CLASS_LABEL = "1학년 3반";
 
-// Public base URL admin-uploaded files (notice attachments) are served from.
-// Point this at your own R2 bucket's public URL or a custom domain in front
-// of it — see the R2 setup steps in SETUP.md. A fork that skips this keeps
-// serving file links from the original deployment's domain.
+// Public base URL admin-uploaded files (notice attachments) are served from:
+// your R2 bucket's public URL or a custom domain in front of it (see SETUP.md).
 export const FILES_BASE_URL = "https://files.timefor.school";
 
-// ── Timezone ─────────────────────────────────────────────────────────────
-// Hours east of UTC. Convex isolates always run in UTC; every "KST"-named
-// helper in dates.ts shifts by this offset. Change it to run this for a
-// class outside Korea — the KST naming is then cosmetic, not a hardcoded
-// assumption.
+// ── Time ─────────────────────────────────────────────────────────────────
+// Hours east of UTC. Convex isolates run in UTC; every "school day" and hour
+// below is read in this zone.
 export const TIMEZONE_OFFSET_HOURS = 9;
 
-// ── Day boundaries ───────────────────────────────────────────────────────
-// Home's timetable/meals and a notice's "past" status both flip to the next
-// day at this local hour.
+// Home's timetable/meals and a notice's "past" status flip to the next day
+// at this local hour.
 export const DAY_ROLLOVER_HOUR = 16;
 
 // Today's dinner (석식) is still shown as "today's" until this local hour.
@@ -66,35 +56,19 @@ export const DAY_ROLLOVER_HOUR = 16;
 // tonight's dinner is listed first — it's served before tomorrow's lunch.
 export const DINNER_END_HOUR = 19;
 
-// ── Schedule / countdown windows ─────────────────────────────────────────
+// Local hours the crons poll the school API: timetable and meals several
+// times a day, the year's schedule once.
+export const WEEK_POLL_HOURS = [6, 10, 14, 18];
+export const SCHEDULE_POLL_HOUR = 12;
+
+// ── Home page ────────────────────────────────────────────────────────────
 // How many days past the display day the home page's event list reaches.
 export const HOME_EVENT_WINDOW_DAYS = 7;
 
-// How many D-day countdowns the home hero shows before it stops being a hero.
+// How many D-day countdowns the home hero shows.
 export const HOME_DDAY_LIMIT = 2;
 
-// Long enough to jump a summer break, in both directions: forward to find the
-// next school day, backward to find the 방학 marker that started a break
-// already under way.
-export const SCHOOL_DAY_LOOKAHEAD = 90;
-
-// Widest date range a single calendar query will serve.
-export const SCHEDULE_RANGE_MAX_DAYS = 400;
-
-// ── Admin auth ───────────────────────────────────────────────────────────
+// ── Admin ────────────────────────────────────────────────────────────────
 // Used only until an admin sets a real PIN via settings.setPin — change it
-// on day one, don't just rely on this default.
+// on day one.
 export const DEFAULT_ADMIN_PIN = "1234";
-export const ADMIN_SESSION_TTL_MS = 24 * 60 * 60 * 1000; // 24 hours
-
-// Login brute-force throttle: after this many failed attempts inside the
-// window, lock out for this long.
-export const LOGIN_MAX_FAILS = 5;
-export const LOGIN_WINDOW_MS = 15 * 60 * 1000;
-export const LOGIN_LOCKOUT_MS = 15 * 60 * 1000;
-
-// ── Cron polling ─────────────────────────────────────────────────────────
-// Convex cron args are UTC — the comment is these hours read in KST, purely
-// informational. Recompute if you change TIMEZONE_OFFSET_HOURS.
-export const TIMETABLE_POLL_HOURS_UTC = [21, 1, 5, 9]; // ~06:00, 10:00, 14:00, 18:00 KST
-export const SCHEDULE_SYNC_HOUR_UTC = 3; // ~12:00 KST

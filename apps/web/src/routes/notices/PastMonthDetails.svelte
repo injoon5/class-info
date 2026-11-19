@@ -1,15 +1,16 @@
 <script lang="ts">
 import { useQuery } from 'convex-svelte';
 import { api } from '@class-info/backend/convex/_generated/api';
+import type { SchoolClock } from '@class-info/backend/convex/dates';
 import { fade } from 'svelte/transition';
 import { fadeOut, reveal } from '#lib/transitions.js';
 import NoticeGroup from './NoticeGroup.svelte';
 import LoadingState from '#lib/components/ui/LoadingState.svelte';
 import FluidHeight from '#lib/components/ui/FluidHeight.svelte';
 
-const { monthKey, cutoff, today }: { monthKey: string; cutoff: string; today: string } = $props();
+const { monthKey, clock }: { monthKey: string; clock: SchoolClock } = $props();
 
-const groups = useQuery(api.notices.pastByMonth, () => ({ monthKey, cutoff, today }));
+const groups = useQuery(api.notices.pastByMonth, () => ({ monthKey, ...clock }));
 </script>
 
 <div class="px-3 pb-3 pt-1">

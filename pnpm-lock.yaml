@@ -65,10 +65,13 @@ importers:
     dependencies:
       '@convex-dev/r2':
         specifier: ^0.10.2
-        version: 0.10.2(@standard-schema/spec@1.1.0)(convex@1.46.0)(svelte@5.57.1)(typescript@6.0.3)
+        version: 0.10.2(@standard-schema/spec@1.1.0)(convex@1.46.0)(prettier@3.9.9)(svelte@5.57.1)(typescript@6.0.3)
       convex:
         specifier: ^1.46.0
         version: 1.46.0
+      convex-helpers:
+        specifier: ^0.1.136
+        version: 0.1.136(@standard-schema/spec@1.1.0)(convex@1.46.0)(prettier@3.9.9)(typescript@6.0.3)
     devDependencies:
       '@edge-runtime/vm':
         specifier: ^5.0.0
@@ -795,13 +798,14 @@ packages:
     resolution: {integrity: sha512-5IKcdX0nnYavi6G7TtOhwkYzyjfJlatbjMjuLSfE2kYT5pMDOilZ4OvMhi637CcDICTmz3wARPoyhqyX1Y+XvA==}
     engines: {node: ^14.18.0 || >=16.10.0}
 
-  convex-helpers@0.1.124:
-    resolution: {integrity: sha512-Gbu/jq6I3x5Y51cXP5c7+CI3t15vX5Xi2G0tOym3rxpBtYqrI+qWwxkqZgJYrHHccY42wZudB8h6kS3fak8Aeg==}
+  convex-helpers@0.1.136:
+    resolution: {integrity: sha512-GoveeoUdEyg0hpCNNAjAimgn4P3mx7f8Yy5oSISck9AquxfL3NbtQesUwhZLrDkCWasK2i1COjb7ZjQseonovA==}
     hasBin: true
     peerDependencies:
       '@standard-schema/spec': ^1.0.0
-      convex: ^1.43.0
+      convex: ^1.46.0
       hono: ^4.0.5
+      prettier: ^3.0.0
       react: ^17.0.2 || ^18.0.0 || ^19.0.0
       typescript: ^5.5 || ^6.0.0 || ^7.0.0
       zod: ^3.25.0 || ^4.0.0
@@ -809,6 +813,8 @@ packages:
       '@standard-schema/spec':
         optional: true
       hono:
+        optional: true
+      prettier:
         optional: true
       react:
         optional: true
@@ -1626,13 +1632,13 @@ snapshots:
     dependencies:
       convex: 1.46.0
 
-  '@convex-dev/r2@0.10.2(@standard-schema/spec@1.1.0)(convex@1.46.0)(svelte@5.57.1)(typescript@6.0.3)':
+  '@convex-dev/r2@0.10.2(@standard-schema/spec@1.1.0)(convex@1.46.0)(prettier@3.9.9)(svelte@5.57.1)(typescript@6.0.3)':
     dependencies:
       '@aws-sdk/client-s3': 3.1145.0
       '@aws-sdk/s3-request-presigner': 3.1145.0
       '@convex-dev/action-retrier': 0.3.1(convex@1.46.0)
       convex: 1.46.0
-      convex-helpers: 0.1.124(@standard-schema/spec@1.1.0)(convex@1.46.0)(typescript@6.0.3)
+      convex-helpers: 0.1.136(@standard-schema/spec@1.1.0)(convex@1.46.0)(prettier@3.9.9)(typescript@6.0.3)
       file-type: 21.3.4
       uuid: 14.0.2
     optionalDependencies:
@@ -1640,6 +1646,7 @@ snapshots:
     transitivePeerDependencies:
       - '@standard-schema/spec'
       - hono
+      - prettier
       - supports-color
       - typescript
       - zod
@@ -2076,11 +2083,12 @@ snapshots:
 
   consola@3.4.2: {}
 
-  convex-helpers@0.1.124(@standard-schema/spec@1.1.0)(convex@1.46.0)(typescript@6.0.3):
+  convex-helpers@0.1.136(@standard-schema/spec@1.1.0)(convex@1.46.0)(prettier@3.9.9)(typescript@6.0.3):
     dependencies:
       convex: 1.46.0
     optionalDependencies:
       '@standard-schema/spec': 1.1.0
+      prettier: 3.9.9
       typescript: 6.0.3
 
   convex-svelte@0.14.0(@sveltejs/kit@3.0.0(@sveltejs/vite-plugin-svelte@7.3.1(svelte@5.57.1)(vite@8.3.2(@types/node@24.19.1)(esbuild@0.27.0)(jiti@2.7.0)))(svelte@5.57.1)(typescript@6.0.3)(vite@8.3.2(@types/node@24.19.1)(esbuild@0.27.0)(jiti@2.7.0)))(convex@1.46.0)(svelte@5.57.1):

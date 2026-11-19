@@ -4,6 +4,7 @@ import type { Snippet } from 'svelte';
 import { fade, slide } from 'svelte/transition';
 import { api } from '@class-info/backend/convex/_generated/api';
 import type { Id } from '@class-info/backend/convex/_generated/dataModel';
+import type { SchoolClock } from '@class-info/backend/convex/dates';
 import { fadeOut, reveal, slideNone, slideY, slideYOut } from '#lib/transitions.js';
 import LoadingState from '#lib/components/ui/LoadingState.svelte';
 import FluidHeight from '#lib/components/ui/FluidHeight.svelte';
@@ -12,8 +13,7 @@ import AdminNoticeRow from './AdminNoticeRow.svelte';
 // Past notices are edited in their own row, with the page's editor.
 let {
 	monthKey,
-	cutoff,
-	today,
+	clock,
 	onEdit,
 	onDelete,
 	editorTarget = null,
@@ -22,8 +22,7 @@ let {
 	confirmingDeleteId = $bindable(null)
 }: {
 	monthKey: string;
-	cutoff: string;
-	today: string;
+	clock: SchoolClock;
 	onEdit: (id: Id<'notices'>) => void;
 	onDelete: (id: Id<'notices'>) => void;
 	editorTarget?: string | null;
@@ -32,7 +31,7 @@ let {
 	confirmingDeleteId?: string | null;
 } = $props();
 
-const groups = useQuery(api.notices.pastByMonth, () => ({ monthKey, cutoff, today }));
+const groups = useQuery(api.notices.pastByMonth, () => ({ monthKey, ...clock }));
 
 // The first ready paint is silent so FluidHeight tweens spinner → list whole.
 let listLive = $state(false);

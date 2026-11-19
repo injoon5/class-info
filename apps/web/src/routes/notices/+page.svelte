@@ -17,7 +17,7 @@ let openMonthKey = $state<string | null>(null);
 
 const overview = useQuery(
 	api.notices.overview,
-	() => ({ cutoff: data.cutoff, today: data.today }),
+	() => data.clock,
 	() => ({
 		initialData: { currentGroups: data.currentGroups, pastMonths: data.pastMonths },
 		keepPreviousData: true
@@ -57,7 +57,7 @@ const pastMonths = $derived(overview.data?.pastMonths ?? []);
 						label="{month.monthName} ({month.total}개)"
 						onToggle={() => (openMonthKey = openMonthKey === month.monthKey ? null : month.monthKey)}
 					>
-						<PastMonthDetails monthKey={month.monthKey} cutoff={data.cutoff} today={data.today} />
+						<PastMonthDetails monthKey={month.monthKey} clock={data.clock} />
 					</Disclosure>
 				{/each}
 			</div>

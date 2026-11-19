@@ -1,20 +1,25 @@
-import {
-  internalAction,
-  internalMutation,
-  mutation,
-  query,
-  type MutationCtx,
-} from "./_generated/server";
-import { v, type Infer } from "convex/values";
+import { internalAction, internalMutation, query, type MutationCtx, type QueryCtx } from "./_generated/server";
+import { ConvexError, v, type Infer } from "convex/values";
 import { internal } from "./_generated/api";
-import type { Doc, Id } from "./_generated/dataModel";
-import { requireAdmin } from "./auth";
-import { FULL_TIMETABLE_DAYS, projectFullTimetable, projectTimetable } from "./project";
-import { fullTimetableDoc, timetableDoc, timetableSlot } from "./validators";
-import { SCHOOL_API_BASE_URL } from "./config";
-import { addDaysYyyymmdd, getNowKst, mondayYyyymmddOf, toYyyymmdd } from "./dates";
+import type { Doc } from "./_generated/dataModel";
+import { adminMutation } from "./auth";
+import { SCHOOL } from "./config";
+import { addDays, assertYmd, mondayOf, schoolClock } from "./dates";
+import { fetchSchoolApi, SchoolApiError } from "./schoolApi";
+import {
+  FULL_TIMETABLE_DAYS,
+  MAX_PERIODS,
+  fullTimetable,
+  timetableSlot,
+  timetableWeek,
+  type FullTimetable,
+  type TimetableWeek,
+} from "./validators";
 
 type Slot = Infer<typeof timetableSlot>;
+type FullSlot = FullTimetable["timetable"][number][number];
+
+// ── Fetched weeks ────────────────────────────────────────────────────────
 
 // `auto` merges Comcigan (bell times, teachers, short names) with NEIS. It is
 // the upstream default, but pinned so a change there can't reshape the grid.
@@ -34,8 +39,7 @@ function normalizeSlot(raw: unknown): Slot | null {
   const slot = raw as Record<string, unknown>;
   const period = num(slot.period);
   if (period <= 0) return null;
-
-  const original = slot.original;
+  const original = slot.original as Record<string, unknown> | null | undefined;
   return {
     period,
     subject: str(slot.subject),
@@ -43,171 +47,108 @@ function normalizeSlot(raw: unknown): Slot | null {
     replaced: slot.replaced === true,
     original:
       original && typeof original === "object"
-        ? {
-            period: num((original as Record<string, unknown>).period),
-            subject: str((original as Record<string, unknown>).subject),
-            teacher: str((original as Record<string, unknown>).teacher),
-          }
+        ? { period: num(original.period), subject: str(original.subject), teacher: str(original.teacher) }
         : null,
   };
 }
 
-function normalizeWeek(raw: unknown): Slot[][] {
-  if (!Array.isArray(raw)) return [];
+function normalizeWeek(raw: unknown[]): Slot[][] {
   return raw.map((day) =>
-    Array.isArray(day)
-      ? day.map(normalizeSlot).filter((slot): slot is Slot => slot !== null)
-      : []
+    Array.isArray(day) ? day.map(normalizeSlot).filter((slot): slot is Slot => slot !== null) : []
   );
 }
 
-// Errors are `{ ok: false, error: { code, message } }`; older deploys may
-// send a bare body, so fall back to the status line.
-async function readError(res: Response): Promise<{ code: string; message: string }> {
-  let body: unknown;
-  try {
-    body = await res.json();
-  } catch {
-    return { code: "", message: `${res.status} ${res.statusText}` };
-  }
-  const error = (body as { error?: unknown } | null)?.error;
-  if (!error || typeof error !== "object") {
-    return { code: "", message: `${res.status} ${res.statusText}` };
-  }
-  const { code, message } = error as Record<string, unknown>;
-  return { code: str(code), message: str(message) || `${res.status} ${res.statusText}` };
+async function readWeek(ctx: QueryCtx, weekStart: string): Promise<Doc<"timetables"> | null> {
+  return await ctx.db
+    .query("timetables")
+    .withIndex("by_week_start", (q) => q.eq("weekStart", weekStart))
+    .first();
 }
 
 export const upsert = internalMutation({
   args: {
-    week: v.number(),
+    weekStart: v.string(),
     day_time: v.array(v.string()),
     timetable: v.array(v.array(timetableSlot)),
     update_date: v.string(),
-    weekStart: v.optional(v.string()),
   },
-  returns: v.id("timetables"),
-  handler: async (
-    ctx,
-    { week, day_time, timetable, update_date, weekStart }
-  ): Promise<Id<"timetables">> => {
-    const existing = await ctx.db
-      .query("timetables")
-      .withIndex("by_week", (q) => q.eq("week", week))
-      .first();
-
-    const now = Date.now();
-    if (existing) {
-      await ctx.db.patch(existing._id, { day_time, timetable, update_date, week, weekStart, editedAt: now });
-      console.log(`[timetable.upsert] updated week=${week}`);
-      return existing._id;
-    }
-
-    const id = await ctx.db.insert("timetables", {
-      day_time,
-      timetable,
-      update_date,
-      week,
-      ...(weekStart ? { weekStart } : {}),
-      editedAt: now,
-    });
-    console.log(`[timetable.upsert] inserted week=${week}`);
-    return id;
+  returns: v.null(),
+  handler: async (ctx, week) => {
+    const existing = await readWeek(ctx, week.weekStart);
+    const row = { ...week, editedAt: Date.now() };
+    if (existing) await ctx.db.patch(existing._id, row);
+    else await ctx.db.insert("timetables", row);
+    return null;
   },
 });
 
-export const fetchAndSave = internalAction({
-  args: {
-    grade: v.number(),
-    classno: v.number(),
-    week: v.number(),
-    schoolcode: v.string(),
-  },
-  // Null when there is nothing to store (a break or an empty grid), keeping
-  // the stored week rather than blanking it.
-  returns: v.union(v.id("timetables"), v.null()),
-  handler: async (
-    ctx,
-    { grade, classno, week, schoolcode }
-  ): Promise<Id<"timetables"> | null> => {
-    const url = `${SCHOOL_API_BASE_URL}/timetable?grade=${encodeURIComponent(
-      String(grade)
-    )}&classno=${encodeURIComponent(String(classno))}&week=${encodeURIComponent(
-      String(week)
-    )}&schoolcode=${encodeURIComponent(schoolcode)}&source=${SOURCE}`;
-
-    const res = await fetch(url, { headers: { Accept: "application/json" } });
-    if (!res.ok) {
-      const { code, message } = await readError(res);
+// The API counts weeks from the current Mon–Sun week in the school's zone.
+// Null when there is nothing to store (a break or an empty grid), keeping the
+// stored week rather than blanking it.
+export const fetchWeek = internalAction({
+  args: { offsetWeeks: v.number() },
+  returns: v.null(),
+  handler: async (ctx, { offsetWeeks }): Promise<null> => {
+    let data: { day_time?: unknown; timetable?: unknown; update_date?: unknown };
+    try {
+      data = (await fetchSchoolApi("timetable", {
+        grade: SCHOOL.grade,
+        classno: SCHOOL.classno,
+        week: offsetWeeks,
+        source: SOURCE,
+      })) as typeof data;
+    } catch (error) {
       // No rows from either source: a break, not a fault.
-      if (code === "NEIS_DATA_NOT_FOUND") {
-        console.log(`[timetable.fetchAndSave] no rows for week=${week} (${message})`);
-        return null;
-      }
-      throw new Error(
-        `Failed to fetch timetable (${res.status}${code ? ` ${code}` : ""}): ${message}`
-      );
+      if (error instanceof SchoolApiError && error.code === "NEIS_DATA_NOT_FOUND") return null;
+      throw error;
     }
-
-    const data = (await res.json()) as {
-      day_time?: unknown;
-      timetable?: unknown;
-      update_date?: unknown;
-    };
 
     if (!Array.isArray(data.day_time) || !Array.isArray(data.timetable)) {
       throw new Error("Unexpected timetable payload shape");
     }
-
-    const day_time = data.day_time.filter((s): s is string => typeof s === "string");
     const timetable = normalizeWeek(data.timetable);
-    const periods = timetable.reduce((total, day) => total + day.length, 0);
-    if (periods === 0) {
-      console.warn(`[timetable.fetchAndSave] empty grid for week=${week}; keeping stored week`);
+    if (timetable.every((day) => day.length === 0)) {
+      console.warn(`[timetable.fetchWeek] empty grid for offset ${offsetWeeks}; keeping stored week`);
       return null;
     }
 
-    console.log(
-      `[timetable.fetchAndSave] grade=${grade} class=${classno} week=${week} days=${timetable.length} periods=${periods}`
-    );
-    return await ctx.runMutation(internal.timetable.upsert, {
-      week,
-      day_time,
+    await ctx.runMutation(internal.timetable.upsert, {
+      weekStart: addDays(mondayOf(schoolClock().today), offsetWeeks * 7),
+      day_time: data.day_time.filter((s): s is string => typeof s === "string"),
       timetable,
       update_date: str(data.update_date),
-      // The API counts weeks from the current Mon–Sun week in KST, the same
-      // week the home page's weekOffsetBetween assumes.
-      weekStart: addDaysYyyymmdd(mondayYyyymmddOf(toYyyymmdd(getNowKst())), week * 7),
     });
+    return null;
   },
 });
 
-export const getByWeek = query({
-  args: { week: v.union(v.literal(0), v.literal(1)) },
-  returns: v.union(timetableDoc, v.null()),
-  handler: async (ctx, { week }) => {
-    const row = await ctx.db
-      .query("timetables")
-      .withIndex("by_week", (q) => q.eq("week", week))
-      .first();
-    return row ? projectTimetable(row) : null;
+export const getWeek = query({
+  args: { weekStart: v.string() },
+  returns: v.union(timetableWeek, v.null()),
+  handler: async (ctx, { weekStart }): Promise<TimetableWeek | null> => {
+    assertYmd(weekStart, "weekStart");
+    const row = await readWeek(ctx, weekStart);
+    if (!row) return null;
+    const { day_time, timetable, update_date, editedAt } = row;
+    return { weekStart, day_time, timetable, update_date, editedAt };
   },
 });
 
-// ── Standing ("전체") timetable ─────────────────────────────────────────────
+// ── Standing ("전체") timetable ──────────────────────────────────────────
 // One admin-edited row, kept apart from the fetched weeks the cron overwrites.
 
-const FULL_MAX_PERIODS = 12;
-const FULL_TEXT_MAX = 24;
+const TEXT_MAX = 24;
 
-type FullSlot = { subject: string; teacher: string };
-
-function emptyDays(): FullSlot[][] {
-  return Array.from({ length: FULL_TIMETABLE_DAYS }, () => []);
+function blankSlot(): FullSlot {
+  return { subject: "", teacher: "" };
 }
 
 function cleanText(value: string): string {
-  return value.trim().slice(0, FULL_TEXT_MAX);
+  return value.trim().slice(0, TEXT_MAX);
+}
+
+function padTo(day: FullSlot[], length: number): void {
+  while (day.length < length) day.push(blankSlot());
 }
 
 function assertDay(day: number): void {
@@ -216,117 +157,104 @@ function assertDay(day: number): void {
   }
 }
 
-// Read-modify-write always goes through the projection, so a row written before
-// a field existed is normalised on its way out and back in.
-async function readFullDays(
-  ctx: MutationCtx
-): Promise<{ row: Doc<"fullTimetable"> | null; days: FullSlot[][] }> {
-  const row = await ctx.db.query("fullTimetable").first();
-  if (!row) return { row: null, days: emptyDays() };
-  return { row, days: projectFullTimetable(row).timetable.map((day) => day.map((s) => ({ ...s }))) };
+function assertPeriodCount(n: number, min: number, label: string): void {
+  if (!Number.isInteger(n) || n < min || n > MAX_PERIODS) {
+    throw new Error(`${label} must be ${min}–${MAX_PERIODS}`);
+  }
 }
 
-async function writeFullDays(
+// Always five days: the grid renders one column per day, and a row written
+// before a day existed would otherwise render four.
+function projectFull(row: Doc<"fullTimetable">): FullTimetable {
+  return {
+    day_time: row.day_time,
+    timetable: Array.from({ length: FULL_TIMETABLE_DAYS }, (_, i) =>
+      (row.timetable[i] ?? []).map(({ subject, teacher }) => ({ subject, teacher }))
+    ),
+    updatedAt: row.updatedAt,
+  };
+}
+
+async function readFull(ctx: QueryCtx): Promise<Doc<"fullTimetable"> | null> {
+  return await ctx.db.query("fullTimetable").first();
+}
+
+async function writeFull(
   ctx: MutationCtx,
-  row: Doc<"fullTimetable"> | null,
-  days: FullSlot[][],
+  edit: (days: FullSlot[][]) => FullSlot[][],
   day_time?: string[]
 ): Promise<void> {
-  const updatedAt = Date.now();
-  if (row) {
-    await ctx.db.patch(row._id, {
-      timetable: days,
-      updatedAt,
-      ...(day_time ? { day_time } : {}),
-    });
-    return;
-  }
-  await ctx.db.insert("fullTimetable", { day_time: day_time ?? [], timetable: days, updatedAt });
+  const row = await readFull(ctx);
+  const current = row ? projectFull(row) : null;
+  const timetable = edit(
+    current?.timetable ?? Array.from({ length: FULL_TIMETABLE_DAYS }, (): FullSlot[] => [])
+  );
+  const next = { timetable, day_time: day_time ?? current?.day_time ?? [], updatedAt: Date.now() };
+  if (row) await ctx.db.patch(row._id, next);
+  else await ctx.db.insert("fullTimetable", next);
 }
 
 export const getFull = query({
   args: {},
-  returns: v.union(fullTimetableDoc, v.null()),
+  returns: v.union(fullTimetable, v.null()),
   handler: async (ctx) => {
-    const row = await ctx.db.query("fullTimetable").first();
-    return row ? projectFullTimetable(row) : null;
+    const row = await readFull(ctx);
+    return row ? projectFull(row) : null;
   },
 });
 
 // Seeds the standing timetable from a fetched week, taking a substituted
 // slot's original class.
-export const snapshotFull = mutation({
-  args: { sessionToken: v.string(), week: v.union(v.literal(0), v.literal(1)) },
+export const snapshotFull = adminMutation({
+  args: { weekStart: v.string() },
   returns: v.null(),
-  handler: async (ctx, { sessionToken, week }) => {
-    await requireAdmin(ctx, sessionToken);
-    const source = await ctx.db
-      .query("timetables")
-      .withIndex("by_week", (q) => q.eq("week", week))
-      .first();
-    if (!source) throw new Error("That week has no timetable to snapshot");
-
-    const fetched = projectTimetable(source);
+  handler: async (ctx, { weekStart }) => {
+    const source = await readWeek(ctx, weekStart);
+    if (!source) throw new ConvexError("가져올 시간표가 없어요.");
     // Placed by 교시, not by position: the merged feed can skip a period on
     // one day, and copying positionally moved every later subject up a row.
     const days = Array.from({ length: FULL_TIMETABLE_DAYS }, (_, i) => {
       const day: FullSlot[] = [];
-      for (const slot of fetched.timetable[i] ?? []) {
-        if (slot.period < 1 || slot.period > FULL_MAX_PERIODS) continue;
-        while (day.length < slot.period) day.push({ subject: "", teacher: "" });
+      for (const slot of source.timetable[i] ?? []) {
+        if (slot.period < 1 || slot.period > MAX_PERIODS) continue;
+        padTo(day, slot.period);
         const base = slot.original ?? slot;
         day[slot.period - 1] = { subject: cleanText(base.subject), teacher: cleanText(base.teacher) };
       }
       return day;
     });
-
-    const { row } = await readFullDays(ctx);
-    await writeFullDays(ctx, row, days, fetched.day_time);
-    console.log(`[timetable.snapshotFull] from week=${week}`);
+    await writeFull(ctx, () => days, source.day_time);
     return null;
   },
 });
 
-export const setFullSlot = mutation({
-  args: {
-    sessionToken: v.string(),
-    day: v.number(),
-    period: v.number(),
-    subject: v.string(),
-    teacher: v.string(),
-  },
+export const setFullSlot = adminMutation({
+  args: { day: v.number(), period: v.number(), subject: v.string(), teacher: v.string() },
   returns: v.null(),
-  handler: async (ctx, { sessionToken, day, period, subject, teacher }) => {
-    await requireAdmin(ctx, sessionToken);
+  handler: async (ctx, { day, period, subject, teacher }) => {
     assertDay(day);
-    if (!Number.isInteger(period) || period < 1 || period > FULL_MAX_PERIODS) {
-      throw new Error(`period must be 1–${FULL_MAX_PERIODS}`);
-    }
-    const { row, days } = await readFullDays(ctx);
-    const target = days[day]!;
-    // Editing past the end of a short day extends it; the gap fills with blanks
-    // rather than leaving holes the grid would have to reason about.
-    while (target.length < period) target.push({ subject: "", teacher: "" });
-    target[period - 1] = { subject: cleanText(subject), teacher: cleanText(teacher) };
-    await writeFullDays(ctx, row, days);
+    assertPeriodCount(period, 1, "period");
+    await writeFull(ctx, (days) => {
+      // Editing past the end of a short day extends it with blanks.
+      padTo(days[day]!, period);
+      days[day]![period - 1] = { subject: cleanText(subject), teacher: cleanText(teacher) };
+      return days;
+    });
     return null;
   },
 });
 
-export const setFullDayLength = mutation({
-  args: { sessionToken: v.string(), day: v.number(), length: v.number() },
+export const setFullDayLength = adminMutation({
+  args: { day: v.number(), length: v.number() },
   returns: v.null(),
-  handler: async (ctx, { sessionToken, day, length }) => {
-    await requireAdmin(ctx, sessionToken);
+  handler: async (ctx, { day, length }) => {
     assertDay(day);
-    if (!Number.isInteger(length) || length < 0 || length > FULL_MAX_PERIODS) {
-      throw new Error(`length must be 0–${FULL_MAX_PERIODS}`);
-    }
-    const { row, days } = await readFullDays(ctx);
-    const target = days[day]!;
-    while (target.length < length) target.push({ subject: "", teacher: "" });
-    days[day] = target.slice(0, length);
-    await writeFullDays(ctx, row, days);
+    assertPeriodCount(length, 0, "length");
+    await writeFull(ctx, (days) => {
+      padTo(days[day]!, length);
+      days[day] = days[day]!.slice(0, length);
+      return days;
+    });
     return null;
   },
 });

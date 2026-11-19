@@ -1,28 +1,27 @@
-import { ConvexError } from "convex/values";
-import type { QueryCtx, MutationCtx } from "./_generated/server";
+import { ConvexError, v } from "convex/values";
+import { customMutation } from "convex-helpers/server/customFunctions";
+import { mutation, type QueryCtx } from "./_generated/server";
+import type { Doc } from "./_generated/dataModel";
+import { UNAUTHORIZED } from "./validators";
 
-// A ConvexError, not an Error: production redacts plain Error messages to
-// "Server Error", and the admin UI needs to tell an expired session apart
-// from any other failure so it can send the admin back to the PIN screen.
-export const UNAUTHORIZED = "Unauthorized";
-
-/**
- * Throws unless `token` matches a live (non-expired) admin session.
- *
- * Every admin-only mutation must call this before mutating. The token is a
- * bearer credential issued by `settings.login` and stored in the `sessions`
- * table; the client attaches it to each privileged mutation call.
- */
-export async function requireAdmin(
-  ctx: QueryCtx | MutationCtx,
-  token: string | undefined | null
-): Promise<void> {
-  if (!token) throw new ConvexError(UNAUTHORIZED);
-  const session = await ctx.db
+export async function findSession(ctx: QueryCtx, token: string): Promise<Doc<"sessions"> | null> {
+  if (!token) return null;
+  return await ctx.db
     .query("sessions")
     .withIndex("by_token", (q) => q.eq("token", token))
     .first();
-  if (!session || session.expiresAt <= Date.now()) {
-    throw new ConvexError(UNAUTHORIZED);
-  }
 }
+
+/**
+ * A public mutation only a logged-in admin can run. It takes the bearer token
+ * issued by `settings.login` as `sessionToken`, checked before the handler
+ * runs; the handler never sees it.
+ */
+export const adminMutation = customMutation(mutation, {
+  args: { sessionToken: v.string() },
+  input: async (ctx, { sessionToken }) => {
+    const session = await findSession(ctx, sessionToken);
+    if (!session || session.expiresAt <= Date.now()) throw new ConvexError(UNAUTHORIZED);
+    return { ctx: {}, args: {} };
+  },
+});

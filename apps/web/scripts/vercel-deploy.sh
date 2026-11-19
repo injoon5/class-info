@@ -11,6 +11,6 @@ npx convex deploy \
 # Pull meals / timetable / schedule from the school APIs. Notices live only
 # in Convex, so those stay empty unless you import them.
 if [ "${VERCEL_ENV:-}" != "production" ]; then
-	npx convex run preview:hydrate '{}' \
+	npx convex run sync:hydrate '{}' \
 		--preview-name "${VERCEL_GIT_COMMIT_REF:?VERCEL_GIT_COMMIT_REF is required for preview hydrate}"
 fi

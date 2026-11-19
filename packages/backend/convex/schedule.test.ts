@@ -191,12 +191,12 @@ describe("schedule D-days", () => {
       { date: FRI, title: "반티 주문", source: "custom", dday: true },
     ]);
 
-    await t.mutation(internal.schedule.upsertManySchoolEvents, {
-      startdate: THU,
-      enddate: "20260831",
+    await t.mutation(internal.schedule.replaceSchoolEvents, {
+      start: THU,
+      end: "20260831",
       events: [
-        { date: NEXT_MON, eventName: "중간고사", eventType: "학사일정", schoolCode: "7010208" },
-        { date: FRI, eventName: "체육대회", eventType: "학사일정", schoolCode: "7010208" },
+        { date: NEXT_MON, title: "중간고사", eventType: "학사일정", schoolCode: "7010208" },
+        { date: FRI, title: "체육대회", eventType: "학사일정", schoolCode: "7010208" },
       ],
     });
 
@@ -211,11 +211,11 @@ describe("schedule D-days", () => {
     const t = await withSchedule([
       { date: NEXT_MON, title: "중간고사", eventType: "학사일정", dday: true },
     ]);
-    await t.mutation(internal.schedule.upsertManySchoolEvents, {
-      startdate: THU,
-      enddate: "20260831",
+    await t.mutation(internal.schedule.replaceSchoolEvents, {
+      start: THU,
+      end: "20260831",
       events: [
-        { date: NEXT_MON, eventName: "1차 지필평가", eventType: "학사일정", schoolCode: "7010208" },
+        { date: NEXT_MON, title: "1차 지필평가", eventType: "학사일정", schoolCode: "7010208" },
       ],
     });
     const after = await t.query(api.schedule.getEventsInRange, { start: THU, end: "20260831" });

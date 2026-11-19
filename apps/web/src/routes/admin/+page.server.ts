@@ -1,26 +1,19 @@
 import type { PageServerLoad, Actions } from './$types';
 import { redirect } from '@sveltejs/kit';
 import { api } from '@class-info/backend/convex/_generated/api';
+import { schoolClock } from '@class-info/backend/convex/dates';
+import { PIN_PATTERN } from '@class-info/backend/convex/validators';
 import { getAdminSession, SESSION_COOKIE, SESSION_MAX_AGE } from '#lib/server/auth.js';
-import { convexHttp } from '#lib/convex.js';
-import { noticeClock } from '#lib/date.js';
+import { convexHttp, orFallback } from '#lib/convex.js';
 
 export const load: PageServerLoad = async ({ cookies }) => {
-	const { isAuthenticated, sessionToken } = await getAdminSession(cookies);
-	const clock = noticeClock();
-
-	// Only the authenticated panel renders the list, so don't pay for it on the
-	// PIN screen. A failure here is not fatal — the client query still runs.
-	let overview = undefined;
-	if (isAuthenticated) {
-		try {
-			overview = await convexHttp().query(api.notices.overview, clock);
-		} catch {
-			overview = undefined;
-		}
-	}
-
-	return { isAuthenticated, sessionToken, overview, ...clock };
+	const session = await getAdminSession(cookies);
+	const clock = schoolClock();
+	// Only the authenticated panel renders the list, so the PIN screen skips it.
+	const overview = session.isAuthenticated
+		? await orFallback(convexHttp().query(api.notices.overview, clock), undefined, 'admin overview')
+		: undefined;
+	return { ...session, overview, clock };
 };
 
 export const actions: Actions = {
@@ -28,7 +21,7 @@ export const actions: Actions = {
 		const data = await request.formData();
 		const pinValue = data.get('pin');
 		const pin = typeof pinValue === 'string' ? pinValue : '';
-		if (!/^\d{4,8}$/.test(pin)) {
+		if (!PIN_PATTERN.test(pin)) {
 			return { success: false, error: '잘못된 PIN입니다' };
 		}
 

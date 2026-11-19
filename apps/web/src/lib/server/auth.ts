@@ -1,10 +1,10 @@
 import type { Cookies } from '@sveltejs/kit';
 import { api } from '@class-info/backend/convex/_generated/api';
 import { convexHttp } from '#lib/convex.js';
-import { ADMIN_SESSION_TTL_MS } from '@class-info/backend/convex/config';
+import { ADMIN_SESSION_TTL_MS } from '@class-info/backend/convex/validators';
 
 export const SESSION_COOKIE = 'admin_session';
-export const SESSION_MAX_AGE = ADMIN_SESSION_TTL_MS / 1000; // matches the Convex session TTL
+export const SESSION_MAX_AGE = ADMIN_SESSION_TTL_MS / 1000;
 
 /**
  * Resolve the admin session from the request cookies.

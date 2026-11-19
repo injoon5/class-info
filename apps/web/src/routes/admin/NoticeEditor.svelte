@@ -1,11 +1,11 @@
 <script lang="ts" module>
 import type { Id } from '@class-info/backend/convex/_generated/dataModel';
-import type { MinimalNotice } from '#lib/notices.js';
+import type { NoticeType } from '@class-info/backend/convex/validators';
 
 export type NoticeForm = {
 	title: string;
 	subject: string;
-	type: MinimalNotice['type'];
+	type: NoticeType;
 	description: string;
 	dueDate: string;
 	files: Id<'files'>[];
@@ -23,6 +23,7 @@ import { holdComposingEnter } from '#lib/dom.js';
 import { fadeOut, reveal, slideY, slideYOut } from '#lib/transitions.js';
 import PillButton from '#lib/components/ui/PillButton.svelte';
 import FileUpload from './FileUpload.svelte';
+import { NOTICE_TYPES } from '@class-info/backend/convex/validators';
 
 let {
 	form = $bindable(),
@@ -31,8 +32,7 @@ let {
 	error,
 	sessionToken,
 	onsubmit,
-	oncancel,
-	onUploaded
+	oncancel
 }: {
 	form: NoticeForm;
 	isEditing: boolean;
@@ -41,10 +41,8 @@ let {
 	sessionToken: string;
 	onsubmit: () => void;
 	oncancel: () => void;
-	onUploaded: (fileIds: Id<'files'>[]) => void;
 } = $props();
 
-const noticeTypes = ['수행평가', '숙제', '준비물', '기타'] as const;
 </script>
 
 <div id="notice-editor" in:slide={slideY} out:slide={slideYOut}>
@@ -87,7 +85,7 @@ const noticeTypes = ['수행평가', '숙제', '준비물', '기타'] as const;
 					<label for="notice-type" class="block text-sm font-semibold mb-1.5 text-muted-foreground">종류 *</label>
 					<div class="relative">
 						<select id="notice-type" bind:value={form.type} class="field pr-10 appearance-none">
-							{#each noticeTypes as type (type)}
+							{#each NOTICE_TYPES as type (type)}
 								<option value={type}>{type}</option>
 							{/each}
 						</select>
@@ -127,7 +125,7 @@ const noticeTypes = ['수행평가', '숙제', '준비물', '기타'] as const;
 
 			<div>
 				<div class="text-sm font-semibold mb-1.5 text-muted-foreground">파일 첨부</div>
-				<FileUpload files={form.files} onFilesChange={(files) => (form.files = files)} {onUploaded} {sessionToken} />
+				<FileUpload files={form.files} onFilesChange={(files) => (form.files = files)} {sessionToken} />
 			</div>
 
 			{#if error}

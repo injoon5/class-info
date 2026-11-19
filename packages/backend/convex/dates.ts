@@ -1,213 +1,157 @@
-// Date helpers in the school's zone (KST by default, see config.ts). Convex
-// runs in UTC: instants are shifted by the offset and read as local, and
-// calendar dates are parsed via Date.UTC so weekdays never depend on the host.
+// Calendar dates in the school's zone, shared by the backend and the web app.
+// A date is a YYYYMMDD string throughout; notices' ISO dueDate is converted
+// at the edge. Instants become dates only through schoolClock/isAfterDinner,
+// which shift by the configured offset and read UTC fields, so nothing here
+// depends on the host's time zone.
 
 import {
   DAY_ROLLOVER_HOUR,
   DINNER_END_HOUR,
-  SCHOOL_DAY_LOOKAHEAD as SCHOOL_DAY_LOOKAHEAD_CONFIG,
   TIMEZONE_OFFSET_HOURS,
 } from "./config";
 
-const KST_OFFSET_MS = TIMEZONE_OFFSET_HOURS * 60 * 60_000;
+export const WEEKDAYS_KR = ["일", "월", "화", "수", "목", "금", "토"] as const;
 
-export const WEEKDAYS_KR = ['일', '월', '화', '수', '목', '금', '토'] as const;
-
-const ISO_DATE = /^(\d{4})-(\d{2})-(\d{2})$/;
-const YYYYMMDD = /^(\d{4})(\d{2})(\d{2})$/;
+const YMD = /^(\d{4})(\d{2})(\d{2})$/;
+const ISO = /^(\d{4})-(\d{2})-(\d{2})$/;
+const DAY_MS = 86_400_000;
 
 function pad2(n: number): string {
-  return String(n).padStart(2, '0');
+  return String(n).padStart(2, "0");
 }
 
-export function getNowKst(): Date {
-  const now = new Date();
-  const utc = now.getTime() + now.getTimezoneOffset() * 60_000;
-  return new Date(utc + KST_OFFSET_MS);
+function fromUtc(date: Date): string {
+  return `${date.getUTCFullYear()}${pad2(date.getUTCMonth() + 1)}${pad2(date.getUTCDate())}`;
 }
 
-// Home timetable/meals and notice "past" both flip at this KST hour.
-export const DAY_ROLLOVER_HOUR_KST = DAY_ROLLOVER_HOUR;
-
-// Today's 석식 is still ahead until this hour, so home lists it before
-// tomorrow's lunch once the display day has rolled over.
-export const DINNER_END_HOUR_KST = DINNER_END_HOUR;
-
-export function calendarDate(date: Date): Date {
-  return new Date(date.getFullYear(), date.getMonth(), date.getDate());
+/** YYYYMMDD from a year, 1-based month and day; out-of-range parts roll over. */
+export function ymdFromParts(year: number, month: number, day: number): string {
+  return fromUtc(new Date(Date.UTC(year, month - 1, day)));
 }
 
-export function addCalendarDays(date: Date, days: number): Date {
-  return new Date(date.getFullYear(), date.getMonth(), date.getDate() + days);
-}
+export type DateParts = { year: number; month: number; day: number; weekday: string };
 
-export function getTodayKst(): Date {
-  return calendarDate(getNowKst());
-}
-
-export function isAtOrAfterHourKst(now: Date, hour: number): boolean {
-  return now.getHours() >= hour;
-}
-
-export function isAtOrAfterDayRollover(now: Date = getNowKst()): boolean {
-  return isAtOrAfterHourKst(now, DAY_ROLLOVER_HOUR_KST);
-}
-
-export function isAtOrAfterDinnerEnd(now: Date = getNowKst()): boolean {
-  return isAtOrAfterHourKst(now, DINNER_END_HOUR_KST);
-}
-
-export function weekdayKr(date: Date): string {
-  return WEEKDAYS_KR[date.getDay()];
-}
-
-export function weekdayKrUtc(y: number, m: number, d: number): string {
-  return WEEKDAYS_KR[new Date(Date.UTC(y, m - 1, d)).getUTCDay()];
-}
-
-// YYYY-MM-DD (matches stored notice dueDate format). Reads local fields — pass
-// a KST-shifted Date from getNowKst(), or a Date built from calendar parts.
-export function toIsoDate(date: Date): string {
-  const y = date.getFullYear();
-  const m = String(date.getMonth() + 1).padStart(2, '0');
-  const d = String(date.getDate()).padStart(2, '0');
-  return `${y}-${m}-${d}`;
-}
-
-export function toIsoDateUtc(y: number, m: number, d: number): string {
-  return `${y}-${pad2(m)}-${pad2(d)}`;
-}
-
-// YYYYMMDD (matches stored meal/schedule date format)
-export function toYyyymmdd(date: Date): string {
-  const y = date.getFullYear();
-  const m = String(date.getMonth() + 1).padStart(2, '0');
-  const d = String(date.getDate()).padStart(2, '0');
-  return `${y}${m}${d}`;
-}
-
-export type Ymd = { y: number; m: number; d: number };
-
-function fromUtcParts(y: number, m: number, d: number): Ymd | null {
-  const dt = new Date(Date.UTC(y, m - 1, d));
-  if (
-    dt.getUTCFullYear() !== y ||
-    dt.getUTCMonth() !== m - 1 ||
-    dt.getUTCDate() !== d
-  ) {
-    return null;
-  }
-  return { y, m, d };
-}
-
-export function parseIsoDate(iso: string): Ymd | null {
-  const match = ISO_DATE.exec(iso);
+/** Calendar parts of a real YYYYMMDD date; null when malformed. */
+export function ymdParts(ymd: string): DateParts | null {
+  const match = YMD.exec(ymd);
   if (!match) return null;
-  return fromUtcParts(Number(match[1]), Number(match[2]), Number(match[3]));
+  const [year, month, day] = [Number(match[1]), Number(match[2]), Number(match[3])];
+  const date = new Date(Date.UTC(year, month - 1, day));
+  if (date.getUTCMonth() !== month - 1 || date.getUTCDate() !== day) return null;
+  return { year, month, day, weekday: WEEKDAYS_KR[date.getUTCDay()]! };
 }
 
-export function parseYyyymmdd(s: string): Ymd | null {
-  const match = YYYYMMDD.exec(s);
+export function assertYmd(ymd: string, field = "date"): DateParts {
+  const parts = ymdParts(ymd);
+  if (!parts) throw new Error(`Invalid ${field}; expected a real YYYYMMDD date`);
+  return parts;
+}
+
+/** YYYY-MM-DD → YYYYMMDD; null unless it is a real date. */
+export function ymdFromIso(iso: string): string | null {
+  const match = ISO.exec(iso);
   if (!match) return null;
-  return fromUtcParts(Number(match[1]), Number(match[2]), Number(match[3]));
+  const ymd = `${match[1]}${match[2]}${match[3]}`;
+  return ymdParts(ymd) ? ymd : null;
 }
 
-export function assertIsoDate(iso: string, field = "date"): Ymd {
-  const parsed = parseIsoDate(iso);
-  if (!parsed) throw new Error(`Invalid ${field}; expected a real YYYY-MM-DD date`);
-  return parsed;
+export function isoFromYmd(ymd: string): string {
+  return `${ymd.slice(0, 4)}-${ymd.slice(4, 6)}-${ymd.slice(6, 8)}`;
 }
 
-export function assertYyyymmdd(s: string, field = "date"): Ymd {
-  const parsed = parseYyyymmdd(s);
-  if (!parsed) throw new Error(`Invalid ${field}; expected a real YYYYMMDD date`);
-  return parsed;
+function utcMs(ymd: string): number {
+  const { year, month, day } = assertYmd(ymd);
+  return Date.UTC(year, month - 1, day);
 }
 
-export function addDaysYyyymmdd(s: string, days: number): string {
-  const { y, m, d } = assertYyyymmdd(s);
-  const dt = new Date(Date.UTC(y, m - 1, d + days));
-  return `${dt.getUTCFullYear()}${pad2(dt.getUTCMonth() + 1)}${pad2(dt.getUTCDate())}`;
+export function addDays(ymd: string, days: number): string {
+  return fromUtc(new Date(utcMs(ymd) + days * DAY_MS));
 }
 
-export function addDaysIso(iso: string, days: number): string {
-  const { y, m, d } = assertIsoDate(iso);
-  const dt = new Date(Date.UTC(y, m - 1, d + days));
-  return toIsoDateUtc(dt.getUTCFullYear(), dt.getUTCMonth() + 1, dt.getUTCDate());
+/** 0 = Sunday … 6 = Saturday. */
+export function weekdayOf(ymd: string): number {
+  return new Date(utcMs(ymd)).getUTCDay();
 }
 
-// Tomorrow once past the rollover hour: the notices current/past split.
-export function kstCutoffDateString(now: Date = getNowKst()): string {
-  return toIsoDate(addCalendarDays(now, isAtOrAfterDayRollover(now) ? 1 : 0));
+/** Monday of the Mon–Sun week holding `ymd`. */
+export function mondayOf(ymd: string): string {
+  const dow = weekdayOf(ymd);
+  return addDays(ymd, dow === 0 ? -6 : 1 - dow);
 }
 
-export function noticeClock(now: Date = getNowKst()): { cutoff: string; today: string } {
-  return { cutoff: kstCutoffDateString(now), today: toIsoDate(now) };
+export function daysBetween(fromYmd: string, toYmd: string): number {
+  return Math.round((utcMs(toYmd) - utcMs(fromYmd)) / DAY_MS);
 }
 
-export function schoolDisplayClock(now: Date = getNowKst()): {
-  today: string;
-  afterRollover: boolean;
-} {
-  return { today: toYyyymmdd(now), afterRollover: isAtOrAfterDayRollover(now) };
+// ── Labels ───────────────────────────────────────────────────────────────
+
+/** "9/21 (월)" */
+export function shortDate(ymd: string): string {
+  const p = ymdParts(ymd);
+  return p ? `${p.month}/${p.day} (${p.weekday})` : ymd;
 }
 
 // "오늘"/"내일" against the real today (never the display day), else "".
-export function relativeDayLabel(ymd: string, todayYmd: string): string {
-  if (ymd === todayYmd) return "오늘";
-  if (ymd === addDaysYyyymmdd(todayYmd, 1)) return "내일";
+export function relativeDayLabel(ymd: string, today: string): string {
+  if (ymd === today) return "오늘";
+  if (ymd === addDays(today, 1)) return "내일";
   return "";
 }
 
-export function ymdWeekday(s: string): number {
-  const { y, m, d } = assertYyyymmdd(s);
-  return new Date(Date.UTC(y, m - 1, d)).getUTCDay();
-}
-
-export function mondayYyyymmddOf(ymd: string): string {
-  const dow = ymdWeekday(ymd);
-  return addDaysYyyymmdd(ymd, dow === 0 ? -6 : 1 - dow);
-}
-
-export function daysBetweenYmd(fromYmd: string, toYmd: string): number {
-  const a = assertYyyymmdd(fromYmd);
-  const b = assertYyyymmdd(toYmd);
-  return Math.round(
-    (Date.UTC(b.y, b.m - 1, b.d) - Date.UTC(a.y, a.m - 1, a.d)) / 86_400_000,
-  );
-}
-
-export function weekOffsetBetween(fromYmd: string, toYmd: string): number {
-  return Math.round(
-    daysBetweenYmd(mondayYyyymmddOf(fromYmd), mondayYyyymmddOf(toYmd)) / 7,
-  );
+/** "오늘", "내일", or "9/21 (월)". */
+export function dayLabel(ymd: string, today: string): string {
+  return relativeDayLabel(ymd, today) || shortDate(ymd);
 }
 
 // "D-7" / "D-DAY" / "D+3", counted in whole calendar days from today. The day
 // itself is D-DAY rather than D-0 — that is how a Korean reader writes it.
-export function ddayLabel(ymd: string, todayYmd: string): string {
-  const days = daysBetweenYmd(todayYmd, ymd);
+export function ddayLabel(ymd: string, today: string): string {
+  const days = daysBetween(today, ymd);
   if (days === 0) return "D-DAY";
   return days > 0 ? `D-${days}` : `D+${-days}`;
 }
 
-const CLOSED_EVENT_TYPES = new Set(["공휴일", "휴업일", "재량휴업일"]);
+// ── Clock ────────────────────────────────────────────────────────────────
 
-export type ScheduleHint = {
-  date: string;
-  title: string;
-  eventType?: string | null;
-  source?: string | null;
-};
+export type SchoolClock = { today: string; afterRollover: boolean };
+
+function schoolTime(now: number): { today: string; hour: number } {
+  const shifted = new Date(now + TIMEZONE_OFFSET_HOURS * 3_600_000);
+  return { today: fromUtc(shifted), hour: shifted.getUTCHours() };
+}
+
+export function schoolClock(now: number = Date.now()): SchoolClock {
+  const { today, hour } = schoolTime(now);
+  return { today, afterRollover: hour >= DAY_ROLLOVER_HOUR };
+}
+
+export function isAfterDinner(now: number = Date.now()): boolean {
+  return schoolTime(now).hour >= DINNER_END_HOUR;
+}
+
+/** First due date (ISO) still listed as current: tomorrow once past the rollover. */
+export function noticeCutoff({ today, afterRollover }: SchoolClock): string {
+  return isoFromYmd(afterRollover ? addDays(today, 1) : today);
+}
+
+// ── School days ──────────────────────────────────────────────────────────
+
+// Long enough to jump a summer break, in both directions: forward to find the
+// next school day, backward to find the 방학 marker that started the current one.
+export const SCHOOL_DAY_LOOKAHEAD = 90;
+
+const CLOSED_EVENT_TYPES = new Set(["공휴일", "휴업일", "재량휴업일"]);
 
 export function isClosedEventType(eventType: string | null | undefined): boolean {
   return CLOSED_EVENT_TYPES.has(eventType ?? "");
 }
 
-// Only NEIS rows drive break detection; custom events mention 방학 in passing.
-function isSchoolSourced(hint: ScheduleHint): boolean {
-  return hint.source === "school";
-}
+export type ScheduleHint = {
+  date: string;
+  title: string;
+  eventType?: string | null;
+  source: "school" | "custom";
+};
 
 // A break marker is the whole title ("여름방학", "겨울방학 시작"). 방학식 is
 // the closing ceremony, still a school day, so it must not match.
@@ -219,19 +163,20 @@ export function isVacationTitle(title: string): boolean {
 
 // Deliberately looser than the vacation match. A missed 개학 leaves a break
 // running to the end of the range; a spurious one only ends it early.
-export function isReopenTitle(title: string): boolean {
+function isReopenTitle(title: string): boolean {
   return title.includes("개학");
 }
 
-function isWeekendYmd(s: string): boolean {
-  const dow = ymdWeekday(s);
+function isWeekend(ymd: string): boolean {
+  const dow = weekdayOf(ymd);
   return dow === 0 || dow === 6;
 }
 
-// YYYYMMDD dates in range that aren't school days. 휴업일/공휴일 close their
-// date; a 방학 title closes every day up to the next 개학, since NEIS often
-// tags only a break's first day. So rangeStart must reach back far enough to
-// include a break already under way (SCHOOL_DAY_LOOKAHEAD days).
+// Dates in range that aren't school days. 휴업일/공휴일 close their date; a
+// 방학 title closes every day up to the next 개학, since NEIS often tags only
+// a break's first day. Only NEIS rows mark breaks: custom events mention 방학
+// in passing. So rangeStart must reach back far enough to include a break
+// already under way (SCHOOL_DAY_LOOKAHEAD days).
 export function closedYmdsFromSchedule(
   events: ScheduleHint[],
   rangeStart: string,
@@ -243,7 +188,7 @@ export function closedYmdsFromSchedule(
   for (const event of events) {
     if (event.date < rangeStart || event.date > rangeEnd) continue;
     if (isClosedEventType(event.eventType)) closed.add(event.date);
-    if (!isSchoolSourced(event)) continue;
+    if (event.source !== "school") continue;
     if (isVacationTitle(event.title)) vacationStarts.push(event.date);
     if (isReopenTitle(event.title)) reopens.push(event.date);
   }
@@ -251,79 +196,36 @@ export function closedYmdsFromSchedule(
   reopens.sort();
   for (const start of vacationStarts) {
     const reopen = reopens.find((date) => date > start);
-    const endExclusive = reopen ?? addDaysYyyymmdd(rangeEnd, 1);
-    let d = start;
-    while (d < endExclusive && d <= rangeEnd) {
+    for (let d = start; d <= rangeEnd && (!reopen || d < reopen); d = addDays(d, 1)) {
       closed.add(d);
-      d = addDaysYyyymmdd(d, 1);
     }
   }
   return closed;
 }
 
 export function isSchoolYmd(ymd: string, closed: Set<string>): boolean {
-  if (isWeekendYmd(ymd)) return false;
-  return !closed.has(ymd);
+  return !isWeekend(ymd) && !closed.has(ymd);
 }
 
-// Long enough to jump a summer break, in both directions: forward to find the
-// next school day, backward to find the 방학 marker that started the current one.
-export const SCHOOL_DAY_LOOKAHEAD = SCHOOL_DAY_LOOKAHEAD_CONFIG;
-
-export function resolveSchoolDisplayYmd(
-  today: string,
-  afterRollover: boolean,
-  closed: Set<string>,
-  lookahead = SCHOOL_DAY_LOOKAHEAD,
-): string {
-  assertYyyymmdd(today);
+/** The day home shows: today until the rollover, then the next school day. */
+export function resolveDisplayDay({ today, afterRollover }: SchoolClock, closed: Set<string>): string {
+  assertYmd(today, "today");
   if (!afterRollover && isSchoolYmd(today, closed)) return today;
-  for (let i = 1; i <= lookahead; i++) {
-    const ymd = addDaysYyyymmdd(today, i);
+  for (let i = 1; i <= SCHOOL_DAY_LOOKAHEAD; i++) {
+    const ymd = addDays(today, i);
     if (isSchoolYmd(ymd, closed)) return ymd;
   }
   // No school day in the lookahead (bad data): show the next weekday.
-  let fallback = addDaysYyyymmdd(today, 1);
-  while (isWeekendYmd(fallback)) fallback = addDaysYyyymmdd(fallback, 1);
-  return fallback;
+  return resolveDisplayDay({ today, afterRollover: true }, new Set());
 }
 
 // The school year (March–February) plus a month either side, keyed on the
-// school year so January and February still reach back to March. Months in
-// the result are 0-indexed, for the calendar UI.
-export function scheduleWindow(now: Date = getNowKst()): {
-  start: string;
-  end: string;
-  startYear: number;
-  startMonth: number;
-  endYear: number;
-  endMonth: number;
-} {
-  const y = now.getFullYear();
-  const schoolYear = now.getMonth() >= 2 ? y : y - 1;
-  const endYear = schoolYear + 1;
-  const lastFebDay = new Date(Date.UTC(endYear, 2, 0)).getUTCDate();
+// school year so January and February still reach back to March.
+export function scheduleWindow(today: string): { start: string; end: string } {
+  const { year, month } = assertYmd(today, "today");
+  const schoolYear = month >= 3 ? year : year - 1;
   return {
-    start: `${schoolYear - 1}1201`,
-    end: `${endYear}02${pad2(lastFebDay)}`,
-    startYear: schoolYear - 1,
-    startMonth: 11,
-    endYear,
-    endMonth: 1,
+    start: ymdFromParts(schoolYear - 1, 12, 1),
+    end: ymdFromParts(schoolYear + 1, 3, 0),
   };
-}
-
-// Monday–Friday of the KST week `offsetWeeks` away from today (times normalized
-// to noon to avoid DST edge cases). Used by meal/timetable fetch actions.
-export function getWeekRangeKst(offsetWeeks: number): { start: Date; end: Date } {
-  const nowKst = getNowKst();
-  const day = nowKst.getDay(); // 0 Sun … 6 Sat
-  const monday = new Date(nowKst);
-  const diffToMon = (day === 0 ? -6 : 1 - day) + offsetWeeks * 7;
-  monday.setDate(nowKst.getDate() + diffToMon);
-  const friday = new Date(monday);
-  friday.setDate(monday.getDate() + 4);
-  monday.setHours(12, 0, 0, 0);
-  friday.setHours(12, 0, 0, 0);
-  return { start: monday, end: friday };
 }

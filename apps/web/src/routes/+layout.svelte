@@ -1,6 +1,6 @@
 <script lang="ts">
 	import '../app.css';
-	import { getConvexUrl } from '#lib/convex.js';
+	import { PUBLIC_CONVEX_URL } from '$app/env/public';
 	import { setupConvex } from 'convex-svelte';
 	import { navigating, page } from '$app/state';
 	import { onMount } from 'svelte';
@@ -9,10 +9,10 @@
 	import UpdateToast from '#lib/components/UpdateToast.svelte';
 	import { SITE_NAME } from '@class-info/backend/convex/config';
 	import { refreshAll } from '$app/navigation';
-	import { getNowInKst, isAtOrAfterDinnerEnd, schoolDisplayClock } from '#lib/date.js';
+	import { isAfterDinner, schoolClock } from '@class-info/backend/convex/dates';
 
 	const { children } = $props();
-	setupConvex(getConvexUrl());
+	setupConvex(PUBLIC_CONVEX_URL);
 
 	const navItems = [
 		{ href: '/notices', label: '공지', match: (p: string) => p.startsWith('/notices') || p.startsWith('/notice/') },
@@ -72,9 +72,9 @@
 	// clock crosses one, so a tab left open overnight doesn't show yesterday.
 	onMount(() => {
 		const clockKey = () => {
-			const now = getNowInKst();
-			const { today, afterRollover } = schoolDisplayClock(now);
-			return `${today}|${afterRollover}|${isAtOrAfterDinnerEnd(now)}`;
+			const now = Date.now();
+			const { today, afterRollover } = schoolClock(now);
+			return `${today}|${afterRollover}|${isAfterDinner(now)}`;
 		};
 		let key = clockKey();
 

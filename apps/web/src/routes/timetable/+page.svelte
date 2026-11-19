@@ -13,9 +13,9 @@ import SegmentedControl from '#lib/components/ui/SegmentedControl.svelte';
 import { createBlurPulse } from '#lib/blurPulse.svelte.js';
 import { focusOnElement } from '#lib/actions/focus.js';
 import { blurActiveElement, holdComposingEnter } from '#lib/dom.js';
-import { addDaysYyyymmdd, ymdParts } from '#lib/date.js';
+import { WEEKDAYS_KR, addDays, ymdParts } from '@class-info/backend/convex/dates';
+import { FULL_TIMETABLE_DAYS, MAX_PERIODS } from '@class-info/backend/convex/validators';
 import { adminErrorMessage } from '#lib/errors.js';
-import { timetableForWeek } from '#lib/timetable.js';
 import type { PageData } from './$types.js';
 
 const { data }: { data: PageData } = $props();
@@ -38,36 +38,26 @@ $effect(() => {
 	blur.pulse();
 });
 
-// Both weeks, always: either stored row may hold the week a tab asks for.
-const week0Query = useQuery(api.timetable.getByWeek, () => ({ week: 0 as const }));
-const week1Query = useQuery(api.timetable.getByWeek, () => ({ week: 1 as const }));
+const mondayFor = (offset: 0 | 1) => addDays(data.thisMonday, offset * 7);
+const selectedMonday = $derived(mondayFor(selectedWeek));
+
+const weekQuery = useQuery(api.timetable.getWeek, () => ({ weekStart: selectedMonday }));
 const fullQuery = useQuery(api.timetable.getFull, () => ({}));
 
 // convex-svelte ignores a falsy `initialData`, so the server's `null` is held here.
-const week0 = $derived(week0Query.data !== undefined ? week0Query.data : data.timetable);
-const week1 = $derived(week1Query.data !== undefined ? week1Query.data : data.nextWeek);
+const weekData = $derived(weekQuery.data !== undefined ? weekQuery.data : data.weeks[selectedWeek]);
 const fullData = $derived(fullQuery.data !== undefined ? fullQuery.data : data.full);
 
-function mondayFor(offset: 0 | 1): string {
-	return addDaysYyyymmdd(data.thisMonday, offset * 7);
-}
-
-const weekData = $derived(timetableForWeek([week0, week1], mondayFor(selectedWeek), selectedWeek));
-
 const weekRangeLabel = $derived.by(() => {
-	const mon = ymdParts(mondayFor(selectedWeek));
-	const fri = ymdParts(addDaysYyyymmdd(mondayFor(selectedWeek), 4));
+	const mon = ymdParts(selectedMonday);
+	const fri = ymdParts(addDays(selectedMonday, 4));
 	return mon && fri ? `${mon.month}/${mon.day} – ${fri.month}/${fri.day}` : '';
 });
 
-const pending = $derived(isFull ? fullData === undefined : week0 === undefined || week1 === undefined);
-const queryError = $derived(
-	pending ? (isFull ? fullQuery.error : (week0Query.error ?? week1Query.error)) : undefined
-);
+const pending = $derived(isFull ? fullData === undefined : weekData === undefined);
+const queryError = $derived(pending ? (isFull ? fullQuery.error : weekQuery.error) : undefined);
 
-const dayNames = ['월', '화', '수', '목', '금', '토'];
-const WEEKDAYS = 5;
-const MAX_PERIODS = 12;
+const dayNames = WEEKDAYS_KR.slice(1); // 월 … 토
 
 type Cell = { period: number; subject: string; teacher: string; replaced: boolean };
 
@@ -88,9 +78,9 @@ const dayTimes = $derived((isFull ? fullData?.day_time : weekData?.day_time) ?? 
 
 // Saturday shows only when the feed published it; 전체 is always Mon–Fri.
 const columns = $derived.by(() => {
-	if (isFull) return dayNames.slice(0, WEEKDAYS);
+	if (isFull) return dayNames.slice(0, FULL_TIMETABLE_DAYS);
 	const lastDay = days.reduce((last, day, i) => (day.length > 0 ? i + 1 : last), 0);
-	return dayNames.slice(0, Math.min(Math.max(lastDay, WEEKDAYS), dayNames.length));
+	return dayNames.slice(0, Math.min(Math.max(lastDay, FULL_TIMETABLE_DAYS), dayNames.length));
 });
 
 const maxPeriods = $derived(days.reduce((max, day) => day.reduce((m, c) => Math.max(m, c.period), max), 0));
@@ -123,18 +113,13 @@ let isSnapshotting = $state(false);
 
 async function handleSnapshot(offset: 0 | 1) {
 	if (isSnapshotting) return;
-	const row = timetableForWeek([week0, week1], mondayFor(offset), offset);
-	if (!row) {
-		adminError = '가져올 시간표가 없어요.';
-		return;
-	}
 	const hasStanding = (fullData?.timetable ?? []).some((day) => day.length > 0);
 	const label = offset === 1 ? '다음 주' : '이번 주';
 	if (hasStanding && !confirm(`전체 시간표를 ${label} 시간표로 덮어쓸까요?`)) return;
 	isSnapshotting = true;
 	adminError = null;
 	try {
-		await client.mutation(api.timetable.snapshotFull, { sessionToken, week: row.week === 1 ? 1 : 0 });
+		await client.mutation(api.timetable.snapshotFull, { sessionToken, weekStart: mondayFor(offset) });
 		selectedTab = 'full';
 	} catch (err) {
 		adminError = adminErrorMessage(err, '전체 시간표를 저장하지 못했어요. 잠시 후 다시 시도해 주세요.');

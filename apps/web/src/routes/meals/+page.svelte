@@ -12,7 +12,7 @@ import HScroll from '#lib/components/ui/HScroll.svelte';
 import SegmentedControl from '#lib/components/ui/SegmentedControl.svelte';
 import FluidHeight from '#lib/components/ui/FluidHeight.svelte';
 import { createBlurPulse } from '#lib/blurPulse.svelte.js';
-import { relativeDayLabel, shortDate, ymdParts, type DateParts } from '#lib/date.js';
+import { relativeDayLabel, shortDate, ymdParts, type DateParts } from '@class-info/backend/convex/dates';
 import { parseInfoRows } from '#lib/format.js';
 import type { PageData } from './$types.js';
 

@@ -1,69 +1,8 @@
-// Calendar math lives in the backend's dates module so server and client share
-// one implementation. Display formatters live here.
+// Display formatting for instants and notice dates. Calendar math lives in
+// the backend's dates module, shared with the server.
 
-import {
-	getNowKst as getNowInKst,
-	parseIsoDate,
-	parseYyyymmdd,
-	addDaysYyyymmdd,
-	toYyyymmdd as yyyymmdd,
-	weekdayKrUtc,
-	ymdWeekday,
-	weekOffsetBetween,
-	relativeDayLabel,
-	ddayLabel,
-	isAtOrAfterDinnerEnd,
-	noticeClock,
-	schoolDisplayClock,
-	scheduleWindow,
-	mondayYyyymmddOf
-} from '@class-info/backend/convex/dates';
+import { ymdFromIso, ymdParts } from '@class-info/backend/convex/dates';
 import { TIMEZONE_OFFSET_HOURS } from '@class-info/backend/convex/config';
-
-export {
-	getNowInKst,
-	parseIsoDate,
-	parseYyyymmdd,
-	addDaysYyyymmdd,
-	yyyymmdd,
-	weekdayKrUtc,
-	ymdWeekday,
-	weekOffsetBetween,
-	relativeDayLabel,
-	ddayLabel,
-	isAtOrAfterDinnerEnd,
-	noticeClock,
-	schoolDisplayClock,
-	scheduleWindow,
-	mondayYyyymmddOf
-};
-
-function pad2(n: number): string {
-	return String(n).padStart(2, '0');
-}
-
-export function thisMondayYyyymmdd(now: Date = getNowInKst()): string {
-	return mondayYyyymmddOf(yyyymmdd(now));
-}
-
-/** YYYYMMDD from parts, month 0-indexed. */
-export function ymdFromParts(year: number, month: number, day: number): string {
-	return `${year}${pad2(month + 1)}${pad2(day)}`;
-}
-
-export type DateParts = { year: number; month: number; day: number; weekday: string };
-
-/** YYYYMMDD → calendar parts with the Korean weekday; null when malformed. */
-export function ymdParts(ymd: string): DateParts | null {
-	const p = parseYyyymmdd(ymd);
-	return p ? { year: p.y, month: p.m, day: p.d, weekday: weekdayKrUtc(p.y, p.m, p.d) } : null;
-}
-
-/** "9/21 (월)" */
-export function shortDate(ymd: string): string {
-	const p = ymdParts(ymd);
-	return p ? `${p.month}/${p.day} (${p.weekday})` : ymd;
-}
 
 // Pinned to the school's zone, or SSR (in UTC) renders times hours off.
 // `Etc/GMT-9` is UTC+9: the sign is inverted by convention.
@@ -100,9 +39,7 @@ export function formatRelative(ts: number | string | Date, now: number = Date.no
 }
 
 /** YYYY-MM-DD → "2026년 9월 21일 (월)" */
-export function formatDate(dateString: string) {
-	const parsed = parseIsoDate(dateString);
-	if (!parsed) return dateString;
-	const weekday = weekdayKrUtc(parsed.y, parsed.m, parsed.d);
-	return `${parsed.y}년 ${parsed.m}월 ${parsed.d}일 (${weekday})`;
+export function formatDate(iso: string): string {
+	const p = ymdParts(ymdFromIso(iso) ?? '');
+	return p ? `${p.year}년 ${p.month}월 ${p.day}일 (${p.weekday})` : iso;
 }
