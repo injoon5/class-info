@@ -18,6 +18,7 @@ import { slideNone, slideY, slideYOut } from '#lib/transitions.js';
 import AdminNoticeRow from './AdminNoticeRow.svelte';
 import AdminPastMonthDetails from './AdminPastMonthDetails.svelte';
 import NoticeEditor, { emptyNoticeForm, type NoticeForm } from './NoticeEditor.svelte';
+import type { MinimalNotice } from '@class-info/backend/convex/validators';
 import type { ActionData, PageData } from './$types';
 
 const { data, form }: { data: PageData; form: ActionData } = $props();
@@ -157,6 +158,26 @@ const lastUpdatedTs = $derived.by(() => {
 	robots="noindex, nofollow"
 />
 
+{#snippet noticeRow(notice: MinimalNotice, past = false)}
+	{#if editorTarget === String(notice._id)}
+		{@render noticeEditor()}
+	{:else}
+		<AdminNoticeRow
+			{notice}
+			{past}
+			confirming={confirmingDeleteId === String(notice._id)}
+			onEdit={editNotice}
+			onAskDelete={(id) => (confirmingDeleteId = String(id))}
+			onDelete={handleDelete}
+			onCancel={() => (confirmingDeleteId = null)}
+		/>
+	{/if}
+{/snippet}
+
+{#snippet pastNoticeRow(notice: MinimalNotice)}
+	{@render noticeRow(notice, true)}
+{/snippet}
+
 {#snippet noticeEditor()}
 	<NoticeEditor
 		bind:form={noticeForm}
@@ -255,18 +276,7 @@ const lastUpdatedTs = $derived.by(() => {
 						<div class="grid gap-2">
 							{#each group.notices as notice (notice._id)}
 								<div in:slide={listSlide} out:slide={slideYOut}>
-									{#if editorTarget === String(notice._id)}
-										{@render noticeEditor()}
-									{:else}
-										<AdminNoticeRow
-											{notice}
-											confirming={confirmingDeleteId === String(notice._id)}
-											onEdit={editNotice}
-											onAskDelete={(id) => (confirmingDeleteId = String(id))}
-											onDelete={handleDelete}
-											onCancel={() => (confirmingDeleteId = null)}
-										/>
-									{/if}
+									{@render noticeRow(notice)}
 								</div>
 							{/each}
 						</div>
@@ -289,11 +299,7 @@ const lastUpdatedTs = $derived.by(() => {
 										monthKey={m.monthKey}
 										clock={data.clock}
 										{dismissedIds}
-										{editorTarget}
-										bind:confirmingDeleteId
-										editor={noticeEditor}
-										onEdit={editNotice}
-										onDelete={handleDelete}
+										row={pastNoticeRow}
 									/>
 								</Disclosure>
 							</div>

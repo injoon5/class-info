@@ -3,33 +3,24 @@ import { useQuery } from 'convex-svelte';
 import type { Snippet } from 'svelte';
 import { fade, slide } from 'svelte/transition';
 import { api } from '@class-info/backend/convex/_generated/api';
-import type { Id } from '@class-info/backend/convex/_generated/dataModel';
 import type { SchoolClock } from '@class-info/backend/convex/dates';
+import type { MinimalNotice } from '@class-info/backend/convex/validators';
 import { fadeOut, reveal, slideNone, slideY, slideYOut } from '#lib/transitions.js';
 import LoadingState from '#lib/components/ui/LoadingState.svelte';
 import ErrorState from '#lib/components/ui/ErrorState.svelte';
 import FluidHeight from '#lib/components/ui/FluidHeight.svelte';
-import AdminNoticeRow from './AdminNoticeRow.svelte';
 
-// Past notices are edited in their own row, with the page's editor.
-let {
+// The page renders each row, so past notices share its editor and delete state.
+const {
 	monthKey,
 	clock,
-	onEdit,
-	onDelete,
-	editorTarget = null,
-	editor,
 	dismissedIds,
-	confirmingDeleteId = $bindable(null)
+	row
 }: {
 	monthKey: string;
 	clock: SchoolClock;
-	onEdit: (id: Id<'notices'>) => void;
-	onDelete: (id: Id<'notices'>) => void;
-	editorTarget?: string | null;
-	editor: Snippet;
 	dismissedIds: Set<string>;
-	confirmingDeleteId?: string | null;
+	row: Snippet<[MinimalNotice]>;
 } = $props();
 
 const groups = useQuery(api.notices.pastByMonth, () => ({ monthKey, ...clock }));
@@ -69,22 +60,7 @@ const visibleGroups = $derived(
 						<div class="grid gap-2">
 							{#each group.notices as notice (notice._id)}
 								<div in:slide={listSlide} out:slide={slideYOut}>
-									{#if editorTarget === String(notice._id)}
-										{@render editor()}
-									{:else}
-										<AdminNoticeRow
-											{notice}
-											past
-											confirming={confirmingDeleteId === String(notice._id)}
-											{onEdit}
-											onAskDelete={(id) => (confirmingDeleteId = String(id))}
-											onDelete={(id) => {
-												confirmingDeleteId = null;
-												onDelete(id);
-											}}
-											onCancel={() => (confirmingDeleteId = null)}
-										/>
-									{/if}
+									{@render row(notice)}
 								</div>
 							{/each}
 						</div>
