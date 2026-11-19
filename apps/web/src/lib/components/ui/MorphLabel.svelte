@@ -68,8 +68,8 @@ $effect(() => {
 	{#key swapKey}
 		<span
 			class="absolute inset-0 flex items-center justify-center gap-2 whitespace-nowrap"
-			in:blurFade={{ duration: 240, blur: 5 }}
-			out:blurFade={{ duration: 180, blur: 5, easing: cubicIn }}
+			in:blurFade={{ duration: 240 }}
+			out:blurFade={{ duration: 180, easing: cubicIn }}
 		>{#if leading}{@render leading()}{/if}{text}</span>
 	{/key}
 </span>

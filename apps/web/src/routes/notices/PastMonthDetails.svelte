@@ -6,6 +6,7 @@ import { fade } from 'svelte/transition';
 import { fadeOut, reveal } from '#lib/transitions.js';
 import NoticeGroup from './NoticeGroup.svelte';
 import LoadingState from '#lib/components/ui/LoadingState.svelte';
+import ErrorState from '#lib/components/ui/ErrorState.svelte';
 import FluidHeight from '#lib/components/ui/FluidHeight.svelte';
 
 const { monthKey, clock }: { monthKey: string; clock: SchoolClock } = $props();
@@ -18,7 +19,7 @@ const groups = useQuery(api.notices.pastByMonth, () => ({ monthKey, ...clock }))
 		{#if groups.isLoading}
 			<LoadingState compact />
 		{:else if groups.error}
-			<div class="text-sm text-destructive py-3 text-center">불러오지 못했어요</div>
+			<ErrorState error={groups.error} compact />
 		{:else}
 			<div in:reveal out:fade={fadeOut}>
 				{#each groups.data ?? [] as group (group.date)}

@@ -109,7 +109,7 @@ function openMeal(day: MealDay) {
 				/>
 			</div>
 		{/if}
-		<HScroll blurred={blur.blurred} anchor="[data-display-day]" hint="좌우로 스크롤하세요">
+		<HScroll contentStyle={blur.style} anchor="[data-display-day]">
 			<!-- Sized against the scroll port in `cqw`: a % width under its `w-max`
 			     wrapper would grow with the dish names. 37rem floor on phones. -->
 			<div class="w-[max(100cqw,37rem)]">

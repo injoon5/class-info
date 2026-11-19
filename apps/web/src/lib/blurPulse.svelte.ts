@@ -1,12 +1,14 @@
 import { reducedMotion } from '#lib/transitions.js';
 
+const PULSE_MS = 200;
+
 // Briefly blurs a region when a selection changes (skipping the first call,
 // which is the initial mount). Create during component init.
 //
 //   const blur = createBlurPulse();
 //   $effect(() => { selected; blur.pulse(); });
-//   <div style={blur.style}>…</div>
-export function createBlurPulse(durationMs = 200) {
+//   <div style={blur.style}>…</div>   or   <HScroll contentStyle={blur.style}>
+export function createBlurPulse() {
 	let blurred = $state(false);
 	let timer: ReturnType<typeof setTimeout> | null = null;
 	let primed = false;
@@ -17,9 +19,6 @@ export function createBlurPulse(durationMs = 200) {
 	});
 
 	return {
-		get blurred() {
-			return blurred;
-		},
 		get style() {
 			return `transition: filter 150ms ease-out, opacity 150ms ease-out;${blurred ? ' filter: blur(4px); opacity: 0.7;' : ''}`;
 		},
@@ -36,7 +35,7 @@ export function createBlurPulse(durationMs = 200) {
 			timer = setTimeout(() => {
 				blurred = false;
 				timer = null;
-			}, durationMs);
+			}, PULSE_MS);
 		}
 	};
 }

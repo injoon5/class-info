@@ -1,15 +1,19 @@
 <script lang="ts">
 import { onMount, type Snippet } from 'svelte';
 
-// Horizontal scroller for meals and calendar. It runs edge to edge (negative
-// margin, padding inside), `anchor` scrolls a descendant into view once, and
-// `hint` shows arrows while there is more to see.
 const {
 	children,
-	blurred = false,
-	anchor,
-	hint
-}: { children: Snippet; blurred?: boolean; anchor?: string; hint?: string } = $props();
+	contentStyle,
+	anchor
+}: {
+	children: Snippet;
+	/** Inline style for the content wrapper, e.g. a blur pulse's `style`. */
+	contentStyle?: string;
+	/** Selector of a descendant to centre once, on first layout. */
+	anchor?: string;
+} = $props();
+
+const HINT = '좌우로 스크롤하세요';
 
 let scrollContainer = $state<HTMLDivElement>();
 
@@ -89,12 +93,7 @@ onMount(() => {
 >
 	<!-- Blur lives on this wrapper: `filter` on the scroll port kills panning
 	     on iOS. The port is a size container so children can size in `cqw`. -->
-	<div
-		class="w-max min-w-full"
-		style="transition: filter 150ms ease-out, opacity 150ms ease-out; {blurred
-			? 'filter: blur(4px); opacity: 0.7;'
-			: ''}"
-	>
+	<div class="w-max min-w-full" style={contentStyle}>
 		{@render children()}
 	</div>
 </div>
@@ -106,14 +105,13 @@ onMount(() => {
 		/* WebKit keeps a pan on the control unless it allows panning too. */
 		touch-action: pan-x pan-y;
 		container-type: inline-size;
-		container-name: hscroll;
 	}
 	.h-scroll :global(:is(button, a)) {
 		touch-action: pan-x pan-y;
 	}
 </style>
 
-{#if hint && (canScrollBack || canScrollForward)}
+{#if canScrollBack || canScrollForward}
 	<p
 		class="mt-1.5 flex items-center justify-center gap-1.5 text-xs text-muted-foreground select-none pointer-events-none print:hidden"
 	>
@@ -122,7 +120,7 @@ onMount(() => {
 			class="transition-opacity duration-150"
 			style="opacity: {canScrollBack ? 1 : 0};">←</span
 		>
-		{hint}
+		{HINT}
 		<span
 			aria-hidden="true"
 			class="transition-opacity duration-150"

@@ -10,6 +10,7 @@
 	import { SITE_NAME } from '@class-info/backend/convex/config';
 	import { refreshAll } from '$app/navigation';
 	import { isAfterDinner, schoolClock } from '@class-info/backend/convex/dates';
+	import { LIVE_REGION_ID } from '#lib/announce.js';
 
 	const { children } = $props();
 	setupConvex(PUBLIC_CONVEX_URL);
@@ -152,4 +153,4 @@
 
 	<UpdateToast />
 
-    <div aria-live="polite" aria-atomic="true" class="sr-only" id="aria-live-region"></div>
+    <div aria-live="polite" aria-atomic="true" class="sr-only" id={LIVE_REGION_ID}></div>

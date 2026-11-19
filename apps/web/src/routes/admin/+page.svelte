@@ -195,7 +195,7 @@ const lastUpdatedTs = $derived.by(() => {
 
 				<button
 					type="submit"
-					class="pressable-lg w-full h-12 rounded-xl bg-primary font-semibold text-primary-foreground text-sm transition-opacity duration-150 pointer:hover:opacity-90"
+					class="pressable w-full h-12 rounded-xl bg-primary font-semibold text-primary-foreground text-sm transition-opacity duration-150 pointer:hover:opacity-90"
 				>
 					로그인
 				</button>

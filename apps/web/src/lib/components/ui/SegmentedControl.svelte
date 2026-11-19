@@ -2,24 +2,14 @@
 import { Tween } from 'svelte/motion';
 import { tweenMove } from '#lib/transitions.js';
 
-// Sliding segmented control; any number of equal segments.
 type Option = { value: Value; label: string; event?: string; eventProps?: string };
 
-let {
-	options,
-	value = $bindable(),
-	onchange
-}: { options: Option[]; value: Value; onchange?: (v: Value) => void } = $props();
+let { options, value = $bindable() }: { options: Option[]; value: Value } = $props();
 
 // An unknown value holds the first segment instead of sliding off the track.
 const activeIndex = $derived(Math.max(0, options.findIndex((o) => o.value === value)));
 const thumbX = Tween.of(() => activeIndex * 100, tweenMove);
 const thumbWidth = $derived(`calc((100% - 0.5rem) / ${Math.max(1, options.length)})`);
-
-function select(v: Value) {
-	value = v;
-	onchange?.(v);
-}
 </script>
 
 <div class="flex justify-center">
@@ -33,7 +23,7 @@ function select(v: Value) {
 			<button
 				class="flex-1 relative z-10 px-3 py-1 rounded-lg font-semibold transition-colors duration-150
 					{value === option.value ? 'text-foreground' : 'text-muted-foreground pointer:hover:text-foreground'}"
-				onclick={() => select(option.value)}
+				onclick={() => (value = option.value)}
 				aria-pressed={value === option.value}
 				type="button"
 				data-s-event={option.event}

@@ -138,7 +138,6 @@ let {
 					morph
 					text={isSubmitting ? '저장 중…' : isEditing ? '수정' : '추가'}
 					pending={isSubmitting}
-					disabled={isSubmitting}
 					class="px-5 py-2.5"
 				/>
 				<PillButton type="button" text="취소" variant="secondary" onclick={oncancel} disabled={isSubmitting} class="px-5 py-2.5" />

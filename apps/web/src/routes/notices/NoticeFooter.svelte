@@ -1,6 +1,7 @@
 <script lang="ts">
 import { generateCopyText, type DayGroup } from '#lib/notices.js';
 import MorphLabel from '#lib/components/ui/MorphLabel.svelte';
+import { announce } from '#lib/announce.js';
 
 const { notices }: { notices: DayGroup[] } = $props();
 
@@ -11,11 +12,6 @@ const copyText = $derived(generateCopyText(notices));
 const canCopy = $derived(
 	!!copyText && typeof navigator !== 'undefined' && !!navigator.clipboard && window.isSecureContext
 );
-
-function announce(message: string) {
-	const region = document.getElementById('aria-live-region');
-	if (region) region.textContent = message;
-}
 
 async function copyToClipboard() {
 	if (!copyText) return;

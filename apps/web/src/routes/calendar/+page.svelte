@@ -221,7 +221,7 @@ async function handleDeleteCustomEvent(id: Id<'schedules'>) {
 		{@render navButton(1)}
 	</div>
 
-	<HScroll anchor="[data-today-cell]" hint="좌우로 스크롤하세요">
+	<HScroll anchor="[data-today-cell]">
 		<!-- A fixed width: under HScroll's `w-max` wrapper a min-width alone let
 		     long event titles widen the grid month to month. -->
 		<div class="w-[max(100cqw,40rem)] border border-border rounded-xl overflow-hidden" aria-busy={eventsPending}>
@@ -396,7 +396,7 @@ async function handleDeleteCustomEvent(id: Id<'schedules'>) {
 							text={isSaving ? '저장 중…' : '저장'}
 							pending={isSaving}
 							onclick={handleAddEvent}
-							disabled={isSaving || !newEventTitle.trim()}
+							disabled={!newEventTitle.trim()}
 							class="flex-1"
 						/>
 						<PillButton text="취소" variant="secondary" onclick={closeForm} />

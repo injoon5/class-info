@@ -12,7 +12,7 @@ import RelativeTime from '#lib/components/ui/RelativeTime.svelte';
 import SegmentedControl from '#lib/components/ui/SegmentedControl.svelte';
 import { createBlurPulse } from '#lib/blurPulse.svelte.js';
 import { focusOnElement } from '#lib/actions/focus.js';
-import { blurActiveElement, holdComposingEnter } from '#lib/dom.js';
+import { holdComposingEnter } from '#lib/dom.js';
 import { WEEKDAYS_KR, addDays, ymdParts } from '@class-info/backend/convex/dates';
 import { FULL_TIMETABLE_DAYS, MAX_PERIODS } from '@class-info/backend/convex/validators';
 import { adminErrorMessage } from '#lib/errors.js';
@@ -164,7 +164,6 @@ async function writeSlot(subject: string, teacher: string) {
 			subject,
 			teacher
 		});
-		blurActiveElement();
 		editorOpen = false;
 	} catch (err) {
 		slotError = adminErrorMessage(err, '저장하지 못했어요. 잠시 후 다시 시도해 주세요.');
@@ -324,7 +323,6 @@ async function writeSlot(subject: string, teacher: string) {
 						morph
 						text={isSnapshotting ? '저장 중…' : '전체 시간표로 저장'}
 						pending={isSnapshotting}
-						disabled={isSnapshotting}
 						onclick={() => handleSnapshot(selectedWeek)}
 					/>
 				{/if}
@@ -397,7 +395,6 @@ async function writeSlot(subject: string, teacher: string) {
 				morph
 				text={isSavingSlot ? '저장 중…' : '저장'}
 				pending={isSavingSlot}
-				disabled={isSavingSlot}
 				class="flex-1"
 			/>
 			<PillButton text="비우기" variant="secondary" disabled={isSavingSlot} onclick={() => writeSlot('', '')} />

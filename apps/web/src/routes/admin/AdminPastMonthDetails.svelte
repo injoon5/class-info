@@ -7,6 +7,7 @@ import type { Id } from '@class-info/backend/convex/_generated/dataModel';
 import type { SchoolClock } from '@class-info/backend/convex/dates';
 import { fadeOut, reveal, slideNone, slideY, slideYOut } from '#lib/transitions.js';
 import LoadingState from '#lib/components/ui/LoadingState.svelte';
+import ErrorState from '#lib/components/ui/ErrorState.svelte';
 import FluidHeight from '#lib/components/ui/FluidHeight.svelte';
 import AdminNoticeRow from './AdminNoticeRow.svelte';
 
@@ -57,7 +58,7 @@ const visibleGroups = $derived(
 		{#if groups.isLoading}
 			<LoadingState compact />
 		{:else if groups.error}
-			<div class="text-sm text-destructive py-3 text-center">불러오지 못했어요</div>
+			<ErrorState error={groups.error} compact />
 		{:else}
 			<div in:reveal out:fade={fadeOut}>
 				{#each visibleGroups as group (group.date)}

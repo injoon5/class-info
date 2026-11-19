@@ -2,7 +2,7 @@
 import { Tween } from 'svelte/motion';
 import { tweenMove } from '#lib/transitions.js';
 import type { Snippet } from 'svelte';
-import { clampWindowScroll, scrollingEl, scrollIsTouchDriven, visibleTop } from '#lib/scroll.js';
+import { clampWindowScroll, followShrink, scrollIsTouchDriven, visibleTop } from '#lib/scroll.js';
 
 // Tweens height when `key` changes (spinner → list); follows other size
 // changes instantly. Uses `overflow: clip`, since `hidden` makes a scroll
@@ -76,7 +76,7 @@ $effect(() => {
 });
 
 // Decided once per shrink rather than measured every frame.
-let followShrink: boolean | null = null;
+let followsShrink: boolean | null = null;
 
 $effect(() => {
 	const h = height.current;
@@ -91,22 +91,19 @@ $effect(() => {
 	lastClip = h;
 
 	if (dh > 0 && compensating && !scrollIsTouchDriven()) {
-		if (followShrink === null) {
+		if (followsShrink === null) {
 			// Follow only a block that starts above the visible area.
-			followShrink = !!outer && outer.getBoundingClientRect().top < visibleTop();
+			followsShrink = !!outer && outer.getBoundingClientRect().top < visibleTop();
 		}
-		if (followShrink) {
-			const el = scrollingEl();
-			el.scrollTop = Math.max(0, el.scrollTop - dh);
-		}
-		clampWindowScroll();
+		if (followsShrink) followShrink(dh);
+		else clampWindowScroll();
 	}
 
-	if (dh <= 0) followShrink = null;
+	if (dh <= 0) followsShrink = null;
 
 	if (settled && compensating) {
 		compensating = false;
-		followShrink = null;
+		followsShrink = null;
 		if (!scrollIsTouchDriven()) clampWindowScroll();
 	}
 });

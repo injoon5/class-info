@@ -1,7 +1,7 @@
 <script lang="ts">
 import { slide } from 'svelte/transition';
-import { reducedMotion, slideY, slideYOut } from '#lib/transitions.js';
-import DisclosureCaret from './DisclosureCaret.svelte';
+import { Tween } from 'svelte/motion';
+import { reducedMotion, slideY, slideYOut, tweenShort } from '#lib/transitions.js';
 import { untrack, type Snippet } from 'svelte';
 
 // A section the page opens and closes (one past month at a time). The
@@ -21,6 +21,8 @@ const {
 	class?: string;
 	children: Snippet;
 } = $props();
+
+const caretRotate = Tween.of(() => (open ? 90 : 0), tweenShort);
 
 let closing = $state(false);
 let wasOpen = untrack(() => open);
@@ -44,7 +46,17 @@ $effect(() => {
 			onToggle();
 		}}
 	>
-		<DisclosureCaret {open} />
+		<svg
+			viewBox="0 0 20 20"
+			fill="none"
+			stroke="currentColor"
+			stroke-width="2"
+			class="w-4 h-4 flex-shrink-0 text-muted-foreground"
+			style="transform: rotate({caretRotate.current}deg)"
+			aria-hidden="true"
+		>
+			<path stroke-linecap="round" stroke-linejoin="round" d="M7.5 4.5l5 5.5-5 5.5" />
+		</svg>
 		{label}
 	</summary>
 	{#if open}
