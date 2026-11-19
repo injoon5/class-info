@@ -19,7 +19,7 @@ class-info/
 - **Backend**: Convex (real-time database and backend functions)
 - **Build System**: Turborepo with pnpm workspaces
 - **Package Manager**: pnpm (v10, pinned via `packageManager`)
-- **Node**: >= 22.17
+- **Node**: 22.17+ or 24 (`engines` caps it below 25: Vercel builds on the newest version the range allows, and adapter-vercel rejects majors it doesn't support)
 
 ## Essential Commands
 
