@@ -1,5 +1,6 @@
 <script lang="ts">
-import { generateCopyText, type DayGroup } from '#lib/notices.js';
+import type { DayGroup } from '@class-info/backend/convex/validators';
+import { generateCopyText } from '#lib/notices.js';
 import MorphLabel from '#lib/components/ui/MorphLabel.svelte';
 import { announce } from '#lib/announce.js';
 

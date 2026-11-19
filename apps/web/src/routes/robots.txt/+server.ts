@@ -7,7 +7,6 @@ export const GET: RequestHandler = ({ url }) => {
 		'Allow: /',
 		'Disallow: /admin',
 		'Disallow: /admin/',
-		'Disallow: /api/',
 		'',
 		`Sitemap: ${origin}/sitemap.xml`,
 		'',

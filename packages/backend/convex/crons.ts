@@ -9,10 +9,10 @@ const utcHour = (localHour: number) => (((localHour - TIMEZONE_OFFSET_HOURS) % 2
 
 for (const localHour of WEEK_POLL_HOURS) {
   for (const [name, feed] of Object.entries(WEEKLY_FEEDS)) {
-    for (const offsetWeeks of WEEK_OFFSETS) {
+    for (const [i, offsetWeeks] of WEEK_OFFSETS.entries()) {
       crons.daily(
         `fetch ${name} week+${offsetWeeks} @${localHour}h`,
-        { hourUTC: utcHour(localHour), minuteUTC: offsetWeeks },
+        { hourUTC: utcHour(localHour), minuteUTC: i }, // a minute apart, not all at once
         feed,
         { offsetWeeks }
       );

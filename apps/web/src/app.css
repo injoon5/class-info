@@ -278,8 +278,7 @@ select:focus-visible {
 	}
 
 	a[href='#main'],
-	header,
-	#aria-live-region {
+	header {
 		display: none !important;
 	}
 

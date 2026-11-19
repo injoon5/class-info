@@ -10,7 +10,6 @@ import {
   isSchoolYmd,
   isVacationTitle,
   mondayOf,
-  noticeCutoff,
   relativeDayLabel,
   resolveDisplayDay,
   scheduleWindow,
@@ -80,11 +79,6 @@ describe("school clock", () => {
     expect(isAfterDinner(at(DINNER_END_HOUR - 1))).toBe(false);
     expect(isAfterDinner(at(DINNER_END_HOUR))).toBe(true);
     expect(isAfterDinner(at(23))).toBe(true);
-  });
-
-  test("notices due today turn past at the rollover", () => {
-    expect(noticeCutoff({ today: THU, afterRollover: false })).toBe("2026-08-20");
-    expect(noticeCutoff({ today: "20261231", afterRollover: true })).toBe("2027-01-01");
   });
 });
 

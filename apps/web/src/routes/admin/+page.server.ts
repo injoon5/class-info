@@ -3,11 +3,11 @@ import { redirect } from '@sveltejs/kit';
 import { api } from '@class-info/backend/convex/_generated/api';
 import { schoolClock } from '@class-info/backend/convex/dates';
 import { PIN_PATTERN } from '@class-info/backend/convex/validators';
-import { getAdminSession, SESSION_COOKIE, SESSION_MAX_AGE } from '#lib/server/auth.js';
+import { clearSessionCookie, getAdminSession, SESSION_COOKIE, setSessionCookie } from '#lib/server/auth.js';
 import { convexHttp, orFallback } from '#lib/convex.js';
 
-export const load: PageServerLoad = async ({ cookies }) => {
-	const session = await getAdminSession(cookies);
+export const load: PageServerLoad = async ({ cookies, url }) => {
+	const session = await getAdminSession(cookies, url);
 	const clock = schoolClock();
 	// Only the authenticated panel renders the list, so the PIN screen skips it.
 	const overview = session.isAuthenticated
@@ -25,39 +25,27 @@ export const actions: Actions = {
 			return { success: false, error: '잘못된 PIN입니다' };
 		}
 
+		let result;
 		try {
-			const result = await convexHttp().mutation(api.settings.login, { pin });
-			if (result.ok) {
-				cookies.set(SESSION_COOKIE, result.token, {
-					path: '/',
-					maxAge: SESSION_MAX_AGE,
-					sameSite: 'strict',
-					secure: url.protocol === 'https:',
-					httpOnly: true
-				});
-				return { success: true };
-			}
-		} catch {
-			// fall through to the generic error
+			result = await convexHttp().mutation(api.settings.login, { pin });
+		} catch (err) {
+			console.error('admin login', err);
+			return { success: false, error: '로그인하지 못했어요. 잠시 후 다시 시도해 주세요.' };
 		}
-
-		return { success: false, error: '잘못된 PIN입니다' };
+		if (!result.ok) return { success: false, error: '잘못된 PIN입니다' };
+		setSessionCookie(cookies, url, result.token);
+		return { success: true };
 	},
 
 	logout: async ({ cookies, url }) => {
 		const token = cookies.get(SESSION_COOKIE);
 		if (token) {
-			try {
-				await convexHttp().mutation(api.settings.logout, { token });
-			} catch {
-				// best-effort server-side revocation
-			}
+			// Best effort: the session also expires on its own.
+			await convexHttp()
+				.mutation(api.settings.logout, { token })
+				.catch((err) => console.error('admin logout', err));
 		}
-		cookies.delete(SESSION_COOKIE, {
-			path: '/',
-			sameSite: 'strict',
-			secure: url.protocol === 'https:'
-		});
+		clearSessionCookie(cookies, url);
 		redirect(302, '/');
 	}
 };

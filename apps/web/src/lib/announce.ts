@@ -1,5 +1,4 @@
-// The root layout renders one polite live region with this id (app.css's
-// print rules hide it by the same id).
+// The root layout renders one polite live region with this id.
 export const LIVE_REGION_ID = 'aria-live-region';
 
 /** Reads `message` out to screen readers through the layout's live region. */

@@ -8,7 +8,7 @@ import NoticeCard from '#lib/components/notices/NoticeCard.svelte';
 import SectionHeader from '#lib/components/ui/SectionHeader.svelte';
 import { addDays, dayLabel, ddayLabel, weekdayOf, ymdParts } from '@class-info/backend/convex/dates';
 import { eventChrome } from '#lib/eventChrome.js';
-import type { DayGroup, MinimalNotice } from '#lib/notices.js';
+import type { DayGroup, MinimalNotice } from '@class-info/backend/convex/validators';
 import type { PageData } from './$types.js';
 
 const { data }: { data: PageData } = $props();

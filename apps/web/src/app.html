@@ -2,7 +2,6 @@
 <html lang="ko" class="dark:[color-scheme:dark]">
 	<head>
 		<script nonce="%sveltekit.nonce%">
-			// Enable dark mode based only on OS preference
 			function updateTheme() {
 				if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
 					document.documentElement.classList.add('dark')
@@ -11,10 +10,8 @@
 				}
 			}
 			
-			// Set initial theme
 			updateTheme()
 			
-			// Listen for system theme changes
 			window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', updateTheme)
 		</script>
 		<meta charset="utf-8" />

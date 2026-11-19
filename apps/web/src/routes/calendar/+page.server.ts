@@ -4,7 +4,7 @@ import { schoolClock } from '@class-info/backend/convex/dates';
 import { convexHttp, orFallback } from '#lib/convex.js';
 import { getAdminSession } from '#lib/server/auth.js';
 
-export const load = (async ({ cookies }) => {
+export const load = (async ({ cookies, url }) => {
 	const { today } = schoolClock();
 	const year = today.slice(0, 4);
 	const [events, session] = await Promise.all([
@@ -13,7 +13,7 @@ export const load = (async ({ cookies }) => {
 			undefined,
 			'calendar events'
 		),
-		getAdminSession(cookies)
+		getAdminSession(cookies, url)
 	]);
 	return { events, todayYmd: today, ...session };
 }) satisfies PageServerLoad;

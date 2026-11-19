@@ -1,16 +1,16 @@
 import { ConvexError, v, type Infer } from "convex/values";
 import { query, type QueryCtx } from "./_generated/server";
-import type { Doc, Id } from "./_generated/dataModel";
+import type { Doc } from "./_generated/dataModel";
 import { adminMutation } from "./auth";
 import { summarizeDescription } from "./text";
 import { projectFile } from "./files";
-import { assertYmd, dayLabel, noticeCutoff, ymdFromIso, type SchoolClock } from "./dates";
+import { addDays, assertYmd, dayLabel, isoFromYmd, ymdFromIso, type SchoolClock } from "./dates";
 import {
   MAX_ATTACHMENTS,
   dayGroup,
   monthSummary,
   noticeDoc,
-  noticeType,
+  noticeFields,
   publicFile,
   schoolClockArgs,
   type DayGroup,
@@ -22,21 +22,10 @@ import {
 const TITLE_MAX = 200;
 const SUBJECT_MAX = 80;
 const DESCRIPTION_MAX = 100_000;
-const SLUG_MAX = 48;
-const SLUG_RE = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 const DETAIL_ID_MAX = 128;
 const SLUG_ATTEMPTS = 8;
 
-const editableFields = {
-  title: v.string(),
-  subject: v.string(),
-  type: noticeType,
-  description: v.string(),
-  dueDate: v.string(),
-  files: v.optional(v.array(v.id("files"))),
-  slug: v.optional(v.string()),
-};
-const editable = v.object(editableFields);
+const editable = v.object(noticeFields).omit("createdAt", "updatedAt", "slug");
 type EditableFields = Infer<typeof editable>;
 
 // ── Writes ───────────────────────────────────────────────────────────────
@@ -53,39 +42,21 @@ function randomSlug(): string {
   return Array.from(bytes, (b) => String.fromCharCode(97 + (b % 26))).join("");
 }
 
-// A slug is "taken" only if another notice (never the one being updated) uses it.
-async function isSlugTaken(ctx: QueryCtx, slug: string, self?: Id<"notices">): Promise<boolean> {
-  const hit = await ctx.db
-    .query("notices")
-    .withIndex("by_slug", (q) => q.eq("slug", slug))
-    .first();
-  return Boolean(hit && hit._id !== self);
-}
-
-// The requested slug, checked; or a fresh random one when none is requested.
-async function resolveSlug(ctx: QueryCtx, requested: string | undefined, self?: Id<"notices">): Promise<string> {
-  const slug = requested?.trim().toLowerCase();
-  if (slug) {
-    if (slug.length > SLUG_MAX || !SLUG_RE.test(slug)) {
-      throw new Error("Invalid slug; use lowercase letters, numbers, and hyphens");
-    }
-    if (await isSlugTaken(ctx, slug, self)) throw new Error("Slug already in use");
-    return slug;
-  }
+async function uniqueSlug(ctx: QueryCtx): Promise<string> {
   for (let attempt = 0; attempt < SLUG_ATTEMPTS; attempt++) {
-    const candidate = randomSlug();
-    if (!(await isSlugTaken(ctx, candidate, self))) return candidate;
+    const slug = randomSlug();
+    const taken = await ctx.db
+      .query("notices")
+      .withIndex("by_slug", (q) => q.eq("slug", slug))
+      .first();
+    if (!taken) return slug;
   }
   throw new Error("Could not allocate a unique slug");
 }
 
-// The validated, trimmed fields to store. `slug` is resolved only when given.
-async function prepareWrite(
-  ctx: QueryCtx,
-  fields: EditableFields,
-  self?: Id<"notices">
-): Promise<EditableFields> {
-  const { slug, files, ...rest } = fields;
+// The validated, trimmed fields to store.
+async function prepareWrite(ctx: QueryCtx, fields: EditableFields): Promise<EditableFields> {
+  const { files, ...rest } = fields;
   const title = rest.title.trim();
   const subject = rest.subject.trim();
   assertLength(title, TITLE_MAX, "제목");
@@ -96,23 +67,25 @@ async function prepareWrite(
   const out: EditableFields = { ...rest, title, subject };
   if (files !== undefined) {
     const unique = [...new Set(files)];
-    if (unique.length > MAX_ATTACHMENTS) throw new Error("Too many files");
+    if (unique.length > MAX_ATTACHMENTS) {
+      throw new ConvexError(`파일은 ${MAX_ATTACHMENTS}개까지 첨부할 수 있어요.`);
+    }
     for (const id of unique) {
-      if (!(await ctx.db.get(id))) throw new Error("File not found");
+      if (!(await ctx.db.get(id))) throw new ConvexError("첨부 파일을 찾을 수 없어요. 다시 올려 주세요.");
     }
     out.files = unique;
   }
-  if (slug !== undefined || !self) out.slug = await resolveSlug(ctx, slug, self);
   return out;
 }
 
 export const create = adminMutation({
-  args: editableFields,
+  args: editable.fields,
   returns: v.id("notices"),
   handler: async (ctx, fields) => {
     const now = Date.now();
     return await ctx.db.insert("notices", {
       ...(await prepareWrite(ctx, fields)),
+      slug: await uniqueSlug(ctx),
       createdAt: now,
       updatedAt: now,
     });
@@ -121,11 +94,11 @@ export const create = adminMutation({
 
 // Attachments dropped here are deleted later by files.collectOrphans.
 export const update = adminMutation({
-  args: { id: v.id("notices"), ...editableFields },
+  args: { id: v.id("notices"), ...editable.fields },
   returns: v.null(),
   handler: async (ctx, { id, ...fields }) => {
     if (!(await ctx.db.get(id))) throw new Error("Notice not found");
-    await ctx.db.patch(id, { ...(await prepareWrite(ctx, fields, id)), updatedAt: Date.now() });
+    await ctx.db.patch(id, { ...(await prepareWrite(ctx, fields)), updatedAt: Date.now() });
     return null;
   },
 });
@@ -185,9 +158,10 @@ function summarizeMonths(rows: Doc<"notices">[]): MonthSummary[] {
   return [...months.values()].reverse();
 }
 
-function cutoffOf(clock: SchoolClock): string {
-  assertYmd(clock.today, "today");
-  return noticeCutoff(clock);
+// First due date (ISO) still listed as current: tomorrow once past the rollover.
+function cutoffOf({ today, afterRollover }: SchoolClock): string {
+  assertYmd(today, "today");
+  return isoFromYmd(afterRollover ? addDays(today, 1) : today);
 }
 
 async function currentRows(ctx: QueryCtx, cutoff: string) {

@@ -51,13 +51,12 @@ export default defineConfig({
 						'self',
 						'https://*.convex.cloud',
 						'wss://*.convex.cloud',
-						'https://*.convex.site',
 						'https://collector.onedollarstats.com',
 						new URL(FILES_BASE_URL).origin as CspSource,
 						'https://*.r2.cloudflarestorage.com',
 						...convexOrigins()
 					],
-					'frame-src': ['https://www.youtube.com', 'https://www.youtube-nocookie.com'],
+					'frame-src': ['https://www.youtube.com'],
 					'media-src': ['self', 'https:']
 				}
 			}

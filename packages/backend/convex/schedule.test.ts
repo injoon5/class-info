@@ -156,7 +156,7 @@ describe("schedule D-days", () => {
     expect(ddays.map((e) => e.title)).toEqual(["수능", "졸업식"]);
   });
 
-  // Un-flagging patches `dday: false` rather than removing the key, so `false`
+  // Un-flagging stores `dday: false` rather than removing the key, so `false`
   // rows sit in the same index as the `true` ones and must not be read back.
   test("an un-flagged event drops off home", async () => {
     const t = await withSchedule([{ date: NEXT_MON, title: "수행평가", dday: true }]);
@@ -165,10 +165,8 @@ describe("schedule D-days", () => {
     const before = await t.query(api.schedule.homeSchedule, clock);
     expect(before.ddays.map((e) => e.title)).toEqual(["수행평가"]);
 
-    const id = before.ddays[0]!._id;
-    await t.run(async (ctx) => {
-      await ctx.db.patch(id, { dday: false });
-    });
+    await t.run((ctx) => ctx.db.insert("sessions", { token: "admin", createdAt: 0, expiresAt: Date.now() + 60_000 }));
+    await t.mutation(api.schedule.setEventDday, { sessionToken: "admin", id: before.ddays[0]!._id, dday: false });
 
     const after = await t.query(api.schedule.homeSchedule, clock);
     expect(after.ddays).toEqual([]);

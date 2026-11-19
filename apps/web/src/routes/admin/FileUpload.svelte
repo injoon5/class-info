@@ -4,7 +4,9 @@ import { fly } from 'svelte/transition';
 import { api } from '@class-info/backend/convex/_generated/api';
 import type { Id } from '@class-info/backend/convex/_generated/dataModel';
 import {
+	ATTACHMENT_ACCEPT,
 	ATTACHMENT_MAX_BYTES,
+	MAX_ATTACHMENTS,
 	isAttachmentType,
 	type PublicFile
 } from '@class-info/backend/convex/validators';
@@ -33,6 +35,7 @@ let uploadError = $state<string | null>(null);
 let copiedFileId = $state<Id<'files'> | null>(null);
 let copyTimer: ReturnType<typeof setTimeout> | null = null;
 let uploadedFiles = $state<PublicFile[]>([]);
+let fileInput = $state<HTMLInputElement>();
 
 // Mirror the `files` prop; the token drops a slower, superseded load.
 let loadToken = 0;
@@ -68,6 +71,10 @@ async function uploadOne(file: File): Promise<Id<'files'>> {
 
 async function handleFileUpload(fileList: FileList) {
 	if (!fileList.length) return;
+	if (files.length + fileList.length > MAX_ATTACHMENTS) {
+		uploadError = `파일은 ${MAX_ATTACHMENTS}개까지 첨부할 수 있습니다`;
+		return;
+	}
 	isUploading = true;
 	uploadError = null;
 	const rejected: string[] = [];
@@ -156,14 +163,14 @@ function handleDrop(e: DragEvent) {
 		<input
 			type="file"
 			multiple
-			accept="image/*,application/pdf"
+			accept={ATTACHMENT_ACCEPT}
+			bind:this={fileInput}
 			onchange={async (e) => {
 				const input = e.currentTarget;
 				if (input.files) await handleFileUpload(input.files);
 				input.value = '';
 			}}
 			class="hidden"
-			id="file-upload"
 			disabled={isUploading}
 		/>
 
@@ -174,7 +181,7 @@ function handleDrop(e: DragEvent) {
 			</div>
 		{:else}
 			<p class="text-sm text-muted-foreground mb-3">이미지나 PDF 파일을 드래그하거나 클릭해서 업로드하세요</p>
-			<PillButton text="파일 추가" variant="secondary" onclick={() => document.getElementById('file-upload')?.click()} />
+			<PillButton text="파일 추가" variant="secondary" onclick={() => fileInput?.click()} />
 		{/if}
 	</div>
 

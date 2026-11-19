@@ -9,6 +9,8 @@ import {
   DINNER_END_HOUR,
   TIMEZONE_OFFSET_HOURS,
 } from "./config";
+import type { Infer } from "convex/values";
+import type { eventSource } from "./validators";
 
 export const WEEKDAYS_KR = ["일", "월", "화", "수", "목", "금", "토"] as const;
 
@@ -129,9 +131,9 @@ export function isAfterDinner(now: number = Date.now()): boolean {
   return schoolTime(now).hour >= DINNER_END_HOUR;
 }
 
-/** First due date (ISO) still listed as current: tomorrow once past the rollover. */
-export function noticeCutoff({ today, afterRollover }: SchoolClock): string {
-  return isoFromYmd(afterRollover ? addDays(today, 1) : today);
+/** Monday of the week `offsetWeeks` from this one (0 = this week). */
+export function weekStartFor(offsetWeeks: number, now: number = Date.now()): string {
+  return addDays(mondayOf(schoolClock(now).today), offsetWeeks * 7);
 }
 
 // ── School days ──────────────────────────────────────────────────────────
@@ -150,7 +152,7 @@ export type ScheduleHint = {
   date: string;
   title: string;
   eventType?: string | null;
-  source: "school" | "custom";
+  source: Infer<typeof eventSource>;
 };
 
 // A break marker is the whole title ("여름방학", "겨울방학 시작"). 방학식 is

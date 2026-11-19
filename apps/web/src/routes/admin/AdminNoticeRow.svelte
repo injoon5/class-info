@@ -1,6 +1,7 @@
 <script lang="ts">
 import type { Id } from '@class-info/backend/convex/_generated/dataModel';
-import { noticeTypeClass, type MinimalNotice } from '#lib/notices.js';
+import type { MinimalNotice } from '@class-info/backend/convex/validators';
+import { noticeTypeClass } from '#lib/notices.js';
 import ConfirmDeleteActions from '#lib/components/ui/ConfirmDeleteActions.svelte';
 import FileIcon from '#lib/components/ui/FileIcon.svelte';
 

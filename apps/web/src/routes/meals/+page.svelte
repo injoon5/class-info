@@ -2,7 +2,13 @@
 import { useQuery } from 'convex-svelte';
 import { api } from '@class-info/backend/convex/_generated/api';
 import { CLASS_LABEL } from '@class-info/backend/convex/config';
-import type { MealDay, PublicMeal } from '@class-info/backend/convex/validators';
+import {
+	DINNER,
+	LUNCH,
+	type MealDay,
+	type PublicMeal,
+	type ServedMealType
+} from '@class-info/backend/convex/validators';
 import PageMeta from '#lib/components/PageMeta.svelte';
 import LoadingState from '#lib/components/ui/LoadingState.svelte';
 import ErrorState from '#lib/components/ui/ErrorState.svelte';
@@ -16,11 +22,10 @@ import { relativeDayLabel, shortDate, ymdParts, type DateParts } from '@class-in
 import { parseInfoRows } from '#lib/format.js';
 import type { PageData } from './$types.js';
 
-type MealType = '중식' | '석식';
 
 const { data }: { data: PageData } = $props();
 
-let selectedMealType = $state<MealType>('중식');
+let selectedMealType = $state<ServedMealType>(LUNCH);
 
 const blur = createBlurPulse();
 $effect(() => {
@@ -43,18 +48,18 @@ const availableMealTypes = $derived(mealsQuery.data?.availableMealTypes ?? []);
 // Fall back to whatever is served if the selected type disappears.
 $effect(() => {
 	const first = availableMealTypes[0];
-	if (first && !availableMealTypes.includes(selectedMealType)) selectedMealType = first as MealType;
+	if (first && !availableMealTypes.includes(selectedMealType)) selectedMealType = first;
 });
 
-function mealFor(day: MealDay, type: MealType): PublicMeal | null {
-	return type === '중식' ? day.lunch : day.dinner;
+function mealFor(day: MealDay, type: ServedMealType): PublicMeal | null {
+	return type === LUNCH ? day.lunch : day.dinner;
 }
 
 // On the 석식 tab the highlight stays on today until tonight's dinner is over,
 // even though the rest of the app has already rolled over to the next day.
 const todayDinner = $derived(weeks.flat().find((d) => d.date === data.todayYmd)?.dinner ?? null);
 const highlightDay = $derived(
-	selectedMealType === '석식' && !data.afterDinner && todayDinner ? data.todayYmd : data.displayDay
+	selectedMealType === DINNER && !data.afterDinner && todayDinner ? data.todayYmd : data.displayDay
 );
 
 let selected = $state<{ meal: PublicMeal; date: DateParts } | null>(null);
@@ -103,8 +108,8 @@ function openMeal(day: MealDay) {
 				<SegmentedControl
 					bind:value={selectedMealType}
 					options={[
-						{ value: '중식', label: '중식', event: 'Meal Type Toggle', eventProps: 'type=lunch' },
-						{ value: '석식', label: '석식', event: 'Meal Type Toggle', eventProps: 'type=dinner' }
+						{ value: LUNCH, label: LUNCH, event: 'Meal Type Toggle', eventProps: 'type=lunch' },
+						{ value: DINNER, label: DINNER, event: 'Meal Type Toggle', eventProps: 'type=dinner' }
 					]}
 				/>
 			</div>

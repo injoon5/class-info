@@ -4,6 +4,7 @@ import {
   eventSource,
   fileFields,
   fullTimetableFields,
+  mealFields,
   noticeFields,
   timetableFields,
 } from "./validators";
@@ -33,18 +34,7 @@ export default defineSchema({
     .index("by_token", ["token"])
     .index("by_expires_at", ["expiresAt"]),
 
-  meals: defineTable({
-    date: v.string(), // YYYYMMDD
-    mealType: v.string(), // "중식" | "석식" as the feed names them
-    dishes: v.array(v.string()), // as the feed sends them; cleaned on read
-    originInfo: v.string(),
-    calories: v.union(v.string(), v.null()),
-    nutrients: v.union(v.string(), v.null()),
-    schoolCode: v.string(),
-    schoolName: v.string(),
-    loadedAt: v.string(),
-    editedAt: v.number(),
-  }).index("by_date_type", ["date", "mealType"]),
+  meals: defineTable(mealFields).index("by_date_type", ["date", "mealType"]),
 
   schedules: defineTable({
     date: v.string(), // YYYYMMDD

@@ -1,6 +1,6 @@
 // The contract between the database, the Convex functions and the web app:
 // table fields, public shapes, and the limits both sides check against.
-// Pure (no function definitions), so the web app imports it at runtime.
+// Defines no Convex functions, so the web app imports it at runtime.
 
 import { v, type Infer } from "convex/values";
 
@@ -77,6 +77,7 @@ export const monthSummary = v.object({
 
 export const MAX_ATTACHMENTS = 16;
 export const ATTACHMENT_MAX_BYTES = 10 * 1024 * 1024;
+export const ATTACHMENT_ACCEPT = "image/*,application/pdf"; // for <input accept>
 
 export function isAttachmentType(mime: string): boolean {
   return mime.startsWith("image/") || mime === "application/pdf";
@@ -111,24 +112,22 @@ export const timetableSlot = v.object({
   original: v.union(v.null(), v.object({ period: v.number(), ...classSlot })),
 });
 
-export const timetableFields = {
-  day_time: v.array(v.string()),
-  timetable: v.array(v.array(timetableSlot)),
-  update_date: v.string(),
-  // Monday (YYYYMMDD) of the week this row holds. Optional and `week` (the
-  // fetch-time offset rows used to be keyed by) remain only for old rows.
-  weekStart: v.optional(v.string()),
-  week: v.optional(v.number()),
-  editedAt: v.number(),
-};
-
+// One fetched week, as stored and as served. `weekStart` is its Monday.
 export const timetableWeek = v.object({
-  weekStart: v.string(),
+  weekStart: v.string(), // YYYYMMDD
   day_time: v.array(v.string()),
   timetable: v.array(v.array(timetableSlot)),
   update_date: v.string(),
   editedAt: v.number(),
 });
+
+export const timetableFields = {
+  ...timetableWeek.fields,
+  // Old rows were keyed by `week`, the fetch-time offset, and some predate
+  // `weekStart`; both stay in the schema only so those rows still validate.
+  weekStart: v.optional(v.string()),
+  week: v.optional(v.number()),
+};
 
 // The standing Mon–Fri timetable carries no substitutions: it *is* the
 // baseline a substitution is measured against. Each day has its own length.
@@ -147,14 +146,27 @@ export const fullTimetable = v.object(fullTimetableFields);
 
 // ── Meals ────────────────────────────────────────────────────────────────
 
-export const publicMeal = v.object({
-  date: v.string(),
-  mealType: v.string(),
-  dishes: v.array(v.string()),
+export const mealFields = {
+  date: v.string(), // YYYYMMDD
+  mealType: v.string(), // "중식" | "석식" as the feed names them
+  dishes: v.array(v.string()), // as the feed sends them; cleaned on read
   originInfo: v.string(),
   calories: v.union(v.string(), v.null()),
   nutrients: v.union(v.string(), v.null()),
-});
+  schoolCode: v.string(),
+  schoolName: v.string(),
+  loadedAt: v.string(),
+  editedAt: v.number(),
+};
+
+// The two meals the app shows, by the feed's names for them.
+export const LUNCH = "중식";
+export const DINNER = "석식";
+export const servedMealType = v.union(v.literal(LUNCH), v.literal(DINNER));
+
+export const publicMeal = v
+  .object(mealFields)
+  .pick("date", "mealType", "dishes", "calories", "nutrients");
 
 export const mealDay = v.object({
   date: v.string(),
@@ -204,6 +216,7 @@ export type PublicFile = Infer<typeof publicFile>;
 export type TimetableWeek = Infer<typeof timetableWeek>;
 export type FullTimetable = Infer<typeof fullTimetable>;
 export type PublicMeal = Infer<typeof publicMeal>;
+export type ServedMealType = Infer<typeof servedMealType>;
 export type MealDay = Infer<typeof mealDay>;
 export type CustomEventColor = Infer<typeof customEventColor>;
 export type PublicEvent = Infer<typeof publicEvent>;

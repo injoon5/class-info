@@ -1,7 +1,10 @@
 import { ymdFromIso, ymdParts } from '@class-info/backend/convex/dates';
 import type { DayGroup, MinimalNotice } from '@class-info/backend/convex/validators';
 
-export type { DayGroup, MinimalNotice };
+// Slugless notices predate slugs; their links use the id.
+export function noticePath(notice: { _id: string; slug?: string }): string {
+	return `/notice/${notice.slug || notice._id}`;
+}
 
 export function noticeTypeClass(type: MinimalNotice['type']) {
 	switch (type) {

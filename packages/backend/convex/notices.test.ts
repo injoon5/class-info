@@ -71,12 +71,18 @@ describe("notice writes", () => {
     expect((await t.query(api.notices.detail, { id: notice.slug! })).notice?._id).toBe(notice._id);
   });
 
-  test("update without a slug keeps the existing one", async () => {
+  test("update keeps the slug", async () => {
     const t = await withNotices([]);
-    const id = await t.mutation(api.notices.create, { sessionToken: TOKEN, ...fields, slug: "math-hw" });
+    const id = await t.mutation(api.notices.create, { sessionToken: TOKEN, ...fields });
+    const slug = (await t.query(api.notices.detail, { id })).notice!.slug!;
     await t.mutation(api.notices.update, { sessionToken: TOKEN, id, ...fields, title: "새 제목" });
-    const { notice } = await t.query(api.notices.detail, { id: "math-hw" });
-    expect(notice?.title).toBe("새 제목");
+    expect((await t.query(api.notices.detail, { id: slug })).notice?.title).toBe("새 제목");
+  });
+
+  test("the year's last notices turn past at the rollover into the next year", async () => {
+    const t = await withNotices(["2026-12-31", "2027-01-01"]);
+    const groups = await t.query(api.notices.currentGroups, { today: "20261231", afterRollover: true });
+    expect(groups.map((g) => [g.date, g.displayDate])).toEqual([["2027-01-01", "내일"]]);
   });
 
   test("rejects a due date that isn't a real day", async () => {

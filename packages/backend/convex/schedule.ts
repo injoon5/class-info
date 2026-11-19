@@ -1,5 +1,5 @@
 import { internalAction, internalMutation, query, type QueryCtx } from "./_generated/server";
-import { v } from "convex/values";
+import { ConvexError, v } from "convex/values";
 import { internal } from "./_generated/api";
 import type { Doc } from "./_generated/dataModel";
 import { adminMutation } from "./auth";
@@ -215,8 +215,8 @@ export const createCustomEvent = adminMutation({
   handler: async (ctx, { date, title, color }) => {
     assertYmd(date, "date");
     const trimmed = title.trim();
-    if (!trimmed) throw new Error("title is required");
-    if (trimmed.length > TITLE_MAX) throw new Error("title is too long");
+    if (!trimmed) throw new ConvexError("일정 이름을 입력해 주세요.");
+    if (trimmed.length > TITLE_MAX) throw new ConvexError(`일정 이름은 ${TITLE_MAX}자 이하로 써 주세요.`);
     const now = Date.now();
     return await ctx.db.insert("schedules", {
       date,

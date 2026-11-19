@@ -31,7 +31,7 @@ export function scrollIsTouchDriven(): boolean {
 	return touching;
 }
 
-export function scrollingEl(): Element {
+function scrollingEl(): Element {
 	return document.scrollingElement ?? document.documentElement;
 }
 

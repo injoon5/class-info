@@ -153,4 +153,4 @@
 
 	<UpdateToast />
 
-    <div aria-live="polite" aria-atomic="true" class="sr-only" id={LIVE_REGION_ID}></div>
+    <div aria-live="polite" aria-atomic="true" class="sr-only print:hidden" id={LIVE_REGION_ID}></div>

@@ -1,9 +1,8 @@
 /// <reference types="vite/client" />
-import { afterEach, describe, expect, test, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import { convexTest } from "convex-test";
 import { api, internal } from "./_generated/api";
 import schema from "./schema";
-import { addDays, mondayOf, schoolClock } from "./dates";
 
 const modules = import.meta.glob("./**/*.*s");
 
@@ -258,8 +257,9 @@ describe("timetable.setFullDayLength", () => {
 // ── Fetched weeks ────────────────────────────────────────────────────────────
 
 const ARGS = { offsetWeeks: 0 };
-// The Monday fetchWeek stamps for `offsetWeeks`, by the real clock.
-const fetchedMonday = (offsetWeeks = 0) => addDays(mondayOf(schoolClock().today), offsetWeeks * 7);
+// Every test runs on Thursday 2026-08-20, 12:00 in the school's zone, so
+// offset 0 is the week of Monday 2026-08-17.
+const THIS_MONDAY = WEEKS[0];
 
 type FetchedSlot = {
   period: number;
@@ -329,7 +329,7 @@ function stubFetch(...responses: Array<Response | (() => Response)>): string[] {
 async function seedWeek(t: ReturnType<typeof convexTest>) {
   await t.run(async (ctx) => {
     await ctx.db.insert("timetables", {
-      weekStart: fetchedMonday(),
+      weekStart: THIS_MONDAY,
       day_time: COMCIGAN.day_time,
       timetable: COMCIGAN.timetable,
       update_date: COMCIGAN.update_date,
@@ -338,11 +338,17 @@ async function seedWeek(t: ReturnType<typeof convexTest>) {
   });
 }
 
+beforeEach(() => {
+  vi.useFakeTimers({ toFake: ["Date"] });
+  vi.setSystemTime(new Date("2026-08-20T03:00:00Z"));
+});
+
 afterEach(() => {
+  vi.useRealTimers();
   vi.unstubAllGlobals();
 });
 
-describe("timetable.fetchAndSave — source", () => {
+describe("timetable.fetchWeek — source", () => {
   test("always asks for the merged grid rather than trusting the API's default", async () => {
     const t = convexTest(schema, modules);
     const urls = stubFetch(jsonResponse(COMCIGAN));
@@ -354,30 +360,23 @@ describe("timetable.fetchAndSave — source", () => {
   });
 
   test("stamps the Monday of the week it fetched", async () => {
-    vi.useFakeTimers();
-    // Thursday 2026-08-20, 12:00 KST.
-    vi.setSystemTime(new Date("2026-08-20T03:00:00Z"));
-    try {
-      const t = convexTest(schema, modules);
-      stubFetch(jsonResponse(COMCIGAN));
-      await t.action(internal.timetable.fetchWeek, ARGS);
-      await t.action(internal.timetable.fetchWeek, { offsetWeeks: 1 });
-      expect(await t.query(api.timetable.getWeek, { weekStart: "20260817" })).not.toBeNull();
-      expect(await t.query(api.timetable.getWeek, { weekStart: "20260824" })).not.toBeNull();
-    } finally {
-      vi.useRealTimers();
-    }
+    const t = convexTest(schema, modules);
+    stubFetch(jsonResponse(COMCIGAN));
+    await t.action(internal.timetable.fetchWeek, ARGS);
+    await t.action(internal.timetable.fetchWeek, { offsetWeeks: 1 });
+    expect(await t.query(api.timetable.getWeek, { weekStart: "20260817" })).not.toBeNull();
+    expect(await t.query(api.timetable.getWeek, { weekStart: "20260824" })).not.toBeNull();
   });
 });
 
-describe("timetable.fetchAndSave — NEIS-only weeks", () => {
+describe("timetable.fetchWeek — NEIS-only weeks", () => {
   test("stores a week with no bell times, teachers, or LOAD_DTM", async () => {
     const t = convexTest(schema, modules);
     stubFetch(jsonResponse(NEIS_ONLY));
 
     await t.action(internal.timetable.fetchWeek, ARGS);
 
-    const stored = await t.query(api.timetable.getWeek, { weekStart: fetchedMonday() });
+    const stored = await t.query(api.timetable.getWeek, { weekStart: THIS_MONDAY });
     expect(stored).not.toBeNull();
     expect(stored!.day_time).toEqual([]);
     expect(stored!.update_date).toBe("");
@@ -399,12 +398,12 @@ describe("timetable.fetchAndSave — NEIS-only weeks", () => {
 
     await t.action(internal.timetable.fetchWeek, ARGS);
 
-    const stored = await t.query(api.timetable.getWeek, { weekStart: fetchedMonday() });
+    const stored = await t.query(api.timetable.getWeek, { weekStart: THIS_MONDAY });
     expect(stored!.timetable[0]!.map((s) => s.period)).toEqual([2, 4]);
   });
 });
 
-describe("timetable.fetchAndSave — errors", () => {
+describe("timetable.fetchWeek — errors", () => {
   // 외대부고 (7531146) answers this way year-round: valid in NEIS, but it
   // publishes no timetable to either source. A 방학 looks identical.
   test("treats an empty week as nothing to store, not a failure", async () => {
@@ -415,7 +414,7 @@ describe("timetable.fetchAndSave — errors", () => {
     await expect(t.action(internal.timetable.fetchWeek, ARGS)).resolves.toBeNull();
 
     // A 방학 must not blank a week the app is still showing.
-    const stored = await t.query(api.timetable.getWeek, { weekStart: fetchedMonday() });
+    const stored = await t.query(api.timetable.getWeek, { weekStart: THIS_MONDAY });
     expect(stored!.timetable.flat()).toHaveLength(3);
   });
 
@@ -448,7 +447,7 @@ describe("timetable.fetchAndSave — errors", () => {
 
     await expect(t.action(internal.timetable.fetchWeek, ARGS)).resolves.toBeNull();
 
-    const stored = await t.query(api.timetable.getWeek, { weekStart: fetchedMonday() });
+    const stored = await t.query(api.timetable.getWeek, { weekStart: THIS_MONDAY });
     expect(stored!.day_time).toEqual(COMCIGAN.day_time);
     expect(stored!.timetable.flat()).toHaveLength(3);
   });
@@ -471,7 +470,7 @@ describe("timetable.fetchAndSave — errors", () => {
 
     await t.action(internal.timetable.fetchWeek, ARGS);
 
-    const stored = await t.query(api.timetable.getWeek, { weekStart: fetchedMonday() });
+    const stored = await t.query(api.timetable.getWeek, { weekStart: THIS_MONDAY });
     expect(stored!.day_time).toEqual(["1(08:10)"]);
     expect(stored!.update_date).toBe("");
     expect(stored!.timetable[0]!.map((s) => s.subject)).toEqual(["체육"]);

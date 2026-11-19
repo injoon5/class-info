@@ -2,10 +2,19 @@ import { internalAction, internalMutation, query } from "./_generated/server";
 import { v } from "convex/values";
 import { internal } from "./_generated/api";
 import type { Doc } from "./_generated/dataModel";
-import { addDays, assertYmd, mondayOf, schoolClock } from "./dates";
+import { addDays, assertYmd, weekStartFor } from "./dates";
 import { fetchSchoolApi } from "./schoolApi";
 import { cleanDishName } from "./text";
-import { mealWeek, type MealDay, type PublicMeal } from "./validators";
+import {
+  DINNER,
+  LUNCH,
+  mealFields,
+  mealWeek,
+  servedMealType,
+  type MealDay,
+  type PublicMeal,
+  type ServedMealType,
+} from "./validators";
 
 // The fields of a NEIS meal row this app reads.
 type FeedMeal = {
@@ -20,27 +29,11 @@ type FeedMeal = {
   LOAD_DTM: string;
 };
 
-const LUNCH = "중식";
-const DINNER = "석식";
 
 const mealKey = (m: { date: string; mealType: string }) => `${m.date} ${m.mealType}`;
 
 export const upsertMany = internalMutation({
-  args: {
-    meals: v.array(
-      v.object({
-        date: v.string(),
-        mealType: v.string(),
-        dishes: v.array(v.string()),
-        originInfo: v.string(),
-        calories: v.union(v.string(), v.null()),
-        nutrients: v.union(v.string(), v.null()),
-        schoolCode: v.string(),
-        schoolName: v.string(),
-        loadedAt: v.string(),
-      })
-    ),
-  },
+  args: { meals: v.array(v.object(mealFields).omit("editedAt")) },
   returns: v.null(),
   handler: async (ctx, { meals }) => {
     const unique = [...new Map(meals.map((meal) => [mealKey(meal), meal])).values()];
@@ -71,7 +64,7 @@ export const fetchWeek = internalAction({
   args: { offsetWeeks: v.number() },
   returns: v.null(),
   handler: async (ctx, { offsetWeeks }): Promise<null> => {
-    const startdate = addDays(mondayOf(schoolClock().today), offsetWeeks * 7);
+    const startdate = weekStartFor(offsetWeeks);
     const data = await fetchSchoolApi("lunch", { startdate, enddate: addDays(startdate, 4) });
     // A week with no meals answers 200 with an INFO-200 object, not an array.
     if (!Array.isArray(data)) return null;
@@ -99,7 +92,6 @@ function projectMeal(m: Doc<"meals">): PublicMeal {
     date: m.date,
     mealType: m.mealType,
     dishes: m.dishes.map(cleanDishName).filter(Boolean),
-    originInfo: m.originInfo,
     calories: m.calories,
     nutrients: m.nutrients,
   };
@@ -111,7 +103,7 @@ export const getTwoWeeks = query({
   returns: v.object({
     thisWeek: mealWeek,
     nextWeek: mealWeek,
-    availableMealTypes: v.array(v.string()),
+    availableMealTypes: v.array(servedMealType),
   }),
   handler: async (ctx, { weekStart }) => {
     assertYmd(weekStart, "weekStart");
@@ -136,7 +128,7 @@ export const getTwoWeeks = query({
     const nextWeek = buildWeek(addDays(weekStart, 7));
 
     const allDays = [...thisWeek.days, ...nextWeek.days];
-    const availableMealTypes: string[] = [];
+    const availableMealTypes: ServedMealType[] = [];
     if (allDays.some((d) => d.lunch)) availableMealTypes.push(LUNCH);
     if (allDays.some((d) => d.dinner)) availableMealTypes.push(DINNER);
     return { thisWeek, nextWeek, availableMealTypes };

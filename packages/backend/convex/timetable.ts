@@ -4,7 +4,7 @@ import { internal } from "./_generated/api";
 import type { Doc } from "./_generated/dataModel";
 import { adminMutation } from "./auth";
 import { SCHOOL } from "./config";
-import { addDays, assertYmd, mondayOf, schoolClock } from "./dates";
+import { assertYmd, weekStartFor } from "./dates";
 import { fetchSchoolApi, SchoolApiError } from "./schoolApi";
 import {
   FULL_TIMETABLE_DAYS,
@@ -66,12 +66,7 @@ async function readWeek(ctx: QueryCtx, weekStart: string): Promise<Doc<"timetabl
 }
 
 export const upsert = internalMutation({
-  args: {
-    weekStart: v.string(),
-    day_time: v.array(v.string()),
-    timetable: v.array(v.array(timetableSlot)),
-    update_date: v.string(),
-  },
+  args: timetableWeek.omit("editedAt").fields,
   returns: v.null(),
   handler: async (ctx, week) => {
     const existing = await readWeek(ctx, week.weekStart);
@@ -113,7 +108,7 @@ export const fetchWeek = internalAction({
     }
 
     await ctx.runMutation(internal.timetable.upsert, {
-      weekStart: addDays(mondayOf(schoolClock().today), offsetWeeks * 7),
+      weekStart: weekStartFor(offsetWeeks),
       day_time: data.day_time.filter((s): s is string => typeof s === "string"),
       timetable,
       update_date: str(data.update_date),
