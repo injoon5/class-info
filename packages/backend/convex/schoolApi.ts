@@ -27,7 +27,6 @@ async function readError(res: Response): Promise<SchoolApiError> {
   );
 }
 
-/** GET `path` for the configured school; throws SchoolApiError on a non-2xx. */
 export async function fetchSchoolApi(
   path: "timetable" | "lunch" | "schedule",
   params: Record<string, string | number>

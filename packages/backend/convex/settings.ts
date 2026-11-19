@@ -10,8 +10,6 @@ import { DEFAULT_ADMIN_PIN } from "./config";
 import { findSession } from "./auth";
 import { ADMIN_SESSION_TTL_MS, PIN_PATTERN } from "./validators";
 
-// Brute-force throttle: after MAX_FAILS failed attempts within the window, the
-// login endpoint locks out for LOCKOUT_MS. Stored as a JSON blob in `settings`.
 const THROTTLE_KEY = "login_throttle";
 const MAX_FAILS = 5;
 const WINDOW_MS = 15 * 60 * 1000;
@@ -156,13 +154,8 @@ export const setPin = internalMutation({
   },
 });
 
-/**
- * Verify the admin PIN and, on success, issue a session token.
- *
- * Rate-limited to blunt brute-force against the 4-digit PIN. Returns
- * `{ ok: false }` on wrong PIN or while locked out (indistinguishable on
- * purpose), and never echoes the PIN back.
- */
+// A wrong PIN and a lockout both answer `{ ok: false }`, so a guesser can't
+// tell when the throttle is on.
 export const login = mutation({
   args: { pin: v.string() },
   returns: v.union(

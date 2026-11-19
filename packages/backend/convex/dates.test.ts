@@ -1,7 +1,6 @@
 import { describe, expect, test } from "vitest";
 import { DAY_ROLLOVER_HOUR, DINNER_END_HOUR, TIMEZONE_OFFSET_HOURS } from "./config";
 import {
-  SCHOOL_DAY_LOOKAHEAD,
   addDays,
   closedYmdsFromSchedule,
   dayLabel,
@@ -41,14 +40,10 @@ const custom = (date: string, title: string): ScheduleHint => ({
   source: "custom",
 });
 
-// Mirrors schedule.ts scanSchoolDays(): the index is read over a window that
-// reaches SCHOOL_DAY_LOOKAHEAD days *behind* today, and closures are derived
-// from exactly the rows that window returns.
-function displayDayFor(today: string, afterRollover: boolean, all: ScheduleHint[]) {
-  const scanStart = addDays(today, -SCHOOL_DAY_LOOKAHEAD);
-  const scanEnd = addDays(today, SCHOOL_DAY_LOOKAHEAD + 7);
-  const rows = all.filter((r) => r.date >= scanStart && r.date <= scanEnd);
-  return resolveDisplayDay({ today, afterRollover }, closedYmdsFromSchedule(rows, scanStart, scanEnd));
+// The display day for `today`, with closures read from the whole year. How
+// far back the real query scans is covered in schedule.test.ts.
+function displayDayFor(today: string, afterRollover: boolean, events: ScheduleHint[]) {
+  return resolveDisplayDay({ today, afterRollover }, closedYmdsFromSchedule(events, "20260101", "20261231"));
 }
 
 describe("weekdayOf / mondayOf", () => {

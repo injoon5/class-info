@@ -106,12 +106,19 @@ describe("schedule.homeSchedule", () => {
     expect(events.map((e) => e.title)).toEqual(["주말 행사", "금요일 행사"]);
   });
 
-  test("agrees with schoolDisplayDay", async () => {
+  test("skips a 휴업일 after the rollover", async () => {
     const t = await withSchedule([{ date: NEXT_MON, title: "개교기념일", eventType: "휴업일" }]);
-    const args = { today: FRI, afterRollover: true };
-    const { displayDay } = await t.query(api.schedule.homeSchedule, args);
-    expect(displayDay).toBe(await t.query(api.schedule.schoolDisplayDay, args));
+    const { displayDay } = await t.query(api.schedule.homeSchedule, { today: FRI, afterRollover: true });
     expect(displayDay).toBe("20260825");
+  });
+
+  test("leaves out NEIS's 토요휴업일 markers", async () => {
+    const t = await withSchedule([
+      { date: SAT, title: "토요휴업일", eventType: "휴업일" },
+      { date: NEXT_MON, title: "다음주 일정" },
+    ]);
+    const { events } = await t.query(api.schedule.homeSchedule, { today: THU, afterRollover: false });
+    expect(events.map((e) => e.title)).toEqual(["다음주 일정"]);
   });
 });
 
