@@ -106,12 +106,19 @@ describe("schedule.homeSchedule", () => {
     expect(events.map((e) => e.title)).toEqual(["주말 행사", "금요일 행사"]);
   });
 
-  test("agrees with schoolDisplayDay", async () => {
+  test("skips a 휴업일 after the rollover", async () => {
     const t = await withSchedule([{ date: NEXT_MON, title: "개교기념일", eventType: "휴업일" }]);
-    const args = { today: FRI, afterRollover: true };
-    const { displayDay } = await t.query(api.schedule.homeSchedule, args);
-    expect(displayDay).toBe(await t.query(api.schedule.schoolDisplayDay, args));
+    const { displayDay } = await t.query(api.schedule.homeSchedule, { today: FRI, afterRollover: true });
     expect(displayDay).toBe("20260825");
+  });
+
+  test("leaves out NEIS's 토요휴업일 markers", async () => {
+    const t = await withSchedule([
+      { date: SAT, title: "토요휴업일", eventType: "휴업일" },
+      { date: NEXT_MON, title: "다음주 일정" },
+    ]);
+    const { events } = await t.query(api.schedule.homeSchedule, { today: THU, afterRollover: false });
+    expect(events.map((e) => e.title)).toEqual(["다음주 일정"]);
   });
 });
 
@@ -149,7 +156,7 @@ describe("schedule D-days", () => {
     expect(ddays.map((e) => e.title)).toEqual(["수능", "졸업식"]);
   });
 
-  // Un-flagging patches `dday: false` rather than removing the key, so `false`
+  // Un-flagging stores `dday: false` rather than removing the key, so `false`
   // rows sit in the same index as the `true` ones and must not be read back.
   test("an un-flagged event drops off home", async () => {
     const t = await withSchedule([{ date: NEXT_MON, title: "수행평가", dday: true }]);
@@ -158,10 +165,8 @@ describe("schedule D-days", () => {
     const before = await t.query(api.schedule.homeSchedule, clock);
     expect(before.ddays.map((e) => e.title)).toEqual(["수행평가"]);
 
-    const id = before.ddays[0]!._id;
-    await t.run(async (ctx) => {
-      await ctx.db.patch(id, { dday: false });
-    });
+    await t.run((ctx) => ctx.db.insert("sessions", { token: "admin", createdAt: 0, expiresAt: Date.now() + 60_000 }));
+    await t.mutation(api.schedule.setEventDday, { sessionToken: "admin", id: before.ddays[0]!._id, dday: false });
 
     const after = await t.query(api.schedule.homeSchedule, clock);
     expect(after.ddays).toEqual([]);
@@ -191,12 +196,12 @@ describe("schedule D-days", () => {
       { date: FRI, title: "반티 주문", source: "custom", dday: true },
     ]);
 
-    await t.mutation(internal.schedule.upsertManySchoolEvents, {
-      startdate: THU,
-      enddate: "20260831",
+    await t.mutation(internal.schedule.replaceSchoolEvents, {
+      start: THU,
+      end: "20260831",
       events: [
-        { date: NEXT_MON, eventName: "중간고사", eventType: "학사일정", schoolCode: "7010208" },
-        { date: FRI, eventName: "체육대회", eventType: "학사일정", schoolCode: "7010208" },
+        { date: NEXT_MON, title: "중간고사", eventType: "학사일정", schoolCode: "7010208" },
+        { date: FRI, title: "체육대회", eventType: "학사일정", schoolCode: "7010208" },
       ],
     });
 
@@ -211,11 +216,11 @@ describe("schedule D-days", () => {
     const t = await withSchedule([
       { date: NEXT_MON, title: "중간고사", eventType: "학사일정", dday: true },
     ]);
-    await t.mutation(internal.schedule.upsertManySchoolEvents, {
-      startdate: THU,
-      enddate: "20260831",
+    await t.mutation(internal.schedule.replaceSchoolEvents, {
+      start: THU,
+      end: "20260831",
       events: [
-        { date: NEXT_MON, eventName: "1차 지필평가", eventType: "학사일정", schoolCode: "7010208" },
+        { date: NEXT_MON, title: "1차 지필평가", eventType: "학사일정", schoolCode: "7010208" },
       ],
     });
     const after = await t.query(api.schedule.getEventsInRange, { start: THU, end: "20260831" });

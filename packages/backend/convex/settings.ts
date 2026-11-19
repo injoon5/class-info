@@ -6,18 +6,14 @@ import {
   type QueryCtx,
 } from "./_generated/server";
 import type { Doc } from "./_generated/dataModel";
-import {
-  ADMIN_SESSION_TTL_MS as SESSION_TTL_MS,
-  DEFAULT_ADMIN_PIN as DEFAULT_PIN,
-  LOGIN_LOCKOUT_MS as LOCKOUT_MS,
-  LOGIN_MAX_FAILS as MAX_FAILS,
-  LOGIN_WINDOW_MS as WINDOW_MS,
-} from "./config";
+import { DEFAULT_ADMIN_PIN } from "./config";
+import { findSession } from "./auth";
+import { ADMIN_SESSION_TTL_MS, PIN_PATTERN } from "./validators";
 
-// Brute-force throttle: after MAX_FAILS failed attempts within the window, the
-// login endpoint locks out for LOCKOUT_MS. Stored as a JSON blob in `settings`.
 const THROTTLE_KEY = "login_throttle";
-const PIN_RE = /^\d{4,8}$/;
+const MAX_FAILS = 5;
+const WINDOW_MS = 15 * 60 * 1000;
+const LOCKOUT_MS = 15 * 60 * 1000;
 const PBKDF2_ITERS = 100_000;
 const PBKDF2_PREFIX = "pbkdf2$";
 
@@ -150,7 +146,7 @@ export const setPin = internalMutation({
   args: { newPin: v.string() },
   returns: v.null(),
   handler: async (ctx, args) => {
-    if (!PIN_RE.test(args.newPin)) {
+    if (!PIN_PATTERN.test(args.newPin)) {
       throw new Error("PIN must be 4–8 digits");
     }
     await writeSetting(ctx, "admin_pin", await hashPin(args.newPin));
@@ -158,13 +154,8 @@ export const setPin = internalMutation({
   },
 });
 
-/**
- * Verify the admin PIN and, on success, issue a session token.
- *
- * Rate-limited to blunt brute-force against the 4-digit PIN. Returns
- * `{ ok: false }` on wrong PIN or while locked out (indistinguishable on
- * purpose), and never echoes the PIN back.
- */
+// A wrong PIN and a lockout both answer `{ ok: false }`, so a guesser can't
+// tell when the throttle is on.
 export const login = mutation({
   args: { pin: v.string() },
   returns: v.union(
@@ -190,13 +181,13 @@ export const login = mutation({
 
     // Reject malformed PINs as a failed attempt so an attacker can't probe
     // the hasher with arbitrary-length strings for free.
-    if (!PIN_RE.test(pin)) {
+    if (!PIN_PATTERN.test(pin)) {
       await recordFailure(ctx, throttle, now);
       return { ok: false as const };
     }
 
     const pinRow = await readSetting(ctx, "admin_pin");
-    const storedPin = pinRow?.value || DEFAULT_PIN;
+    const storedPin = pinRow?.value || DEFAULT_ADMIN_PIN;
     if (!pinRow?.value) {
       console.warn("[settings.login] admin_pin is unset; using the default PIN. Set one via settings.setPin.");
     }
@@ -220,7 +211,7 @@ export const login = mutation({
     }
 
     const token = generateToken();
-    const expiresAt = now + SESSION_TTL_MS;
+    const expiresAt = now + ADMIN_SESSION_TTL_MS;
     await ctx.db.insert("sessions", { token, createdAt: now, expiresAt });
     return { ok: true as const, token, expiresAt };
   },
@@ -232,11 +223,7 @@ export const verifySession = mutation({
   // Mutation on purpose: a query that calls Date.now() can keep returning
   // a cached `true` after expiresAt. Mutations always re-run.
   handler: async (ctx, { token }) => {
-    if (!token) return false;
-    const session = await ctx.db
-      .query("sessions")
-      .withIndex("by_token", (q) => q.eq("token", token))
-      .first();
+    const session = await findSession(ctx, token);
     if (!session) return false;
     if (session.expiresAt <= Date.now()) {
       await ctx.db.delete(session._id);
@@ -250,10 +237,7 @@ export const logout = mutation({
   args: { token: v.string() },
   returns: v.null(),
   handler: async (ctx, { token }) => {
-    const session = await ctx.db
-      .query("sessions")
-      .withIndex("by_token", (q) => q.eq("token", token))
-      .first();
+    const session = await findSession(ctx, token);
     if (session) await ctx.db.delete(session._id);
     return null;
   },

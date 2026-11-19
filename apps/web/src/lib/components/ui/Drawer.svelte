@@ -11,10 +11,11 @@ import {
   SHEET_SETTLE,
   spring,
   type SpringOptions,
-  tweenFade,
+  tweenShort,
   tweenPanel,
   tweenPanelClose
 } from '#lib/transitions.js';
+import { blurActiveElement } from '#lib/dom.js';
 
 interface Props {
   open: boolean;
@@ -32,7 +33,7 @@ const closeDelay = () => (reducedMotion() ? 0 : PANEL_CLOSE_MS + 30);
 
 let mounted = $state(false);
 let isVisible = $state(false);
-let isClosing = false; // non-reactive guard
+let isClosing = false;
 
 // A drag writes transform straight to the node rather than through state.
 let dragY = 0;
@@ -46,7 +47,7 @@ let panelResting = $state(true);
 let stopPanelSpring: (() => void) | null = null;
 
 const panelScale = new Tween(0.95, tweenPanel);
-const panelOpacity = new Tween(0, tweenFade);
+const panelOpacity = new Tween(0, tweenShort);
 const scrimOpacity = new Tween(0, tweenPanel);
 
 function setPanelY(y: number) {
@@ -158,7 +159,7 @@ function settleOpen(velocity = 0) {
   } else {
     setPanelY(0);
     panelScale.set(1, tweenPanel);
-    panelOpacity.set(1, tweenFade);
+    panelOpacity.set(1, tweenShort);
     scrimOpacity.set(1, tweenPanel);
   }
 }
@@ -170,7 +171,7 @@ async function close(velocity = 0) {
   isVisible = false;
   if (panelEl) panelEl.style.transform = '';
   setScrimStyle('');
-  (document.activeElement instanceof HTMLElement ? document.activeElement : null)?.blur();
+  blurActiveElement();
   // Re-measure: the panel may have grown since it opened.
   if (panelEl) panelHeight = panelEl.offsetHeight;
   if (isMobile) {
@@ -195,7 +196,7 @@ async function close(velocity = 0) {
     });
   } else {
     panelScale.set(0.95, tweenPanelClose);
-    panelOpacity.set(0, tweenFade);
+    panelOpacity.set(0, tweenShort);
     scrimOpacity.set(0, tweenPanelClose);
     await new Promise<void>(r => setTimeout(r, closeDelay()));
   }
@@ -328,12 +329,10 @@ $effect(() => {
     const covered = Math.max(0, window.innerHeight - vv.height - vv.offsetTop);
     if (covered > 0) {
       wrapperEl.style.height = `${vv.height + vv.offsetTop}px`;
-      wrapperEl.style.paddingBottom = '';
       // svh ignores the keyboard, so cap the panel to what's left above it.
       if (panelEl) panelEl.style.maxHeight = `${Math.max(160, vv.height - 24)}px`;
     } else {
       wrapperEl.style.height = '';
-      wrapperEl.style.paddingBottom = '';
       if (panelEl) panelEl.style.maxHeight = '';
       // iOS can leave a fixed layer stuck after the keyboard hides.
       if (wasCovered && panelEl && !isDragging) {
@@ -355,10 +354,7 @@ $effect(() => {
     vv.removeEventListener('resize', update);
     vv.removeEventListener('scroll', update);
     window.removeEventListener('resize', update);
-    if (wrapperEl) {
-      wrapperEl.style.height = '';
-      wrapperEl.style.paddingBottom = '';
-    }
+    if (wrapperEl) wrapperEl.style.height = '';
     if (panelEl) panelEl.style.maxHeight = '';
   };
 });
@@ -599,8 +595,6 @@ function onMouseUp() {
   pendingMouse = false;
   endDrag();
 }
-
-// Tab stays inside the dialog.
 
 function onPanelKeydown(e: KeyboardEvent) {
   if (e.key !== 'Tab' || !panelEl) return;

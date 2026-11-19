@@ -1,19 +1,13 @@
 <script lang="ts">
 	const SIZES = { sm: 14, md: 16, lg: 20 } as const;
 
-	let {
-		size = 'lg',
-		class: className = ''
-	}: {
-		size?: keyof typeof SIZES;
-		class?: string;
-	} = $props();
+	let { size = 'lg' }: { size?: keyof typeof SIZES } = $props();
 
 	const px = $derived(SIZES[size]);
 </script>
 
 <span
-	class={['inline-flex shrink-0', className]}
+	class="inline-flex shrink-0"
 	style:width="{px}px"
 	style:height="{px}px"
 	aria-hidden="true"

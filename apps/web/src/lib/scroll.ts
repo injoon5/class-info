@@ -31,7 +31,7 @@ export function scrollIsTouchDriven(): boolean {
 	return touching;
 }
 
-export function scrollingEl(): Element {
+function scrollingEl(): Element {
 	return document.scrollingElement ?? document.documentElement;
 }
 
@@ -44,6 +44,15 @@ export function clampWindowScroll(): void {
 	const el = scrollingEl();
 	const max = Math.max(0, el.scrollHeight - window.innerHeight);
 	if (el.scrollTop > max) el.scrollTop = max;
+}
+
+/** Scrolls up by the `dh` px that content above just lost, then clamps. */
+export function followShrink(dh: number): void {
+	if (dh > 0) {
+		const el = scrollingEl();
+		el.scrollTop = Math.max(0, el.scrollTop - dh);
+	}
+	clampWindowScroll();
 }
 
 /** Keeps the viewport locked to collapsing content for one transition. */
@@ -61,13 +70,7 @@ export function followCollapsing(node: HTMLElement | null, durationMs = 220): vo
 		const h = target.isConnected ? target.offsetHeight : 0;
 		const dh = lastH - h;
 		lastH = h;
-		if (!scrollIsTouchDriven()) {
-			if (dh > 0) {
-				const el = scrollingEl();
-				el.scrollTop = Math.max(0, el.scrollTop - dh);
-			}
-			clampWindowScroll();
-		}
+		if (!scrollIsTouchDriven()) followShrink(dh);
 		if (now - start < durationMs) requestAnimationFrame(frame);
 	}
 

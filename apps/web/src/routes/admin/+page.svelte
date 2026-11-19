@@ -18,6 +18,7 @@ import { slideNone, slideY, slideYOut } from '#lib/transitions.js';
 import AdminNoticeRow from './AdminNoticeRow.svelte';
 import AdminPastMonthDetails from './AdminPastMonthDetails.svelte';
 import NoticeEditor, { emptyNoticeForm, type NoticeForm } from './NoticeEditor.svelte';
+import type { MinimalNotice } from '@class-info/backend/convex/validators';
 import type { ActionData, PageData } from './$types';
 
 const { data, form }: { data: PageData; form: ActionData } = $props();
@@ -27,7 +28,7 @@ const sessionToken = $derived(data.sessionToken ?? '');
 
 const overview = useQuery(
 	api.notices.overview,
-	() => ({ cutoff: data.cutoff, today: data.today }),
+	() => data.clock,
 	() => ({ initialData: data.overview, keepPreviousData: true })
 );
 let openMonthKey = $state<string | null>(null);
@@ -45,27 +46,8 @@ let confirmingDeleteId = $state<string | null>(null);
 // Rows hidden on confirm, so the outro starts before the mutation returns.
 const dismissedIds = new SvelteSet<string>();
 
-// Attachments are only detached while editing. Files dropped from a saved
-// notice are deleted once the save lands; uploads that never get saved are
-// deleted when the editor is abandoned.
-let savedFiles: Id<'files'>[] = [];
-let freshUploads: Id<'files'>[] = [];
-
-function deleteFiles(ids: Id<'files'>[]) {
-	for (const fileId of ids) {
-		client.mutation(api.files.deleteFile, { sessionToken, fileId }).catch(() => {});
-	}
-}
-
-function discardUploads() {
-	deleteFiles(freshUploads);
-	freshUploads = [];
-}
-
 function openEditor(target: string, next: NoticeForm) {
-	discardUploads();
 	noticeForm = next;
-	savedFiles = [...next.files];
 	editorTarget = target;
 	formError = null;
 	confirmingDeleteId = null;
@@ -74,19 +56,12 @@ function openEditor(target: string, next: NoticeForm) {
 function closeEditor() {
 	followCollapsing(document.getElementById('notice-editor'));
 	noticeForm = emptyNoticeForm();
-	savedFiles = [];
-	freshUploads = [];
 	editorTarget = null;
 	formError = null;
 }
 
-function cancelEditor() {
-	discardUploads();
-	closeEditor();
-}
-
 async function toggleNewNotice() {
-	if (editorTarget === 'new') return cancelEditor();
+	if (editorTarget === 'new') return closeEditor();
 	openEditor('new', emptyNoticeForm());
 	await tick();
 	document.getElementById('notice-editor')?.scrollIntoView({ block: 'nearest' });
@@ -127,7 +102,6 @@ async function handleSubmit() {
 		} else {
 			await client.mutation(api.notices.create, { sessionToken, ...payload });
 		}
-		deleteFiles([...savedFiles, ...freshUploads].filter((id) => !payload.files.includes(id)));
 		closeEditor();
 	} catch (err) {
 		formError = adminErrorMessage(err, '저장하지 못했습니다. 잠시 후 다시 시도해 주세요.');
@@ -143,7 +117,7 @@ async function handleDelete(id: Id<'notices'>) {
 	try {
 		await client.mutation(api.notices.remove, { sessionToken, id });
 		panelError = null;
-		if (editorTarget === key) cancelEditor();
+		if (editorTarget === key) closeEditor();
 	} catch (err) {
 		dismissedIds.delete(key);
 		panelError = adminErrorMessage(err, '삭제하지 못했습니다. 잠시 후 다시 시도해 주세요.');
@@ -173,8 +147,7 @@ const listSlide = $derived(live ? slideY : slideNone);
 const lastUpdatedTs = $derived.by(() => {
 	const ts = allGroups
 		.flatMap((g) => g.notices)
-		.map((n) => n.updatedAt ?? n.createdAt)
-		.filter((t): t is number => typeof t === 'number');
+		.map((n) => n.updatedAt);
 	return ts.length > 0 ? Math.max(...ts) : null;
 });
 </script>
@@ -185,6 +158,26 @@ const lastUpdatedTs = $derived.by(() => {
 	robots="noindex, nofollow"
 />
 
+{#snippet noticeRow(notice: MinimalNotice, past = false)}
+	{#if editorTarget === String(notice._id)}
+		{@render noticeEditor()}
+	{:else}
+		<AdminNoticeRow
+			{notice}
+			{past}
+			confirming={confirmingDeleteId === String(notice._id)}
+			onEdit={editNotice}
+			onAskDelete={(id) => (confirmingDeleteId = String(id))}
+			onDelete={handleDelete}
+			onCancel={() => (confirmingDeleteId = null)}
+		/>
+	{/if}
+{/snippet}
+
+{#snippet pastNoticeRow(notice: MinimalNotice)}
+	{@render noticeRow(notice, true)}
+{/snippet}
+
 {#snippet noticeEditor()}
 	<NoticeEditor
 		bind:form={noticeForm}
@@ -193,8 +186,7 @@ const lastUpdatedTs = $derived.by(() => {
 		error={formError}
 		{sessionToken}
 		onsubmit={handleSubmit}
-		oncancel={cancelEditor}
-		onUploaded={(ids) => (freshUploads = [...freshUploads, ...ids])}
+		oncancel={closeEditor}
 	/>
 {/snippet}
 
@@ -224,7 +216,7 @@ const lastUpdatedTs = $derived.by(() => {
 
 				<button
 					type="submit"
-					class="pressable-lg w-full h-12 rounded-xl bg-primary font-semibold text-primary-foreground text-sm transition-opacity duration-150 pointer:hover:opacity-90"
+					class="pressable w-full h-12 rounded-xl bg-primary font-semibold text-primary-foreground text-sm transition-opacity duration-150 pointer:hover:opacity-90"
 				>
 					로그인
 				</button>
@@ -284,18 +276,7 @@ const lastUpdatedTs = $derived.by(() => {
 						<div class="grid gap-2">
 							{#each group.notices as notice (notice._id)}
 								<div in:slide={listSlide} out:slide={slideYOut}>
-									{#if editorTarget === String(notice._id)}
-										{@render noticeEditor()}
-									{:else}
-										<AdminNoticeRow
-											{notice}
-											confirming={confirmingDeleteId === String(notice._id)}
-											onEdit={editNotice}
-											onAskDelete={(id) => (confirmingDeleteId = String(id))}
-											onDelete={handleDelete}
-											onCancel={() => (confirmingDeleteId = null)}
-										/>
-									{/if}
+									{@render noticeRow(notice)}
 								</div>
 							{/each}
 						</div>
@@ -316,14 +297,9 @@ const lastUpdatedTs = $derived.by(() => {
 								>
 									<AdminPastMonthDetails
 										monthKey={m.monthKey}
-										cutoff={data.cutoff}
-										today={data.today}
+										clock={data.clock}
 										{dismissedIds}
-										{editorTarget}
-										bind:confirmingDeleteId
-										editor={noticeEditor}
-										onEdit={editNotice}
-										onDelete={handleDelete}
+										row={pastNoticeRow}
 									/>
 								</Disclosure>
 							</div>

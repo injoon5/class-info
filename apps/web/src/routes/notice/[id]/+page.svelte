@@ -4,8 +4,7 @@ import { api } from '@class-info/backend/convex/_generated/api';
 import { summarizeDescription } from '@class-info/backend/convex/text';
 import { CLASS_LABEL } from '@class-info/backend/convex/config';
 import { page } from '$app/state';
-import { untrack } from 'svelte';
-import { noticeTypeClass } from '#lib/notices.js';
+import { noticePath, noticeTypeClass } from '#lib/notices.js';
 import { renderMarkdown } from '#lib/markdown.js';
 import { formatAbsolute, formatDate } from '#lib/date.js';
 import { formatFileSize } from '#lib/format.js';
@@ -30,28 +29,14 @@ const detail = useQuery(
 const notice = $derived(detail.data?.notice ?? null);
 const files = $derived(detail.data?.files ?? []);
 
-// Server-rendered first; re-rendered when idle after a live edit.
-let html = $state<string | null>(untrack(() => data.prerenderedHtml) || null);
-
-$effect(() => {
-	const description = notice?.description;
-	if (!description) {
-		if (notice) html = null;
-		return;
-	}
-	const run = () => {
-		html = renderMarkdown(description);
-	};
-	if (typeof requestIdleCallback !== 'undefined') requestIdleCallback(run);
-	else setTimeout(run, 0);
-});
+const html = $derived(notice?.description ? renderMarkdown(notice.description) : null);
 </script>
 
 {#if notice}
 	<PageMeta
 		title="{notice.subject} {notice.title} | {CLASS_LABEL} 공지"
 		description={summarizeDescription(notice.description) || '공지 내용을 확인하세요!'}
-		path="/notice/{notice.slug || notice._id}"
+		path={noticePath(notice)}
 		type="article"
 	/>
 {:else}

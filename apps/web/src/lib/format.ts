@@ -6,7 +6,7 @@ export function formatFileSize(bytes: number): string {
 }
 
 // NEIS packs "name : value" pairs into one string separated by <br/>
-// (nutrients, origin info). Pairs with no value are dropped.
+// (nutrients). Pairs with no value are dropped.
 export function parseInfoRows(text: string | null | undefined): [string, string][] {
 	if (!text) return [];
 	return text

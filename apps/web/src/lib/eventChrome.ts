@@ -1,6 +1,9 @@
 // Colours for an event everywhere it appears (calendar chip, home dot, day
 // drawer). Full class strings so Tailwind can see them.
 
+import { isClosedEventType } from '@class-info/backend/convex/dates';
+import type { CustomEventColor, PublicEvent } from '@class-info/backend/convex/validators';
+
 export type EventChrome = {
 	chip: string;
 	dot: string;
@@ -36,10 +39,7 @@ const SCHOOL_DEFAULT: EventChrome = {
 	labelColor: 'text-sky-700 dark:text-sky-400',
 };
 
-export const CUSTOM_EVENT_COLORS = ['blue', 'green', 'purple', 'orange', 'pink', 'teal'] as const;
-export type CustomEventColor = (typeof CUSTOM_EVENT_COLORS)[number];
-
-export const CUSTOM_EVENT_CHROME: Record<CustomEventColor, EventChrome> = {
+const CUSTOM_EVENT_CHROME: Record<CustomEventColor, EventChrome> = {
 	blue: {
 		chip: 'bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300',
 		dot: 'bg-blue-500 dark:bg-blue-400',
@@ -110,25 +110,9 @@ export const CUSTOM_COLOR_SWATCH: Record<CustomEventColor, string> = {
 	teal: 'bg-teal-500',
 };
 
-function isCustomColor(color: string | null | undefined): color is CustomEventColor {
-	return (CUSTOM_EVENT_COLORS as readonly string[]).includes(color ?? '');
-}
-
-function schoolChrome(eventType?: string | null): EventChrome {
-	if (eventType === '공휴일') return HOLIDAY;
-	if (eventType === '휴업일' || eventType === '재량휴업일') {
-		return { ...CLOSURE, label: eventType };
-	}
+export function eventChrome(event: Pick<PublicEvent, 'source' | 'color' | 'eventType'>): EventChrome {
+	if (event.source === 'custom') return CUSTOM_EVENT_CHROME[event.color ?? 'blue'];
+	if (event.eventType === '공휴일') return HOLIDAY;
+	if (event.eventType && isClosedEventType(event.eventType)) return { ...CLOSURE, label: event.eventType };
 	return SCHOOL_DEFAULT;
-}
-
-export function eventChrome(event: {
-	source?: string;
-	color?: string | null;
-	eventType?: string | null;
-}): EventChrome {
-	if (event.source === 'custom') {
-		return CUSTOM_EVENT_CHROME[isCustomColor(event.color) ? event.color : 'blue'];
-	}
-	return schoolChrome(event.eventType);
 }

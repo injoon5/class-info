@@ -1,79 +1,31 @@
 import { defineSchema, defineTable } from "convex/server";
 import { v } from "convex/values";
+import {
+  eventSource,
+  fileFields,
+  fullTimetableFields,
+  mealFields,
+  noticeFields,
+  timetableFields,
+} from "./validators";
 
 export default defineSchema({
-  notices: defineTable({
-    title: v.string(),
-    subject: v.string(),
-    type: v.union(v.literal("수행평가"), v.literal("숙제"), v.literal("준비물"), v.literal("기타")),
-    description: v.string(),
-    dueDate: v.string(), // ISO date string
-    createdAt: v.number(),
-    updatedAt: v.number(),
-    files: v.optional(v.array(v.id("files"))),
-    slug: v.optional(v.string()),
-  }).index("by_due_date", ["dueDate"]).index("by_slug", ["slug"]),
-  
-  files: defineTable({
-    name: v.string(),
-    type: v.string(), // MIME type
-    size: v.number(),
-    url: v.string(), // R2 URL
-    storageId: v.string(), // R2 storage ID
-    uploadedAt: v.number(),
-  }).index("by_storage_id", ["storageId"]),
+  notices: defineTable(noticeFields).index("by_due_date", ["dueDate"]).index("by_slug", ["slug"]),
 
+  files: defineTable(fileFields).index("by_storage_id", ["storageId"]),
 
-  timetables: defineTable({
-    day_time: v.array(v.string()),
-    timetable: v.array(
-      v.array(
-        v.object({
-          period: v.number(),
-          subject: v.string(),
-          teacher: v.string(),
-          replaced: v.boolean(),
-          original: v.union(
-            v.null(),
-            v.object({
-              period: v.number(),
-              subject: v.string(),
-              teacher: v.string(),
-            })
-          ),
-        })
-      )
-    ),
-    update_date: v.string(),
-    week: v.number(),
-    // Monday (YYYYMMDD) this row holds. `week` is only an offset as of the
-    // fetch, so a row the cron hasn't refreshed would pass for this week.
-    weekStart: v.optional(v.string()),
-    editedAt: v.number(),
-  }).index("by_week", ["week"]),
+  timetables: defineTable(timetableFields).index("by_week_start", ["weekStart"]),
 
-  // The standing Mon–Fri timetable: one row, snapshotted from a fetched week
-  // and corrected by hand. Each day has its own length.
-  fullTimetable: defineTable({
-    day_time: v.array(v.string()),
-    timetable: v.array(
-      v.array(
-        v.object({
-          subject: v.string(),
-          teacher: v.string(),
-        })
-      )
-    ),
-    updatedAt: v.number(),
-  }),
+  // One row, snapshotted from a fetched week and corrected by hand.
+  fullTimetable: defineTable(fullTimetableFields),
 
-  
+  // Key/value rows: the admin PIN hash and the login throttle.
   settings: defineTable({
     key: v.string(),
     value: v.string(),
   }).index("by_key", ["key"]),
 
-  // Admin auth sessions — bearer tokens issued after a successful PIN login.
+  // Admin bearer tokens issued after a successful PIN login.
   sessions: defineTable({
     token: v.string(),
     createdAt: v.number(),
@@ -81,39 +33,24 @@ export default defineSchema({
   })
     .index("by_token", ["token"])
     .index("by_expires_at", ["expiresAt"]),
-  
-  meals: defineTable({
-    // YYYYMMDD string for the meal date (local KST date)
-    date: v.string(),
-    mealType: v.string(), // e.g., "중식"
-    dishes: v.array(v.string()), // split by newline from DDISH_NM
-    originInfo: v.string(), // raw ORPLC_INFO
-    calories: v.union(v.string(), v.null()), // e.g., "685.4 Kcal"
-    nutrients: v.union(v.string(), v.null()), // raw NTR_INFO text
-    schoolCode: v.string(),
-    schoolName: v.string(),
-    loadedAt: v.string(), // LOAD_DTM from source (YYYYMMDD)
-    editedAt: v.number(),
-  })
-    // by_date_type also serves date-only range queries via its "date" prefix,
-    // so a separate by_date index would be redundant write overhead.
-    .index("by_date_type", ["date", "mealType"]),
+
+  meals: defineTable(mealFields).index("by_date_type", ["date", "mealType"]),
 
   schedules: defineTable({
     date: v.string(), // YYYYMMDD
     title: v.string(),
-    source: v.union(v.literal("school"), v.literal("custom")),
-    eventType: v.optional(v.string()), // SBTR_DD_SC_NM — school only
+    source: eventSource,
+    eventType: v.optional(v.string()), // school only
     schoolCode: v.optional(v.string()), // school only
-    color: v.optional(v.string()), // "blue"|"green"|"purple"|"orange"|"pink"|"teal" — custom only
+    // Custom only; a CustomEventColor, narrowed on read.
+    color: v.optional(v.string()),
     // Home page countdown. School rows are re-inserted on every sync, so the
-    // flag is carried over by (date, title); see schedule.upsertManySchoolEvents.
+    // flag is carried over by (date, title); see schedule.replaceSchoolEvents.
     dday: v.optional(v.boolean()),
     createdAt: v.number(),
     updatedAt: v.number(),
   })
     .index("by_date", ["date"])
-    // D-days can be months out, past the home page's day scan; this index
-    // reads them forward from today as a bounded take.
+    // D-days can be months out, past the home page's day scan.
     .index("by_dday_date", ["dday", "date"]),
 });

@@ -7,9 +7,7 @@
 /* Neutral OKLCH ramp; status hues (red/amber/sky) live in the pages. */
 :root {
 	--sat: env(safe-area-inset-top);
-	--sar: env(safe-area-inset-right);
 	--sab: env(safe-area-inset-bottom);
-	--sal: env(safe-area-inset-left);
 
 	--background: oklch(0.981 0 0);
 	--foreground: oklch(0.21 0 0);
@@ -103,10 +101,6 @@ html {
 		text-wrap: pretty;
 	}
 
-	h1[id], h2[id], h3[id], h4[id], h5[id], h6[id] {
-		scroll-margin-top: 96px;
-	}
-
 	button, a, input, textarea, select {
 		touch-action: manipulation;
 		-webkit-tap-highlight-color: transparent;
@@ -158,19 +152,22 @@ select:focus-visible {
 
 @layer utilities {
 	.pressable,
-	.pressable-lg {
+	.pressable-xl,
+	.pressable-icon {
+		--press-scale: 0.95;
 		@apply transition-transform duration-150 ease-out;
-	}
-	.pressable:active,
-	.pressable-lg:active {
-		@apply scale-95;
 	}
 	/* Cards: 5% on a whole card reads as a lurch. */
 	.pressable-xl {
-		@apply transition-transform duration-150 ease-out;
+		--press-scale: 0.97;
 	}
-	.pressable-xl:active {
-		@apply scale-[0.97];
+	.pressable-icon {
+		--press-scale: 0.9;
+	}
+	.pressable:active,
+	.pressable-xl:active,
+	.pressable-icon:active {
+		scale: var(--press-scale);
 	}
 	/* 44px hit area on touch without changing the control's size. */
 	.touch-target {
@@ -190,13 +187,6 @@ select:focus-visible {
 		}
 	}
 
-	.pressable-icon {
-		@apply transition-transform duration-150 ease-out;
-	}
-	.pressable-icon:active {
-		@apply scale-90;
-	}
-
 	.spinner-mark {
 		animation: spinner-rotate 0.65s linear infinite;
 	}
@@ -214,11 +204,8 @@ select:focus-visible {
 
 /* Chrome applies :active before it knows a touch is a scroll; the layout
    flags scrolling so cards don't shrink as the list moves under the finger. */
-[data-scrolling] .pressable:active,
-[data-scrolling] .pressable-lg:active,
-[data-scrolling] .pressable-xl:active,
-[data-scrolling] .pressable-icon:active {
-	transform: none;
+[data-scrolling] :is(.pressable, .pressable-xl, .pressable-icon) {
+	--press-scale: 1;
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -230,11 +217,8 @@ select:focus-visible {
 		transition-property: color, background-color, border-color,
 			text-decoration-color, fill, stroke, opacity, box-shadow !important;
 	}
-	.pressable:active,
-	.pressable-lg:active,
-	.pressable-xl:active,
-	.pressable-icon:active {
-		transform: none;
+	:is(.pressable, .pressable-xl, .pressable-icon) {
+		--press-scale: 1;
 	}
 	/* A frozen arc looks broken; show a quiet ring instead. */
 	.spinner-mark {
@@ -294,8 +278,7 @@ select:focus-visible {
 	}
 
 	a[href='#main'],
-	header,
-	#aria-live-region {
+	header {
 		display: none !important;
 	}
 

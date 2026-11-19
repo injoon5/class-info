@@ -1,47 +1,36 @@
 import type { PageLoad } from './$types.js';
 import { api } from '@class-info/backend/convex/_generated/api';
+import { addDays, isAfterDinner, mondayOf, resolveDisplayDay, schoolClock } from '@class-info/backend/convex/dates';
 import { convexHttp, orFallback } from '#lib/convex.js';
-import {
-	addDaysYyyymmdd,
-	getNowInKst,
-	isAtOrAfterDinnerEnd,
-	noticeClock,
-	schoolDisplayClock,
-	thisMondayYyyymmdd,
-	yyyymmdd
-} from '#lib/date.js';
 
 export const load = (async ({ fetch }) => {
-	const now = getNowInKst();
-	const clock = noticeClock(now);
-	const displayClock = schoolDisplayClock(now);
-	const todayYmd = yyyymmdd(now);
+	const now = Date.now();
+	const clock = schoolClock(now);
+	const thisMonday = mondayOf(clock.today);
 	const client = convexHttp(fetch);
 
-	const [schedule, currentGroups, timetable, nextWeekTimetable, meals] = await Promise.all([
+	const [schedule, currentGroups, weeks, meals] = await Promise.all([
 		orFallback(
-			client.query(api.schedule.homeSchedule, displayClock),
-			{
-				displayDay: displayClock.afterRollover ? addDaysYyyymmdd(todayYmd, 1) : todayYmd,
-				events: [],
-				ddays: []
-			},
+			client.query(api.schedule.homeSchedule, clock),
+			{ displayDay: resolveDisplayDay(clock, new Set()), events: [], ddays: [] },
 			'home schedule'
 		),
 		orFallback(client.query(api.notices.currentGroups, clock), [], 'home notices'),
-		orFallback(client.query(api.timetable.getByWeek, { week: 0 }), null, 'home timetable 0'),
-		orFallback(client.query(api.timetable.getByWeek, { week: 1 }), null, 'home timetable 1'),
-		orFallback(client.query(api.meals.getTwoWeeks, { weekStart: thisMondayYyyymmdd(now) }), null, 'home meals')
+		// The display day is in this week or the next, unless a break pushes it further.
+		Promise.all(
+			[thisMonday, addDays(thisMonday, 7)].map((weekStart) =>
+				orFallback(client.query(api.timetable.getWeek, { weekStart }), null, 'home timetable')
+			)
+		),
+		orFallback(client.query(api.meals.getTwoWeeks, { weekStart: thisMonday }), null, 'home meals')
 	]);
 
 	return {
-		...clock,
+		clock,
 		...schedule,
-		todayYmd,
-		afterDinner: isAtOrAfterDinnerEnd(now),
+		afterDinner: isAfterDinner(now),
 		currentGroups,
-		timetable,
-		nextWeekTimetable,
+		timetable: weeks.find((week) => week?.weekStart === mondayOf(schedule.displayDay)) ?? null,
 		meals
 	};
 }) satisfies PageLoad;

@@ -1,22 +1,22 @@
 import { describe, expect, test } from "vitest";
+import { DAY_ROLLOVER_HOUR, DINNER_END_HOUR, TIMEZONE_OFFSET_HOURS } from "./config";
 import {
-  scheduleWindow,
-  addDaysYyyymmdd,
+  addDays,
   closedYmdsFromSchedule,
-  daysBetweenYmd,
+  dayLabel,
+  daysBetween,
   ddayLabel,
-  DAY_ROLLOVER_HOUR_KST,
-  DINNER_END_HOUR_KST,
-  isAtOrAfterDayRollover,
-  isAtOrAfterDinnerEnd,
+  isAfterDinner,
   isSchoolYmd,
   isVacationTitle,
+  mondayOf,
   relativeDayLabel,
-  resolveSchoolDisplayYmd,
-  weekOffsetBetween,
-  ymdWeekday,
+  resolveDisplayDay,
+  scheduleWindow,
+  schoolClock,
+  weekdayOf,
+  ymdFromIso,
   type ScheduleHint,
-  SCHOOL_DAY_LOOKAHEAD,
 } from "./dates";
 
 // Reference week: Mon 20260817 … Fri 20260821, Sat 22, Sun 23, Mon 24.
@@ -39,47 +39,46 @@ const custom = (date: string, title: string): ScheduleHint => ({
   source: "custom",
 });
 
-// Mirrors schedule.ts scanSchoolDays(): the index is read over a window that
-// reaches SCHOOL_DAY_LOOKAHEAD days *behind* today, and closures are derived
-// from exactly the rows that window returns.
-function displayDayFor(today: string, afterRollover: boolean, all: ScheduleHint[]) {
-  const scanStart = addDaysYyyymmdd(today, -SCHOOL_DAY_LOOKAHEAD);
-  const scanEnd = addDaysYyyymmdd(today, SCHOOL_DAY_LOOKAHEAD + 7);
-  const rows = all.filter((r) => r.date >= scanStart && r.date <= scanEnd);
-  return resolveSchoolDisplayYmd(today, afterRollover, closedYmdsFromSchedule(rows, scanStart, scanEnd));
+// The display day for `today`, with closures read from the whole year. How
+// far back the real query scans is covered in schedule.test.ts.
+function displayDayFor(today: string, afterRollover: boolean, events: ScheduleHint[]) {
+  return resolveDisplayDay({ today, afterRollover }, closedYmdsFromSchedule(events, "20260101", "20261231"));
 }
 
-describe("ymdWeekday / weekOffsetBetween", () => {
+describe("weekdayOf / mondayOf", () => {
   test("weekday is timezone-independent", () => {
-    expect(ymdWeekday(MON)).toBe(1);
-    expect(ymdWeekday(FRI)).toBe(5);
-    expect(ymdWeekday(SUN)).toBe(0);
+    expect(weekdayOf(MON)).toBe(1);
+    expect(weekdayOf(FRI)).toBe(5);
+    expect(weekdayOf(SUN)).toBe(0);
   });
 
-  test("Sunday belongs to the week that just ended, so Monday is a week ahead", () => {
-    expect(weekOffsetBetween(THU, FRI)).toBe(0);
-    expect(weekOffsetBetween(FRI, NEXT_MON)).toBe(1);
-    expect(weekOffsetBetween(SUN, NEXT_MON)).toBe(1);
-    expect(weekOffsetBetween(MON, addDaysYyyymmdd(MON, 14))).toBe(2);
+  test("Sunday belongs to the week that just ended", () => {
+    expect(mondayOf(THU)).toBe(MON);
+    expect(mondayOf(SUN)).toBe(MON);
+    expect(mondayOf(NEXT_MON)).toBe(NEXT_MON);
   });
 });
 
-describe("rollover hours", () => {
-  // Both read local fields off a KST-shifted Date, so build the probe the same way.
-  const at = (hour: number) => new Date(2026, 7, 20, hour, 30);
+describe("school clock", () => {
+  // An instant at `hour`:30 on 2026-08-20 in the school's zone.
+  const at = (hour: number) => Date.UTC(2026, 7, 20, hour - TIMEZONE_OFFSET_HOURS, 30);
 
-  test("the day rollover flips at DAY_ROLLOVER_HOUR_KST", () => {
-    expect(isAtOrAfterDayRollover(at(DAY_ROLLOVER_HOUR_KST - 1))).toBe(false);
-    expect(isAtOrAfterDayRollover(at(DAY_ROLLOVER_HOUR_KST))).toBe(true);
+  test("today is the school-zone date, not the UTC one", () => {
+    expect(schoolClock(at(1)).today).toBe(THU); // still the 19th in UTC
+    expect(schoolClock(at(23)).today).toBe(THU);
+  });
+
+  test("the day rollover flips at DAY_ROLLOVER_HOUR", () => {
+    expect(schoolClock(at(DAY_ROLLOVER_HOUR - 1)).afterRollover).toBe(false);
+    expect(schoolClock(at(DAY_ROLLOVER_HOUR)).afterRollover).toBe(true);
   });
 
   // Home leads with today's 석식 between these two hours.
-  test("dinner stays pending until DINNER_END_HOUR_KST", () => {
-    expect(DINNER_END_HOUR_KST).toBeGreaterThan(DAY_ROLLOVER_HOUR_KST);
-    expect(isAtOrAfterDinnerEnd(at(DAY_ROLLOVER_HOUR_KST))).toBe(false);
-    expect(isAtOrAfterDinnerEnd(at(DINNER_END_HOUR_KST - 1))).toBe(false);
-    expect(isAtOrAfterDinnerEnd(at(DINNER_END_HOUR_KST))).toBe(true);
-    expect(isAtOrAfterDinnerEnd(at(23))).toBe(true);
+  test("dinner stays pending until DINNER_END_HOUR", () => {
+    expect(isAfterDinner(at(DAY_ROLLOVER_HOUR))).toBe(false);
+    expect(isAfterDinner(at(DINNER_END_HOUR - 1))).toBe(false);
+    expect(isAfterDinner(at(DINNER_END_HOUR))).toBe(true);
+    expect(isAfterDinner(at(23))).toBe(true);
   });
 });
 
@@ -96,9 +95,22 @@ describe("relativeDayLabel", () => {
     expect(relativeDayLabel(NEXT_MON, SAT)).toBe("");
     expect(relativeDayLabel(NEXT_MON, SUN)).toBe("내일");
   });
+
+  test("dayLabel falls back to the short date", () => {
+    expect(dayLabel(FRI, THU)).toBe("내일");
+    expect(dayLabel(NEXT_MON, THU)).toBe("8/24 (월)");
+  });
 });
 
-describe("resolveSchoolDisplayYmd", () => {
+describe("ymdFromIso", () => {
+  test("accepts only real dates", () => {
+    expect(ymdFromIso("2026-08-20")).toBe(THU);
+    expect(ymdFromIso("2026-02-30")).toBeNull();
+    expect(ymdFromIso("20260820")).toBeNull();
+  });
+});
+
+describe("resolveDisplayDay", () => {
   test("shows today before the rollover, tomorrow after it", () => {
     expect(displayDayFor(THU, false, [])).toBe(THU);
     expect(displayDayFor(THU, true, [])).toBe(FRI);
@@ -116,11 +128,11 @@ describe("resolveSchoolDisplayYmd", () => {
 
   test("falls back to the next weekday when nothing is open in the lookahead", () => {
     const closed = new Set<string>();
-    for (let i = 0; i <= 200; i++) closed.add(addDaysYyyymmdd(THU, i));
-    const fallback = resolveSchoolDisplayYmd(THU, false, closed);
+    for (let i = 0; i <= 200; i++) closed.add(addDays(THU, i));
+    const fallback = resolveDisplayDay({ today: THU, afterRollover: false }, closed);
     expect(fallback).toBe(FRI);
-    expect(ymdWeekday(fallback)).toBeGreaterThanOrEqual(1);
-    expect(ymdWeekday(fallback)).toBeLessThanOrEqual(5);
+    expect(weekdayOf(fallback)).toBeGreaterThanOrEqual(1);
+    expect(weekdayOf(fallback)).toBeLessThanOrEqual(5);
   });
 });
 
@@ -193,8 +205,8 @@ describe("ddayLabel", () => {
   });
 
   test("crosses month and year boundaries by real days, not arithmetic on parts", () => {
-    expect(daysBetweenYmd("20261231", "20270101")).toBe(1);
-    expect(daysBetweenYmd("20260228", "20260301")).toBe(1); // 2026 is not a leap year
+    expect(daysBetween("20261231", "20270101")).toBe(1);
+    expect(daysBetween("20260228", "20260301")).toBe(1); // 2026 is not a leap year
     expect(ddayLabel("20270101", "20261225")).toBe("D-7");
   });
 
@@ -206,14 +218,14 @@ describe("ddayLabel", () => {
 describe("scheduleWindow", () => {
   test("covers the school year in progress, not the calendar year", () => {
     // January 2027 is still the 2026 school year (March 2026 – February 2027).
-    const jan = scheduleWindow(new Date(2027, 0, 15));
+    const jan = scheduleWindow("20270115");
     expect([jan.start, jan.end]).toEqual(["20251201", "20270228"]);
-    const sep = scheduleWindow(new Date(2026, 8, 24));
+    const sep = scheduleWindow("20260924");
     expect([sep.start, sep.end]).toEqual(["20251201", "20270228"]);
   });
 
   test("rolls over in March and ends on a leap day when there is one", () => {
-    const mar = scheduleWindow(new Date(2027, 2, 1));
+    const mar = scheduleWindow("20270301");
     expect([mar.start, mar.end]).toEqual(["20261201", "20280229"]);
   });
 });

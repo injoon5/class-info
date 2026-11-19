@@ -1,143 +1,100 @@
-import { mutation, query, type MutationCtx } from "./_generated/server";
+import { internalMutation, query } from "./_generated/server";
 import { v } from "convex/values";
 import { R2 } from "@convex-dev/r2";
 import { components } from "./_generated/api";
-import type { Id } from "./_generated/dataModel";
-import { requireAdmin } from "./auth";
-import { fileDoc } from "./validators";
+import type { Doc, Id } from "./_generated/dataModel";
+import { adminMutation } from "./auth";
 import { FILES_BASE_URL } from "./config";
+import {
+  ATTACHMENT_MAX_BYTES,
+  MAX_ATTACHMENTS,
+  isAttachmentType,
+  publicFile,
+  type PublicFile,
+} from "./validators";
 
-const MAX_FILE_BYTES = 10 * 1024 * 1024;
-const ALLOWED_TYPE_PREFIXES = ["image/", "application/pdf"] as const;
+// A file belongs to whichever notices list it. One no notice lists is
+// garbage: an upload abandoned in the editor or an attachment removed on
+// save. `collectOrphans` deletes those once they are old enough that no
+// editor can still be about to save them.
+const ORPHAN_GRACE_MS = 24 * 60 * 60 * 1000;
+
 const STORAGE_ID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
-export const r2 = new R2(components.r2);
+const r2 = new R2(components.r2);
 
-function assertFileMeta(type: string, size: number): void {
-  if (!Number.isFinite(size) || size < 0 || size > MAX_FILE_BYTES) {
-    throw new Error("Invalid file size");
-  }
-  if (!ALLOWED_TYPE_PREFIXES.some((prefix) => type.startsWith(prefix))) {
-    throw new Error("Invalid file type");
-  }
+export function projectFile(file: Doc<"files">): PublicFile {
+  return {
+    _id: file._id,
+    name: file.name,
+    type: file.type,
+    size: file.size,
+    url: `${FILES_BASE_URL}/${file.storageId}`,
+  };
 }
 
-function assertStorageId(storageId: string): void {
-  if (!STORAGE_ID_RE.test(storageId)) {
-    throw new Error("Invalid storage id");
-  }
-}
-
-function publicFileUrl(key: string): string {
-  return `${FILES_BASE_URL}/${key}`;
-}
-
-/**
- * Admin-only signed PUT URL. The R2 clientApi `generateUploadUrl` mutation
- * takes no args, so it cannot see our session cookie/token — that path is
- * intentionally not exported.
- */
-export const generateUploadUrl = mutation({
-  args: { sessionToken: v.string() },
+// The R2 component's own `generateUploadUrl` takes no args, so it can't check
+// the admin session; this one is the only way to get an upload URL.
+export const generateUploadUrl = adminMutation({
+  args: {},
   returns: v.object({ key: v.string(), url: v.string() }),
-  handler: async (ctx, { sessionToken }) => {
-    await requireAdmin(ctx, sessionToken);
-    return await r2.generateUploadUrl();
-  },
+  handler: async () => await r2.generateUploadUrl(),
 });
 
-export const updateFileMetadataByStorageId = mutation({
-  args: {
-    sessionToken: v.string(),
-    storageId: v.string(),
-    name: v.string(),
-    type: v.string(),
-    size: v.number(),
-  },
+// Records an object the browser just PUT to the upload URL.
+export const recordUpload = adminMutation({
+  args: { storageId: v.string(), name: v.string(), type: v.string(), size: v.number() },
   returns: v.id("files"),
-  handler: async (ctx, { sessionToken, storageId, name, type, size }) => {
-    await requireAdmin(ctx, sessionToken);
-    assertStorageId(storageId);
-    assertFileMeta(type, size);
-    const file = await ctx.db
+  handler: async (ctx, { storageId, name, type, size }) => {
+    if (!STORAGE_ID_RE.test(storageId)) throw new Error("Invalid storage id");
+    if (!Number.isFinite(size) || size < 0 || size > ATTACHMENT_MAX_BYTES) {
+      throw new Error("Invalid file size");
+    }
+    if (!isAttachmentType(type)) throw new Error("Invalid file type");
+    const existing = await ctx.db
       .query("files")
       .withIndex("by_storage_id", (q) => q.eq("storageId", storageId))
       .first();
-
-    const url = publicFileUrl(storageId);
-    if (!file) {
-      return await ctx.db.insert("files", {
-        name,
-        type,
-        size,
-        url,
-        storageId,
-        uploadedAt: Date.now(),
-      });
+    if (existing) {
+      await ctx.db.patch(existing._id, { name, type, size });
+      return existing._id;
     }
-
-    await ctx.db.patch(file._id, {
-      name,
-      type,
-      size,
-      url,
-    });
-
-    return file._id;
+    return await ctx.db.insert("files", { name, type, size, storageId, uploadedAt: Date.now() });
   },
 });
 
 export const getFiles = query({
   args: { fileIds: v.array(v.id("files")) },
-  returns: v.array(fileDoc),
+  returns: v.array(publicFile),
   handler: async (ctx, { fileIds }) => {
-    const unique = [...new Set(fileIds)].slice(0, 32);
+    const unique = [...new Set(fileIds)].slice(0, MAX_ATTACHMENTS);
     const rows = await Promise.all(unique.map((id) => ctx.db.get(id)));
-    return rows.filter((f): f is NonNullable<typeof f> => f !== null);
+    return rows.filter((f): f is Doc<"files"> => f !== null).map(projectFile);
   },
 });
 
-// Delete file records and their backing R2 objects. Shared by deleteFile and
-// notices.remove (cascade) so a deleted notice never orphans its attachments.
-export async function deleteFilesByIds(
-  ctx: MutationCtx,
-  fileIds: Id<"files">[]
-): Promise<void> {
-  const unique = [...new Set(fileIds)];
-  if (unique.length === 0) return;
+export const collectOrphans = internalMutation({
+  args: {},
+  returns: v.object({ deleted: v.number() }),
+  handler: async (ctx) => {
+    const cutoff = Date.now() - ORPHAN_GRACE_MS;
+    const candidates = await ctx.db
+      .query("files")
+      .withIndex("by_creation_time", (q) => q.lt("_creationTime", cutoff))
+      .collect();
+    if (candidates.length === 0) return { deleted: 0 };
 
-  const notices = await ctx.db.query("notices").collect();
-  for (const notice of notices) {
-    if (!Array.isArray(notice.files) || notice.files.length === 0) continue;
-    const next = notice.files.filter((id) => !unique.includes(id));
-    if (next.length !== notice.files.length) {
-      await ctx.db.patch(notice._id, { files: next });
+    const listed = new Set<Id<"files">>();
+    for (const notice of await ctx.db.query("notices").collect()) {
+      for (const id of notice.files ?? []) listed.add(id);
     }
-  }
-
-  for (const fileId of unique) {
-    const file = await ctx.db.get(fileId);
-    if (!file) continue;
-    try {
+    let deleted = 0;
+    for (const file of candidates) {
+      if (listed.has(file._id)) continue;
       await r2.deleteObject(ctx, file.storageId);
-    } catch (error) {
-      console.error("Failed to delete file from R2:", error);
-      // Continue with database deletion even if R2 deletion fails.
+      await ctx.db.delete(file._id);
+      deleted++;
     }
-    await ctx.db.delete(fileId);
-  }
-}
-
-export const deleteFile = mutation({
-  args: { sessionToken: v.string(), fileId: v.id("files") },
-  returns: v.null(),
-  handler: async (ctx, { sessionToken, fileId }) => {
-    await requireAdmin(ctx, sessionToken);
-    const file = await ctx.db.get(fileId);
-    if (!file) {
-      throw new Error("File not found");
-    }
-    await deleteFilesByIds(ctx, [fileId]);
-    return null;
+    return { deleted };
   },
 });

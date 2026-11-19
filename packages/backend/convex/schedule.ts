@@ -1,239 +1,179 @@
-import {
-  internalAction,
-  internalMutation,
-  mutation,
-  query,
-  type ActionCtx,
-  type QueryCtx,
-} from "./_generated/server";
-import { v } from "convex/values";
+import { internalAction, internalMutation, query, type QueryCtx } from "./_generated/server";
+import { ConvexError, v } from "convex/values";
 import { internal } from "./_generated/api";
-import { requireAdmin } from "./auth";
+import type { Doc } from "./_generated/dataModel";
+import { adminMutation } from "./auth";
+import { HOME_DDAY_LIMIT, HOME_EVENT_WINDOW_DAYS, SCHOOL } from "./config";
 import {
-  addDaysYyyymmdd,
-  assertYyyymmdd,
-  closedYmdsFromSchedule,
-  parseYyyymmdd,
-  resolveSchoolDisplayYmd,
-  scheduleWindow,
   SCHOOL_DAY_LOOKAHEAD,
+  addDays,
+  assertYmd,
+  closedYmdsFromSchedule,
+  daysBetween,
+  resolveDisplayDay,
+  scheduleWindow,
+  schoolClock,
+  ymdFromParts,
+  type SchoolClock,
 } from "./dates";
-import { projectSchedule } from "./project";
-import { customEventColor, publicEvent, schoolClockArgs } from "./validators";
+import { fetchSchoolApi } from "./schoolApi";
 import {
-  HOME_DDAY_LIMIT,
-  HOME_EVENT_WINDOW_DAYS,
-  SCHEDULE_RANGE_MAX_DAYS as RANGE_MAX_DAYS,
-  SCHOOL_API_BASE_URL,
-} from "./config";
+  customEventColor,
+  isCustomEventColor,
+  publicEvent,
+  schoolClockArgs,
+  type PublicEvent,
+} from "./validators";
 
-type ExternalScheduleEvent = {
+type FeedEvent = {
   AA_YMD: string; // YYYYMMDD
   EVENT_NM: string;
-  SBTR_DD_SC_NM: string;
-  SD_SCHUL_CODE: string;
+  SBTR_DD_SC_NM?: string;
+  SD_SCHUL_CODE?: string;
 };
 
 const TITLE_MAX = 100;
+const RANGE_MAX_DAYS = 400;
+// NEIS marks every Saturday this way; nobody needs to be told.
+const NOISE_TITLES = new Set(["토요휴업일"]);
+
+function projectEvent(e: Doc<"schedules">): PublicEvent | null {
+  if (NOISE_TITLES.has(e.title)) return null;
+  return {
+    _id: e._id,
+    date: e.date,
+    title: e.title,
+    source: e.source,
+    ...(e.eventType !== undefined ? { eventType: e.eventType } : {}),
+    ...(isCustomEventColor(e.color) ? { color: e.color } : {}),
+    ...(e.dday ? { dday: true } : {}),
+  };
+}
+
+function projectEvents(rows: Doc<"schedules">[]): PublicEvent[] {
+  return rows.map(projectEvent).filter((e): e is PublicEvent => e !== null);
+}
+
+// ── School feed ──────────────────────────────────────────────────────────
 
 // \u0000 can't occur in a date or a title, so it can't be forged by one.
 function ddayKey(date: string, title: string): string {
   return `${date}\u0000${title}`;
 }
 
-export const upsertManySchoolEvents = internalMutation({
+export const replaceSchoolEvents = internalMutation({
   args: {
     events: v.array(
       v.object({
         date: v.string(),
-        eventName: v.string(),
+        title: v.string(),
         eventType: v.string(),
         schoolCode: v.string(),
       })
     ),
-    startdate: v.string(), // YYYYMMDD — range to clear before re-inserting
-    enddate: v.string(),
+    start: v.string(), // YYYYMMDD — the range the events replace
+    end: v.string(),
   },
   returns: v.null(),
-  handler: async (ctx, { events, startdate, enddate }) => {
+  handler: async (ctx, { events, start, end }) => {
     // An empty payload (upstream hiccup) must not wipe the range.
-    if (events.length === 0) {
-      console.log(`[schedule.upsertManySchoolEvents] range=${startdate}–${enddate} skipped (no events)`);
-      return null;
-    }
+    if (events.length === 0) return null;
 
     const existing = await ctx.db
       .query("schedules")
-      .withIndex("by_date", (q) => q.gte("date", startdate).lte("date", enddate))
+      .withIndex("by_date", (q) => q.gte("date", start).lte("date", end))
       .collect();
+    const replaced = existing.filter((ev) => ev.source === "school");
 
-    const toDelete = existing.filter((ev) => ev.source !== "custom");
-
-    // Every sync re-inserts the range and the feed has no stable id, so a
-    // D-day set on a school event is carried over by (date, title).
+    // The feed has no stable id, so a D-day set on a school event is carried
+    // over by (date, title).
     const carriedDdays = new Set(
-      toDelete.filter((ev) => ev.dday === true).map((ev) => ddayKey(ev.date, ev.title))
+      replaced.filter((ev) => ev.dday === true).map((ev) => ddayKey(ev.date, ev.title))
     );
-
-    for (const ev of toDelete) {
-      await ctx.db.delete(ev._id);
-    }
+    for (const ev of replaced) await ctx.db.delete(ev._id);
 
     const now = Date.now();
     for (const ev of events) {
-      const dday = carriedDdays.has(ddayKey(ev.date, ev.eventName));
+      const dday = carriedDdays.has(ddayKey(ev.date, ev.title));
       await ctx.db.insert("schedules", {
-        date: ev.date,
-        title: ev.eventName,
+        ...ev,
         source: "school",
-        eventType: ev.eventType,
-        schoolCode: ev.schoolCode,
         ...(dday ? { dday: true } : {}),
         createdAt: now,
         updatedAt: now,
       });
     }
-    console.log(`[schedule.upsertManySchoolEvents] range=${startdate}–${enddate} deleted=${toDelete.length} inserted=${events.length}`);
     return null;
   },
 });
 
-async function pullSchoolSchedule(
-  ctx: ActionCtx,
-  startdate: string,
-  enddate: string,
-  schoolcode: string
-): Promise<void> {
-  const url = `${SCHOOL_API_BASE_URL}/schedule?startdate=${encodeURIComponent(startdate)}&enddate=${encodeURIComponent(enddate)}&schoolcode=${encodeURIComponent(schoolcode)}`;
-
-  const res = await fetch(url, { headers: { Accept: "application/json" } });
-  if (!res.ok) {
-    throw new Error(`Failed to fetch schedule: ${res.status} ${res.statusText}`);
-  }
-
-  const data = await res.json();
-  if (!Array.isArray(data)) return;
-
-  const events = (data as ExternalScheduleEvent[])
-    .filter((d) => d.AA_YMD && d.EVENT_NM)
-    .map((d) => ({
-      date: d.AA_YMD,
-      eventName: d.EVENT_NM,
-      eventType: d.SBTR_DD_SC_NM ?? "",
-      schoolCode: d.SD_SCHUL_CODE ?? schoolcode,
-    }));
-
-  console.log(`[schedule.pullSchoolSchedule] range=${startdate}–${enddate} events=${events.length}`);
-  await ctx.runMutation(internal.schedule.upsertManySchoolEvents, { events, startdate, enddate });
-}
-
-function splitInto3MonthChunks(startdate: string, enddate: string) {
-  const chunks: { start: string; end: string }[] = [];
-
-  let curYear = parseInt(startdate.slice(0, 4));
-  let curMonth = parseInt(startdate.slice(4, 6));
-  let curStart = startdate;
-
-  while (curStart <= enddate) {
-    let endMonth = curMonth + 2;
-    let endYear = curYear;
-    if (endMonth > 12) {
-      endMonth -= 12;
-      endYear++;
-    }
-
-    const lastDay = new Date(Date.UTC(endYear, endMonth, 0)).getUTCDate();
-    const pad = (n: number) => String(n).padStart(2, "0");
-    const chunkEnd = `${endYear}${pad(endMonth)}${pad(lastDay)}`;
-    const actualEnd = chunkEnd < enddate ? chunkEnd : enddate;
-
-    chunks.push({ start: curStart, end: actualEnd });
-
-    if (actualEnd >= enddate) break;
-
-    let nextMonth = endMonth + 1;
-    let nextYear = endYear;
-    if (nextMonth > 12) {
-      nextMonth = 1;
-      nextYear++;
-    }
-
-    curYear = nextYear;
-    curMonth = nextMonth;
-    curStart = `${nextYear}${pad(nextMonth)}01`;
-  }
-
-  return chunks;
-}
-
-// Fetches the current school year plus a month either side — the same window
-// the calendar lets users page through (see dates.scheduleWindow).
-export const fetchScheduleWindow = internalAction({
-  args: { schoolcode: v.string() },
+// The current school year plus a month either side — the same window the
+// calendar lets users page through — fetched three months per request.
+export const fetchWindow = internalAction({
+  args: {},
   returns: v.null(),
-  handler: async (ctx, { schoolcode }) => {
-    const { start: startdate, end: enddate } = scheduleWindow();
-
-    const chunks = splitInto3MonthChunks(startdate, enddate);
-    for (const chunk of chunks) {
-      await pullSchoolSchedule(ctx, chunk.start, chunk.end, schoolcode);
+  handler: async (ctx): Promise<null> => {
+    const window = scheduleWindow(schoolClock().today);
+    for (let start = window.start; start <= window.end; ) {
+      const next = ymdFromParts(Number(start.slice(0, 4)), Number(start.slice(4, 6)) + 3, 1);
+      const end = addDays(next, -1) < window.end ? addDays(next, -1) : window.end;
+      const data = await fetchSchoolApi("schedule", { startdate: start, enddate: end });
+      if (Array.isArray(data)) {
+        const events = (data as FeedEvent[])
+          .filter((d) => d.AA_YMD && d.EVENT_NM)
+          .map((d) => ({
+            date: d.AA_YMD,
+            title: d.EVENT_NM,
+            eventType: d.SBTR_DD_SC_NM ?? "",
+            schoolCode: d.SD_SCHUL_CODE ?? SCHOOL.code,
+          }));
+        await ctx.runMutation(internal.schedule.replaceSchoolEvents, { events, start, end });
+      }
+      start = next;
     }
     return null;
   },
 });
+
+// ── Queries ──────────────────────────────────────────────────────────────
 
 export const getEventsInRange = query({
   args: { start: v.string(), end: v.string() },
   returns: v.array(publicEvent),
   handler: async (ctx, { start, end }) => {
-    const startYmd = parseYyyymmdd(start);
-    const endYmd = parseYyyymmdd(end);
-    if (!startYmd || !endYmd || start > end) return [];
-    const startUtc = Date.UTC(startYmd.y, startYmd.m - 1, startYmd.d);
-    const endUtc = Date.UTC(endYmd.y, endYmd.m - 1, endYmd.d);
-    if ((endUtc - startUtc) / 86_400_000 > RANGE_MAX_DAYS) return [];
+    assertYmd(start, "start");
+    assertYmd(end, "end");
+    const span = daysBetween(start, end);
+    if (span < 0 || span > RANGE_MAX_DAYS) return [];
     const rows = await ctx.db
       .query("schedules")
       .withIndex("by_date", (q) => q.gte("date", start).lte("date", end))
       .collect();
-    return rows.map(projectSchedule).filter((e): e is NonNullable<typeof e> => e !== null);
+    return projectEvents(rows);
   },
 });
 
 // One scan serving both home questions. It reaches a full lookahead behind
 // today because a break is only marked on its first day.
-async function scanSchoolDays(ctx: QueryCtx, today: string, afterRollover: boolean) {
-  assertYyyymmdd(today, "today");
-  const scanStart = addDaysYyyymmdd(today, -SCHOOL_DAY_LOOKAHEAD);
-  const scanEnd = addDaysYyyymmdd(today, SCHOOL_DAY_LOOKAHEAD + HOME_EVENT_WINDOW_DAYS);
+async function scanSchoolDays(ctx: QueryCtx, clock: SchoolClock) {
+  assertYmd(clock.today, "today");
+  const scanStart = addDays(clock.today, -SCHOOL_DAY_LOOKAHEAD);
+  const scanEnd = addDays(clock.today, SCHOOL_DAY_LOOKAHEAD + HOME_EVENT_WINDOW_DAYS);
   const rows = await ctx.db
     .query("schedules")
     .withIndex("by_date", (q) => q.gte("date", scanStart).lte("date", scanEnd))
     .collect();
-  const closed = closedYmdsFromSchedule(
-    rows.map((row) => ({
-      date: row.date,
-      title: row.title,
-      eventType: row.eventType,
-      source: row.source,
-    })),
-    scanStart,
-    scanEnd,
-  );
-  return { rows, displayDay: resolveSchoolDisplayYmd(today, afterRollover, closed) };
+  const closed = closedYmdsFromSchedule(rows, scanStart, scanEnd);
+  return { rows, displayDay: resolveDisplayDay(clock, closed) };
 }
 
 export const schoolDisplayDay = query({
   args: schoolClockArgs,
   returns: v.string(),
-  handler: async (ctx, { today, afterRollover }) => {
-    const { displayDay } = await scanSchoolDays(ctx, today, afterRollover);
-    return displayDay;
-  },
+  handler: async (ctx, clock) => (await scanSchoolDays(ctx, clock)).displayDay,
 });
 
-// Home needs the display day *and* the events around it. Both come out of the
-// same scan, so it costs one query and ships only the days actually rendered.
+// Home needs the display day *and* the events around it, out of one scan.
 export const homeSchedule = query({
   args: schoolClockArgs,
   returns: v.object({
@@ -241,54 +181,42 @@ export const homeSchedule = query({
     events: v.array(publicEvent),
     ddays: v.array(publicEvent),
   }),
-  handler: async (ctx, { today, afterRollover }) => {
-    const { rows, displayDay } = await scanSchoolDays(ctx, today, afterRollover);
-    const windowEnd = addDaysYyyymmdd(displayDay, HOME_EVENT_WINDOW_DAYS);
-    const events = rows
-      .filter((row) => row.date >= today && row.date <= windowEnd)
-      .map(projectSchedule)
-      .filter((e): e is NonNullable<typeof e> => e !== null);
-    // Forward-only countdowns, on their own index: the day scan ends a
-    // lookahead past today, and most D-days worth pinning are further out.
+  handler: async (ctx, clock) => {
+    const { rows, displayDay } = await scanSchoolDays(ctx, clock);
+    const windowEnd = addDays(displayDay, HOME_EVENT_WINDOW_DAYS);
+    const events = projectEvents(rows.filter((row) => row.date >= clock.today && row.date <= windowEnd));
+    // Forward-only countdowns, on their own index: most D-days worth pinning
+    // are further out than the day scan reaches.
     const ddayRows = await ctx.db
       .query("schedules")
-      .withIndex("by_dday_date", (q) => q.eq("dday", true).gte("date", today))
+      .withIndex("by_dday_date", (q) => q.eq("dday", true).gte("date", clock.today))
       .take(HOME_DDAY_LIMIT);
-    const ddays = ddayRows
-      .map(projectSchedule)
-      .filter((e): e is NonNullable<typeof e> => e !== null);
-    return { displayDay, events, ddays };
+    return { displayDay, events, ddays: projectEvents(ddayRows) };
   },
 });
 
-// Sets the countdown flag. Works on school rows as well as custom ones — a
-// countdown to the exam the feed already knows about is the common case.
-export const setEventDday = mutation({
-  args: { sessionToken: v.string(), id: v.id("schedules"), dday: v.boolean() },
+// ── Admin ────────────────────────────────────────────────────────────────
+
+// Works on school rows as well as custom ones — a countdown to the exam the
+// feed already knows about is the common case.
+export const setEventDday = adminMutation({
+  args: { id: v.id("schedules"), dday: v.boolean() },
   returns: v.null(),
-  handler: async (ctx, { sessionToken, id, dday }) => {
-    await requireAdmin(ctx, sessionToken);
-    const existing = await ctx.db.get(id);
-    if (!existing) return null;
+  handler: async (ctx, { id, dday }) => {
+    if (!(await ctx.db.get(id))) return null;
     await ctx.db.patch(id, { dday, updatedAt: Date.now() });
     return null;
   },
 });
 
-export const createCustomEvent = mutation({
-  args: {
-    sessionToken: v.string(),
-    date: v.string(),
-    title: v.string(),
-    color: customEventColor,
-  },
+export const createCustomEvent = adminMutation({
+  args: { date: v.string(), title: v.string(), color: customEventColor },
   returns: v.id("schedules"),
-  handler: async (ctx, { sessionToken, date, title, color }) => {
-    await requireAdmin(ctx, sessionToken);
-    assertYyyymmdd(date, "date");
+  handler: async (ctx, { date, title, color }) => {
+    assertYmd(date, "date");
     const trimmed = title.trim();
-    if (!trimmed) throw new Error("title is required");
-    if (trimmed.length > TITLE_MAX) throw new Error("title is too long");
+    if (!trimmed) throw new ConvexError("일정 이름을 입력해 주세요.");
+    if (trimmed.length > TITLE_MAX) throw new ConvexError(`일정 이름은 ${TITLE_MAX}자 이하로 써 주세요.`);
     const now = Date.now();
     return await ctx.db.insert("schedules", {
       date,
@@ -301,15 +229,13 @@ export const createCustomEvent = mutation({
   },
 });
 
-export const deleteCustomEvent = mutation({
-  args: { sessionToken: v.string(), id: v.id("schedules") },
+// Synced school events are never deleted by hand; the next sync would restore them.
+export const deleteCustomEvent = adminMutation({
+  args: { id: v.id("schedules") },
   returns: v.null(),
-  handler: async (ctx, { sessionToken, id }) => {
-    await requireAdmin(ctx, sessionToken);
+  handler: async (ctx, { id }) => {
     const existing = await ctx.db.get(id);
-    // Only allow deleting user-created events, never synced school events.
-    if (!existing || existing.source !== "custom") return null;
-    await ctx.db.delete(id);
+    if (existing?.source === "custom") await ctx.db.delete(id);
     return null;
   },
 });

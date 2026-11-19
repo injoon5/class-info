@@ -1,16 +1,17 @@
 import type { PageServerLoad } from './$types.js';
 import { api } from '@class-info/backend/convex/_generated/api';
+import { addDays, mondayOf, schoolClock } from '@class-info/backend/convex/dates';
 import { convexHttp, orFallback } from '#lib/convex.js';
 import { getAdminSession } from '#lib/server/auth.js';
-import { thisMondayYyyymmdd } from '#lib/date.js';
 
-export const load = (async ({ cookies }) => {
+export const load = (async ({ cookies, url }) => {
 	const client = convexHttp();
-	const [timetable, nextWeek, full, session] = await Promise.all([
-		orFallback(client.query(api.timetable.getByWeek, { week: 0 }), null, 'timetable 0'),
-		orFallback(client.query(api.timetable.getByWeek, { week: 1 }), null, 'timetable 1'),
+	const thisMonday = mondayOf(schoolClock().today);
+	const [thisWeek, nextWeek, full, session] = await Promise.all([
+		orFallback(client.query(api.timetable.getWeek, { weekStart: thisMonday }), null, 'timetable this week'),
+		orFallback(client.query(api.timetable.getWeek, { weekStart: addDays(thisMonday, 7) }), null, 'timetable next week'),
 		orFallback(client.query(api.timetable.getFull, {}), null, 'timetable full'),
-		getAdminSession(cookies)
+		getAdminSession(cookies, url)
 	]);
-	return { timetable, nextWeek, full, thisMonday: thisMondayYyyymmdd(), ...session };
+	return { weeks: [thisWeek, nextWeek] as const, full, thisMonday, ...session };
 }) satisfies PageServerLoad;

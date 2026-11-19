@@ -33,7 +33,6 @@ const btn = $derived(
 	`pressable touch-target shrink-0 whitespace-nowrap rounded-lg font-semibold border transition-colors duration-150 ${sizeClass}`
 );
 
-// Enter confirms and Escape cancels while this row is asking.
 $effect(() => {
 	if (!confirming) return;
 	const onKeydown = (e: KeyboardEvent) => {

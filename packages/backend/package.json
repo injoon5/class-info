@@ -22,6 +22,7 @@
   },
   "dependencies": {
     "@convex-dev/r2": "^0.10.2",
-    "convex": "^1.46.0"
+    "convex": "^1.46.0",
+    "convex-helpers": "^0.1.136"
   }
 }

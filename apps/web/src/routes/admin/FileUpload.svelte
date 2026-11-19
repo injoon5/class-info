@@ -3,7 +3,13 @@ import { useConvexClient } from 'convex-svelte';
 import { fly } from 'svelte/transition';
 import { api } from '@class-info/backend/convex/_generated/api';
 import type { Id } from '@class-info/backend/convex/_generated/dataModel';
-import type { FileDoc } from '@class-info/backend/convex/validators';
+import {
+	ATTACHMENT_ACCEPT,
+	ATTACHMENT_MAX_BYTES,
+	MAX_ATTACHMENTS,
+	isAttachmentType,
+	type PublicFile
+} from '@class-info/backend/convex/validators';
 import { flyHelper, flyHelperOut } from '#lib/transitions.js';
 import { formatFileSize } from '#lib/format.js';
 import FileIcon from '#lib/components/ui/FileIcon.svelte';
@@ -13,18 +19,14 @@ import Spinner from '#lib/components/ui/Spinner.svelte';
 const {
 	files = [],
 	onFilesChange,
-	onUploaded,
-	sessionToken = ''
+	sessionToken
 }: {
 	files: Id<'files'>[];
 	onFilesChange: (fileIds: Id<'files'>[]) => void;
-	/** Reports fresh uploads, so the owner can delete them if never saved. */
-	onUploaded?: (fileIds: Id<'files'>[]) => void;
-	sessionToken?: string;
+	sessionToken: string;
 } = $props();
 
-const ALLOWED_TYPES = ['image/', 'application/pdf'];
-const MAX_BYTES = 10 * 1024 * 1024;
+const MAX_MB = ATTACHMENT_MAX_BYTES / 1024 / 1024;
 
 const client = useConvexClient();
 let isUploading = $state(false);
@@ -32,7 +34,8 @@ let dragOver = $state(false);
 let uploadError = $state<string | null>(null);
 let copiedFileId = $state<Id<'files'> | null>(null);
 let copyTimer: ReturnType<typeof setTimeout> | null = null;
-let uploadedFiles = $state<FileDoc[]>([]);
+let uploadedFiles = $state<PublicFile[]>([]);
+let fileInput = $state<HTMLInputElement>();
 
 // Mirror the `files` prop; the token drops a slower, superseded load.
 let loadToken = 0;
@@ -57,7 +60,7 @@ async function uploadOne(file: File): Promise<Id<'files'>> {
 	const { key, url } = await client.mutation(api.files.generateUploadUrl, { sessionToken });
 	const put = await fetch(url, { method: 'PUT', body: file });
 	if (!put.ok) throw new Error('Upload failed');
-	return await client.mutation(api.files.updateFileMetadataByStorageId, {
+	return await client.mutation(api.files.recordUpload, {
 		sessionToken,
 		storageId: key,
 		name: file.name,
@@ -68,11 +71,10 @@ async function uploadOne(file: File): Promise<Id<'files'>> {
 
 async function handleFileUpload(fileList: FileList) {
 	if (!fileList.length) return;
-	if (!sessionToken) {
-		uploadError = '로그인이 필요합니다.';
+	if (files.length + fileList.length > MAX_ATTACHMENTS) {
+		uploadError = `파일은 ${MAX_ATTACHMENTS}개까지 첨부할 수 있습니다`;
 		return;
 	}
-
 	isUploading = true;
 	uploadError = null;
 	const rejected: string[] = [];
@@ -80,12 +82,12 @@ async function handleFileUpload(fileList: FileList) {
 	// Each file stands alone, so one failure doesn't strand the ones that landed.
 	const ids = await Promise.all(
 		Array.from(fileList).map(async (file) => {
-			if (!ALLOWED_TYPES.some((type) => file.type.startsWith(type))) {
+			if (!isAttachmentType(file.type)) {
 				rejected.push(`${file.name} — 이미지 또는 PDF만 올릴 수 있습니다`);
 				return null;
 			}
-			if (file.size > MAX_BYTES) {
-				rejected.push(`${file.name} — 10MB를 넘습니다`);
+			if (file.size > ATTACHMENT_MAX_BYTES) {
+				rejected.push(`${file.name} — ${MAX_MB}MB를 넘습니다`);
 				return null;
 			}
 			try {
@@ -98,20 +100,17 @@ async function handleFileUpload(fileList: FileList) {
 	);
 
 	const newIds = ids.filter((id): id is Id<'files'> => id !== null);
-	if (newIds.length > 0) {
-		onUploaded?.(newIds);
-		onFilesChange([...files, ...newIds]);
-	}
+	if (newIds.length > 0) onFilesChange([...files, ...newIds]);
 	if (rejected.length > 0) uploadError = rejected.join('\n');
 	isUploading = false;
 }
 
-// Detach only; the editor deletes the file once the notice is saved without it.
+// Detach only; a file no saved notice lists is collected on the server.
 function removeFile(fileId: Id<'files'>) {
 	onFilesChange(files.filter((id) => id !== fileId));
 }
 
-async function copyMarkdown(file: FileDoc) {
+async function copyMarkdown(file: PublicFile) {
 	const markdown = file.type.startsWith('image/') ? `![${file.name}](${file.url})` : `[${file.name}](${file.url})`;
 	try {
 		if (!navigator.clipboard || !window.isSecureContext) throw new Error('no clipboard');
@@ -164,14 +163,14 @@ function handleDrop(e: DragEvent) {
 		<input
 			type="file"
 			multiple
-			accept="image/*,application/pdf"
+			accept={ATTACHMENT_ACCEPT}
+			bind:this={fileInput}
 			onchange={async (e) => {
 				const input = e.currentTarget;
 				if (input.files) await handleFileUpload(input.files);
 				input.value = '';
 			}}
 			class="hidden"
-			id="file-upload"
 			disabled={isUploading}
 		/>
 
@@ -182,7 +181,7 @@ function handleDrop(e: DragEvent) {
 			</div>
 		{:else}
 			<p class="text-sm text-muted-foreground mb-3">이미지나 PDF 파일을 드래그하거나 클릭해서 업로드하세요</p>
-			<PillButton text="파일 추가" variant="secondary" onclick={() => document.getElementById('file-upload')?.click()} />
+			<PillButton text="파일 추가" variant="secondary" onclick={() => fileInput?.click()} />
 		{/if}
 	</div>
 

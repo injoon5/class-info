@@ -6,47 +6,27 @@ import type { PublicEvent } from '@class-info/backend/convex/validators';
 import PageMeta from '#lib/components/PageMeta.svelte';
 import NoticeCard from '#lib/components/notices/NoticeCard.svelte';
 import SectionHeader from '#lib/components/ui/SectionHeader.svelte';
-import {
-	addDaysYyyymmdd,
-	ddayLabel,
-	mondayYyyymmddOf,
-	relativeDayLabel,
-	shortDate,
-	weekOffsetBetween,
-	ymdParts,
-	ymdWeekday
-} from '#lib/date.js';
+import { addDays, dayLabel, ddayLabel, weekdayOf, ymdParts } from '@class-info/backend/convex/dates';
 import { eventChrome } from '#lib/eventChrome.js';
-import type { DayGroup, MinimalNotice } from '#lib/notices.js';
-import { timetableForWeek } from '#lib/timetable.js';
+import type { DayGroup, MinimalNotice } from '@class-info/backend/convex/validators';
 import type { PageData } from './$types.js';
 
 const { data }: { data: PageData } = $props();
 
 const noticesQuery = useQuery(
 	api.notices.currentGroups,
-	() => ({ cutoff: data.cutoff, today: data.today }),
+	() => data.clock,
 	() => ({ initialData: data.currentGroups, keepPreviousData: true })
 );
 
 // The display day is today until the 4pm rollover, then the next school day.
 const displayDay = $derived(data.displayDay);
-const todayYmd = $derived(data.todayYmd);
+const todayYmd = $derived(data.clock.today);
 const display = $derived(ymdParts(displayDay));
-const isTomorrow = $derived(displayDay === addDaysYyyymmdd(todayYmd, 1));
+const isTomorrow = $derived(displayDay === addDays(todayYmd, 1));
 
 // ── Timetable ─────────────────────────────────────────────────────────────────
-const displaySchedule = $derived.by(() => {
-	if (!display) return [];
-	const dayIndex = ymdWeekday(displayDay) - 1;
-	if (dayIndex < 0 || dayIndex > 4) return [];
-	const week = timetableForWeek(
-		[data.timetable, data.nextWeekTimetable],
-		mondayYyyymmddOf(displayDay),
-		weekOffsetBetween(todayYmd, displayDay)
-	);
-	return week?.timetable[dayIndex] ?? [];
-});
+const displaySchedule = $derived(data.timetable?.timetable[weekdayOf(displayDay) - 1] ?? []);
 
 // ── Meals ─────────────────────────────────────────────────────────────────────
 const mealDays = $derived([...(data.meals?.thisWeek?.days ?? []), ...(data.meals?.nextWeek?.days ?? [])]);
@@ -69,11 +49,7 @@ const mealSlots = $derived.by(() => {
 });
 
 // ── Events ────────────────────────────────────────────────────────────────────
-const events = $derived(
-	(data.events ?? [])
-		.filter((e) => e.title !== '토요휴업일')
-		.sort((a, b) => a.date.localeCompare(b.date))
-);
+const events = $derived([...data.events].sort((a, b) => a.date.localeCompare(b.date)));
 const displayDayEvents = $derived(events.filter((e) => e.date === displayDay));
 // From today, not the display day, so today's events don't vanish at 4pm.
 const upcomingEvents = $derived(events.filter((e) => e.date >= todayYmd));
@@ -82,10 +58,6 @@ function eventTypeLabel(event: PublicEvent): string {
 	return event.source === 'custom' ? '' : (event.eventType ?? '');
 }
 
-// "오늘"/"내일" only where true; the display day can be days away.
-function dayLabel(ymd: string): string {
-	return relativeDayLabel(ymd, todayYmd) || shortDate(ymd);
-}
 
 // ── Notices ───────────────────────────────────────────────────────────────────
 const PREVIEW_NOTICE_LIMIT = 4;
@@ -188,7 +160,7 @@ const peekNotice = $derived<MinimalNotice | null>(
 						<div class={['flex flex-col', i > 0 && 'border-l border-border pl-4 sm:pl-6', i < mealSlots.length - 1 && 'pr-4 sm:pr-6']}>
 							<p class="text-sm font-semibold text-muted-foreground mb-2">
 								{#if pendingTodayDinner}
-									<span class={slot.day === todayYmd ? '' : 'text-amber-700 dark:text-amber-400'}>{dayLabel(slot.day)}</span>
+									<span class={slot.day === todayYmd ? '' : 'text-amber-700 dark:text-amber-400'}>{dayLabel(slot.day, todayYmd)}</span>
 								{/if}
 								{slot.type}
 							</p>
@@ -274,7 +246,7 @@ const peekNotice = $derived<MinimalNotice | null>(
 									? 'font-semibold text-foreground'
 									: 'text-muted-foreground'}"
 							>
-								{dayLabel(event.date)}
+								{dayLabel(event.date, todayYmd)}
 							</span>
 						</li>
 					{/each}

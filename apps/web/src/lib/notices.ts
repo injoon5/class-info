@@ -1,7 +1,10 @@
-import { parseIsoDate, weekdayKrUtc } from '#lib/date.js';
+import { ymdFromIso, ymdParts } from '@class-info/backend/convex/dates';
 import type { DayGroup, MinimalNotice } from '@class-info/backend/convex/validators';
 
-export type { DayGroup, MinimalNotice };
+// Slugless notices predate slugs; their links use the id.
+export function noticePath(notice: { _id: string; slug?: string }): string {
+	return `/notice/${notice.slug || notice._id}`;
+}
 
 export function noticeTypeClass(type: MinimalNotice['type']) {
 	switch (type) {
@@ -24,12 +27,8 @@ export function generateCopyText(groups: DayGroup[]): string {
 		const due = group.notices.filter((n) => n.type === '수행평가');
 		const first = due[0];
 		if (!first) continue;
-		const parsed = parseIsoDate(first.dueDate);
-		const date = group.isToday
-			? '오늘'
-			: parsed
-				? `${parsed.m}/${parsed.d}(${weekdayKrUtc(parsed.y, parsed.m, parsed.d)})`
-				: group.displayDate;
+		const p = ymdParts(ymdFromIso(first.dueDate) ?? '');
+		const date = group.isToday ? '오늘' : p ? `${p.month}/${p.day}(${p.weekday})` : group.displayDate;
 		lines.push(`${date} ${due.map((n) => `${n.subject} ${n.title}`).join(', ')}`);
 	}
 	return lines.length > 0 ? `📢수행평가 안내\n${lines.join('\n')}` : '';

@@ -26,8 +26,8 @@ export const PANEL_OPEN_MS = 360;
 export const tweenPanel = { duration: tweenMs(PANEL_OPEN_MS), easing: expoOut };
 export const PANEL_CLOSE_MS = 180;
 export const tweenPanelClose = { duration: tweenMs(PANEL_CLOSE_MS), easing: cubicIn };
-export const tweenFade = { duration: tweenMs(200), easing: expoOut };
-export const tweenCaret = { duration: tweenMs(200), easing: expoOut };
+/** A fade or a caret's turn. */
+export const tweenShort = { duration: tweenMs(200), easing: expoOut };
 
 // ── Springs, for the sheet a finger drives ──────────────────────────────────
 // A tween ignores release velocity and can't be grabbed mid-flight, so the
@@ -131,42 +131,24 @@ export const SHEET_PRESENT = { damping: 1, response: 0.34 };
 /** Leaving, from a tap or carrying a throw's velocity. */
 export const SHEET_DISMISS = { damping: 1, response: 0.3 };
 
-export const REVEAL_RISE = 8;
-
 /**
- * Content arriving inside a box that is opening: it rises the last few pixels
- * on the same `expoOut` as the height, and fades in only once the box is most
- * of the way open. Intro only; pair with `fadeOut` for the exit.
+ * Content arriving inside a box that is opening: it rises the last 8px on the
+ * same `expoOut` as the height, and fades in only once the box is most of the
+ * way open (from 80ms, over 200ms). Intro only; pair with `fadeOut` for the exit.
  */
-export function reveal(
-	_node: Element,
-	{
-		y = REVEAL_RISE,
-		duration = 300,
-		delay = 0,
-		fadeDelay = 80,
-		fadeDuration = 200
-	}: {
-		y?: number;
-		duration?: number;
-		delay?: number;
-		fadeDelay?: number;
-		fadeDuration?: number;
-	} = {}
-): TransitionConfig {
-	const total = ms(duration);
+export function reveal(_node: Element): TransitionConfig {
+	const total = ms(300);
 	if (total === 0) return { duration: 0 };
 
-	const fadeStart = ms(fadeDelay);
-	const fadeSpan = ms(fadeDuration);
+	const fadeStart = ms(80);
+	const fadeSpan = ms(200);
 
 	return {
-		delay: ms(delay),
 		duration: total,
 		easing: linear,
 		css: (t: number) => {
-			const rise = (1 - expoOut(t)) * y;
-			const faded = fadeSpan > 0 ? (t * total - fadeStart) / fadeSpan : 1;
+			const rise = (1 - expoOut(t)) * 8;
+			const faded = (t * total - fadeStart) / fadeSpan;
 			const opacity = expoOut(Math.min(Math.max(faded, 0), 1));
 			return `transform: translate3d(0, ${rise.toFixed(2)}px, 0); opacity: ${opacity.toFixed(3)};`;
 		}
@@ -237,17 +219,14 @@ export function blurFade(
 	{
 		duration = 200,
 		easing = expoOut,
-		blur = 4,
-		delay = 0
+		blur = 5
 	}: {
 		duration?: number;
 		easing?: EasingFunction;
 		blur?: number;
-		delay?: number;
 	} = {}
 ): TransitionConfig {
 	return {
-		delay: ms(delay),
 		duration: ms(duration),
 		easing,
 		css: (t: number, u: number) => `opacity: ${t}; filter: blur(${(u * blur).toFixed(2)}px);`

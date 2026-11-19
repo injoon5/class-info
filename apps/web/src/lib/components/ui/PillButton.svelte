@@ -3,9 +3,7 @@ import type { Snippet } from 'svelte';
 import MorphLabel from './MorphLabel.svelte';
 import Spinner from './Spinner.svelte';
 
-// Variant → classes, so every pill shares its hover and press fills.
-
-type Variant = 'primary' | 'secondary' | 'ghost' | 'danger';
+type Variant = 'primary' | 'secondary' | 'ghost';
 
 const {
 	text,
@@ -30,7 +28,7 @@ const {
 	size?: 'sm' | 'md';
 	/** Rings the one control a user with nothing on screen should press. */
 	emphasized?: boolean;
-	/** Shows a spinner in place of nothing; keep `text` as the pending label. */
+	/** Shows a spinner and disables the button; keep `text` as the pending label. */
 	pending?: boolean;
 	/** Animate the button's width when `text` changes instead of snapping. */
 	morph?: boolean;
@@ -44,9 +42,7 @@ const VARIANTS: Record<Variant, string> = {
 	secondary:
 		'border border-border text-foreground enabled:pointer:hover:bg-muted enabled:active:bg-border',
 	ghost:
-		'text-muted-foreground enabled:pointer:hover:text-foreground enabled:pointer:hover:bg-muted enabled:active:bg-border',
-	danger:
-		'border border-border text-destructive enabled:pointer:hover:bg-destructive/10 enabled:active:bg-destructive/20'
+		'text-muted-foreground enabled:pointer:hover:text-foreground enabled:pointer:hover:bg-muted enabled:active:bg-border'
 };
 
 const SIZES: Record<'sm' | 'md', string> = {
@@ -66,11 +62,9 @@ const base = $derived(
 {/snippet}
 
 {#if href}
-	<a {href} class={base} aria-disabled={disabled || undefined}>
-		{#if children}{@render children()}{:else if morph && text}<MorphLabel {text} />{:else}{text}{/if}
-	</a>
+	<a {href} class={base}>{text}</a>
 {:else}
-	<button {type} {onclick} {disabled} class={base} aria-busy={pending || undefined}>
+	<button {type} {onclick} disabled={disabled || pending} class={base} aria-busy={pending || undefined}>
 		{#if children}
 			{#if pending}{@render spinner()}{/if}
 			{@render children()}

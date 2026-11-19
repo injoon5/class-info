@@ -1,5 +1,5 @@
 /// <reference types="vite/client" />
-import { afterEach, describe, expect, test, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import { convexTest } from "convex-test";
 import { api, internal } from "./_generated/api";
 import schema from "./schema";
@@ -7,6 +7,7 @@ import schema from "./schema";
 const modules = import.meta.glob("./**/*.*s");
 
 const TOKEN = "test-admin-token";
+const WEEKS = ["20260817", "20260824"] as const;
 
 type SeedSlot = {
   period: number;
@@ -32,7 +33,7 @@ async function withAdmin(week?: { week: 0 | 1; timetable: SeedSlot[][]; day_time
     });
     if (week) {
       await ctx.db.insert("timetables", {
-        week: week.week,
+        weekStart: WEEKS[week.week],
         day_time: week.day_time ?? [],
         timetable: week.timetable.map((day) =>
           day.map((s) => ({
@@ -73,7 +74,7 @@ describe("timetable.snapshotFull", () => {
         [slot(1, "체육", "정")],
       ],
     });
-    await t.mutation(api.timetable.snapshotFull, { sessionToken: TOKEN, week: 0 });
+    await t.mutation(api.timetable.snapshotFull, { sessionToken: TOKEN, weekStart: WEEKS[0] });
 
     const full = await t.query(api.timetable.getFull, {});
     expect(full).not.toBeNull();
@@ -108,7 +109,7 @@ describe("timetable.snapshotFull", () => {
         [],
       ],
     });
-    await t.mutation(api.timetable.snapshotFull, { sessionToken: TOKEN, week: 0 });
+    await t.mutation(api.timetable.snapshotFull, { sessionToken: TOKEN, weekStart: WEEKS[0] });
 
     const full = await t.query(api.timetable.getFull, {});
     expect(full!.timetable[0]).toEqual([{ subject: "국어", teacher: "김" }]);
@@ -116,14 +117,14 @@ describe("timetable.snapshotFull", () => {
 
   test("a second snapshot replaces the first rather than appending to it", async () => {
     const t = await withAdmin({ week: 0, timetable: [[slot(1, "국어", "김")], [], [], [], []] });
-    await t.mutation(api.timetable.snapshotFull, { sessionToken: TOKEN, week: 0 });
+    await t.mutation(api.timetable.snapshotFull, { sessionToken: TOKEN, weekStart: WEEKS[0] });
     await t.run(async (ctx) => {
       const row = await ctx.db.query("timetables").first();
       await ctx.db.patch(row!._id, {
         timetable: [[{ period: 1, subject: "수학", teacher: "이", replaced: false, original: null }], [], [], [], []],
       });
     });
-    await t.mutation(api.timetable.snapshotFull, { sessionToken: TOKEN, week: 0 });
+    await t.mutation(api.timetable.snapshotFull, { sessionToken: TOKEN, weekStart: WEEKS[0] });
 
     const rows = await t.run((ctx) => ctx.db.query("fullTimetable").collect());
     expect(rows).toHaveLength(1);
@@ -135,7 +136,7 @@ describe("timetable.snapshotFull", () => {
       week: 0,
       timetable: [[slot(1, "국어", "김"), slot(3, "수학", "이")], [], [], [], []],
     });
-    await t.mutation(api.timetable.snapshotFull, { sessionToken: TOKEN, week: 0 });
+    await t.mutation(api.timetable.snapshotFull, { sessionToken: TOKEN, weekStart: WEEKS[0] });
     expect(subjects((await t.query(api.timetable.getFull, {}))!.timetable)[0]).toEqual([
       "국어",
       "",
@@ -146,14 +147,14 @@ describe("timetable.snapshotFull", () => {
   test("refuses a week that has no fetched timetable", async () => {
     const t = await withAdmin();
     await expect(
-      t.mutation(api.timetable.snapshotFull, { sessionToken: TOKEN, week: 1 }),
-    ).rejects.toThrow(/snapshot/);
+      t.mutation(api.timetable.snapshotFull, { sessionToken: TOKEN, weekStart: WEEKS[1] }),
+    ).rejects.toThrow(/가져올 시간표가 없어요/);
   });
 
   test("refuses an unauthenticated caller", async () => {
     const t = await withAdmin({ week: 0, timetable: [[slot(1, "국어", "김")], [], [], [], []] });
     await expect(
-      t.mutation(api.timetable.snapshotFull, { sessionToken: "nope", week: 0 }),
+      t.mutation(api.timetable.snapshotFull, { sessionToken: "nope", weekStart: WEEKS[0] }),
     ).rejects.toThrow(/Unauthorized/);
     expect(await t.query(api.timetable.getFull, {})).toBeNull();
   });
@@ -222,7 +223,7 @@ describe("timetable.setFullDayLength", () => {
         [],
       ],
     });
-    await t.mutation(api.timetable.snapshotFull, { sessionToken: TOKEN, week: 0 });
+    await t.mutation(api.timetable.snapshotFull, { sessionToken: TOKEN, weekStart: WEEKS[0] });
 
     await t.mutation(api.timetable.setFullDayLength, { sessionToken: TOKEN, day: 0, length: 2 });
     expect(subjects((await t.query(api.timetable.getFull, {}))!.timetable)).toEqual([
@@ -255,7 +256,10 @@ describe("timetable.setFullDayLength", () => {
 
 // ── Fetched weeks ────────────────────────────────────────────────────────────
 
-const ARGS = { grade: 1, classno: 3, week: 0 as const, schoolcode: "7010208" };
+const ARGS = { offsetWeeks: 0 };
+// Every test runs on Thursday 2026-08-20, 12:00 in the school's zone, so
+// offset 0 is the week of Monday 2026-08-17.
+const THIS_MONDAY = WEEKS[0];
 
 type FetchedSlot = {
   period: number;
@@ -322,10 +326,10 @@ function stubFetch(...responses: Array<Response | (() => Response)>): string[] {
   return urls;
 }
 
-async function seedWeek(t: ReturnType<typeof convexTest>, week: number) {
+async function seedWeek(t: ReturnType<typeof convexTest>) {
   await t.run(async (ctx) => {
     await ctx.db.insert("timetables", {
-      week,
+      weekStart: THIS_MONDAY,
       day_time: COMCIGAN.day_time,
       timetable: COMCIGAN.timetable,
       update_date: COMCIGAN.update_date,
@@ -334,44 +338,45 @@ async function seedWeek(t: ReturnType<typeof convexTest>, week: number) {
   });
 }
 
+beforeEach(() => {
+  vi.useFakeTimers({ toFake: ["Date"] });
+  vi.setSystemTime(new Date("2026-08-20T03:00:00Z"));
+});
+
 afterEach(() => {
+  vi.useRealTimers();
   vi.unstubAllGlobals();
 });
 
-describe("timetable.fetchAndSave — source", () => {
+describe("timetable.fetchWeek — source", () => {
   test("always asks for the merged grid rather than trusting the API's default", async () => {
     const t = convexTest(schema, modules);
     const urls = stubFetch(jsonResponse(COMCIGAN));
-    await t.action(internal.timetable.fetchAndSave, ARGS);
+    await t.action(internal.timetable.fetchWeek, ARGS);
     expect(urls[0]).toContain("source=auto");
     expect(urls[0]).toContain("schoolcode=7010208");
+    expect(urls[0]).toContain("grade=1");
+    expect(urls[0]).toContain("classno=3");
   });
 
   test("stamps the Monday of the week it fetched", async () => {
-    vi.useFakeTimers();
-    // Thursday 2026-08-20, 12:00 KST.
-    vi.setSystemTime(new Date("2026-08-20T03:00:00Z"));
-    try {
-      const t = convexTest(schema, modules);
-      stubFetch(jsonResponse(COMCIGAN));
-      await t.action(internal.timetable.fetchAndSave, ARGS);
-      await t.action(internal.timetable.fetchAndSave, { ...ARGS, week: 1 });
-      expect((await t.query(api.timetable.getByWeek, { week: 0 }))!.weekStart).toBe("20260817");
-      expect((await t.query(api.timetable.getByWeek, { week: 1 }))!.weekStart).toBe("20260824");
-    } finally {
-      vi.useRealTimers();
-    }
+    const t = convexTest(schema, modules);
+    stubFetch(jsonResponse(COMCIGAN));
+    await t.action(internal.timetable.fetchWeek, ARGS);
+    await t.action(internal.timetable.fetchWeek, { offsetWeeks: 1 });
+    expect(await t.query(api.timetable.getWeek, { weekStart: "20260817" })).not.toBeNull();
+    expect(await t.query(api.timetable.getWeek, { weekStart: "20260824" })).not.toBeNull();
   });
 });
 
-describe("timetable.fetchAndSave — NEIS-only weeks", () => {
+describe("timetable.fetchWeek — NEIS-only weeks", () => {
   test("stores a week with no bell times, teachers, or LOAD_DTM", async () => {
     const t = convexTest(schema, modules);
     stubFetch(jsonResponse(NEIS_ONLY));
 
-    await t.action(internal.timetable.fetchAndSave, ARGS);
+    await t.action(internal.timetable.fetchWeek, ARGS);
 
-    const stored = await t.query(api.timetable.getByWeek, { week: 0 });
+    const stored = await t.query(api.timetable.getWeek, { weekStart: THIS_MONDAY });
     expect(stored).not.toBeNull();
     expect(stored!.day_time).toEqual([]);
     expect(stored!.update_date).toBe("");
@@ -391,32 +396,32 @@ describe("timetable.fetchAndSave — NEIS-only weeks", () => {
       })
     );
 
-    await t.action(internal.timetable.fetchAndSave, ARGS);
+    await t.action(internal.timetable.fetchWeek, ARGS);
 
-    const stored = await t.query(api.timetable.getByWeek, { week: 0 });
+    const stored = await t.query(api.timetable.getWeek, { weekStart: THIS_MONDAY });
     expect(stored!.timetable[0]!.map((s) => s.period)).toEqual([2, 4]);
   });
 });
 
-describe("timetable.fetchAndSave — errors", () => {
+describe("timetable.fetchWeek — errors", () => {
   // 외대부고 (7531146) answers this way year-round: valid in NEIS, but it
   // publishes no timetable to either source. A 방학 looks identical.
   test("treats an empty week as nothing to store, not a failure", async () => {
     const t = convexTest(schema, modules);
-    await seedWeek(t, 0);
+    await seedWeek(t);
     stubFetch(apiError("NEIS_DATA_NOT_FOUND", 404, "No timetable rows for this week."));
 
-    await expect(t.action(internal.timetable.fetchAndSave, ARGS)).resolves.toBeNull();
+    await expect(t.action(internal.timetable.fetchWeek, ARGS)).resolves.toBeNull();
 
     // A 방학 must not blank a week the app is still showing.
-    const stored = await t.query(api.timetable.getByWeek, { week: 0 });
+    const stored = await t.query(api.timetable.getWeek, { weekStart: THIS_MONDAY });
     expect(stored!.timetable.flat()).toHaveLength(3);
   });
 
   test("surfaces the error code when the school itself does not resolve", async () => {
     const t = convexTest(schema, modules);
     stubFetch(apiError("TIMETABLE_SCHOOL_NOT_FOUND", 404, "No school matched this name."));
-    await expect(t.action(internal.timetable.fetchAndSave, ARGS)).rejects.toThrow(
+    await expect(t.action(internal.timetable.fetchWeek, ARGS)).rejects.toThrow(
       /TIMETABLE_SCHOOL_NOT_FOUND/
     );
   });
@@ -424,7 +429,7 @@ describe("timetable.fetchAndSave — errors", () => {
   test("surfaces a NEIS upstream failure as a 502", async () => {
     const t = convexTest(schema, modules);
     stubFetch(apiError("NEIS_UPSTREAM_ERROR", 502, "NEIS request failed."));
-    await expect(t.action(internal.timetable.fetchAndSave, ARGS)).rejects.toThrow(
+    await expect(t.action(internal.timetable.fetchWeek, ARGS)).rejects.toThrow(
       /502 NEIS_UPSTREAM_ERROR/
     );
   });
@@ -432,17 +437,17 @@ describe("timetable.fetchAndSave — errors", () => {
   test("still reports a failure that carries no error envelope", async () => {
     const t = convexTest(schema, modules);
     stubFetch(() => new Response("<html>502</html>", { status: 502 }));
-    await expect(t.action(internal.timetable.fetchAndSave, ARGS)).rejects.toThrow(/502/);
+    await expect(t.action(internal.timetable.fetchWeek, ARGS)).rejects.toThrow(/502/);
   });
 
   test("keeps the stored week when the grid comes back empty", async () => {
     const t = convexTest(schema, modules);
-    await seedWeek(t, 0);
+    await seedWeek(t);
     stubFetch(jsonResponse({ day_time: [], timetable: [[], [], [], [], []], update_date: "" }));
 
-    await expect(t.action(internal.timetable.fetchAndSave, ARGS)).resolves.toBeNull();
+    await expect(t.action(internal.timetable.fetchWeek, ARGS)).resolves.toBeNull();
 
-    const stored = await t.query(api.timetable.getByWeek, { week: 0 });
+    const stored = await t.query(api.timetable.getWeek, { weekStart: THIS_MONDAY });
     expect(stored!.day_time).toEqual(COMCIGAN.day_time);
     expect(stored!.timetable.flat()).toHaveLength(3);
   });
@@ -450,7 +455,7 @@ describe("timetable.fetchAndSave — errors", () => {
   test("rejects a payload that is not a timetable at all", async () => {
     const t = convexTest(schema, modules);
     stubFetch(jsonResponse({ day_time: "08:10", timetable: null }));
-    await expect(t.action(internal.timetable.fetchAndSave, ARGS)).rejects.toThrow(/payload shape/);
+    await expect(t.action(internal.timetable.fetchWeek, ARGS)).rejects.toThrow(/payload shape/);
   });
 
   test("drops junk slots instead of failing the write", async () => {
@@ -463,9 +468,9 @@ describe("timetable.fetchAndSave — errors", () => {
       })
     );
 
-    await t.action(internal.timetable.fetchAndSave, ARGS);
+    await t.action(internal.timetable.fetchWeek, ARGS);
 
-    const stored = await t.query(api.timetable.getByWeek, { week: 0 });
+    const stored = await t.query(api.timetable.getWeek, { weekStart: THIS_MONDAY });
     expect(stored!.day_time).toEqual(["1(08:10)"]);
     expect(stored!.update_date).toBe("");
     expect(stored!.timetable[0]!.map((s) => s.subject)).toEqual(["체육"]);

@@ -1,10 +1,21 @@
 import type { Cookies } from '@sveltejs/kit';
 import { api } from '@class-info/backend/convex/_generated/api';
 import { convexHttp } from '#lib/convex.js';
-import { ADMIN_SESSION_TTL_MS } from '@class-info/backend/convex/config';
+import { ADMIN_SESSION_TTL_MS } from '@class-info/backend/convex/validators';
 
 export const SESSION_COOKIE = 'admin_session';
-export const SESSION_MAX_AGE = ADMIN_SESSION_TTL_MS / 1000; // matches the Convex session TTL
+
+function cookieOptions(url: URL) {
+	return { path: '/', sameSite: 'strict', secure: url.protocol === 'https:', httpOnly: true } as const;
+}
+
+export function setSessionCookie(cookies: Cookies, url: URL, token: string): void {
+	cookies.set(SESSION_COOKIE, token, { ...cookieOptions(url), maxAge: ADMIN_SESSION_TTL_MS / 1000 });
+}
+
+export function clearSessionCookie(cookies: Cookies, url: URL): void {
+	cookies.delete(SESSION_COOKIE, cookieOptions(url));
+}
 
 /**
  * Resolve the admin session from the request cookies.
@@ -15,7 +26,8 @@ export const SESSION_MAX_AGE = ADMIN_SESSION_TTL_MS / 1000; // matches the Conve
  * or expired tokens get the cookie cleared.
  */
 export async function getAdminSession(
-	cookies: Cookies
+	cookies: Cookies,
+	url: URL
 ): Promise<{ isAuthenticated: boolean; sessionToken: string | null }> {
 	const token = cookies.get(SESSION_COOKIE);
 	if (!token) return { isAuthenticated: false, sessionToken: null };
@@ -28,6 +40,6 @@ export async function getAdminSession(
 		return { isAuthenticated: false, sessionToken: null };
 	}
 
-	cookies.delete(SESSION_COOKIE, { path: '/' });
+	clearSessionCookie(cookies, url);
 	return { isAuthenticated: false, sessionToken: null };
 }

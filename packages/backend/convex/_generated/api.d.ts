@@ -16,6 +16,7 @@ import type * as meals from "../meals.js";
 import type * as notices from "../notices.js";
 import type * as schedule from "../schedule.js";
 import type * as settings from "../settings.js";
+import type * as sync from "../sync.js";
 import type * as timetable from "../timetable.js";
 
 import type {
@@ -41,6 +42,7 @@ declare const fullApi: ApiFromModules<{
   notices: typeof notices;
   schedule: typeof schedule;
   settings: typeof settings;
+  sync: typeof sync;
   timetable: typeof timetable;
 }>;
 declare const fullApiWithMounts: typeof fullApi;

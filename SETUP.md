@@ -44,9 +44,9 @@ value you're expected to change:
 | `TIMEZONE_OFFSET_HOURS` | Hours east of UTC (`9` for KST) |
 | `DAY_ROLLOVER_HOUR` | Local hour the home page/timetable/meals flip to "tomorrow" |
 | `DINNER_END_HOUR` | Local hour after which tonight's dinner stops being "today's" |
-| `HOME_EVENT_WINDOW_DAYS`, `HOME_DDAY_LIMIT`, `SCHOOL_DAY_LOOKAHEAD`, `SCHEDULE_RANGE_MAX_DAYS` | How far ahead the home page and calendar look |
-| `DEFAULT_ADMIN_PIN`, `ADMIN_SESSION_TTL_MS`, `LOGIN_MAX_FAILS`, `LOGIN_WINDOW_MS`, `LOGIN_LOCKOUT_MS` | Admin login defaults and brute-force throttle |
-| `TIMETABLE_POLL_HOURS_UTC`, `SCHEDULE_SYNC_HOUR_UTC` | When the crons poll the school APIs |
+| `WEEK_POLL_HOURS`, `SCHEDULE_POLL_HOUR` | Local hours the crons poll the school API |
+| `HOME_EVENT_WINDOW_DAYS`, `HOME_DDAY_LIMIT` | How far ahead the home page's event list reaches, and how many D-days it shows |
+| `DEFAULT_ADMIN_PIN` | Fallback PIN until you set one (see below) |
 
 ### Finding your school's code
 

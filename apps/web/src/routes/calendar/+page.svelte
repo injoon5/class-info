@@ -1,26 +1,28 @@
 <script lang="ts">
 import { useQuery, useConvexClient } from 'convex-svelte';
+import { untrack } from 'svelte';
 import { fade, slide } from 'svelte/transition';
 import { api } from '@class-info/backend/convex/_generated/api';
 import type { Id } from '@class-info/backend/convex/_generated/dataModel';
 import { CLASS_LABEL } from '@class-info/backend/convex/config';
-import type { PublicEvent } from '@class-info/backend/convex/validators';
 import PageMeta from '#lib/components/PageMeta.svelte';
 import Drawer from '#lib/components/ui/Drawer.svelte';
 import HScroll from '#lib/components/ui/HScroll.svelte';
 import PillButton from '#lib/components/ui/PillButton.svelte';
 import Spinner from '#lib/components/ui/Spinner.svelte';
 import { focusOnElement } from '#lib/actions/focus.js';
-import { ddayLabel, getNowInKst, scheduleWindow, ymdFromParts, ymdParts } from '#lib/date.js';
+import {
+	WEEKDAYS_KR,
+	ddayLabel,
+	scheduleWindow,
+	weekdayOf,
+	ymdFromParts,
+	ymdParts
+} from '@class-info/backend/convex/dates';
 import { blurActiveElement } from '#lib/dom.js';
 import { adminErrorMessage } from '#lib/errors.js';
-import {
-	CUSTOM_COLOR_LABEL,
-	CUSTOM_COLOR_SWATCH,
-	CUSTOM_EVENT_COLORS,
-	eventChrome,
-	type CustomEventColor
-} from '#lib/eventChrome.js';
+import { CUSTOM_COLOR_LABEL, CUSTOM_COLOR_SWATCH, eventChrome } from '#lib/eventChrome.js';
+import { CUSTOM_EVENT_COLORS, type CustomEventColor, type PublicEvent } from '@class-info/backend/convex/validators';
 import { fadeFast, fadeInAfter, fadeOut, reveal, slideYBoth } from '#lib/transitions.js';
 import type { PageData } from './$types.js';
 
@@ -30,12 +32,15 @@ const client = useConvexClient();
 const todayStr = $derived(data.todayYmd);
 
 // Months are counted as year * 12 + month (0-indexed) to page across years.
-const nowKst = getNowInKst();
-const range = scheduleWindow(nowKst);
-const minIndex = range.startYear * 12 + range.startMonth;
-const maxIndex = range.endYear * 12 + range.endMonth;
+function monthIndexOf(ymd: string): number {
+	const p = ymdParts(ymd)!;
+	return p.year * 12 + p.month - 1;
+}
+const range = $derived(scheduleWindow(data.todayYmd));
+const minIndex = $derived(monthIndexOf(range.start));
+const maxIndex = $derived(monthIndexOf(range.end));
 
-let monthIndex = $state(nowKst.getFullYear() * 12 + nowKst.getMonth());
+let monthIndex = $state(untrack(() => monthIndexOf(data.todayYmd)));
 const displayYear = $derived(Math.floor(monthIndex / 12));
 const displayMonth = $derived(monthIndex % 12);
 
@@ -54,11 +59,11 @@ const eventsPending = $derived(eventsQuery.isLoading || eventsQuery.isStale);
 const WEEK_ROWS = 6;
 
 const calendarWeeks = $derived.by(() => {
-	const firstDay = new Date(displayYear, displayMonth, 1).getDay();
-	const daysInMonth = new Date(displayYear, displayMonth + 1, 0).getDate();
+	const firstDay = weekdayOf(ymdFromParts(displayYear, displayMonth + 1, 1));
+	const daysInMonth = ymdParts(ymdFromParts(displayYear, displayMonth + 2, 0))!.day;
 	const cells: ({ day: number; ymd: string } | null)[] = Array.from({ length: WEEK_ROWS * 7 }, (_, i) => {
 		const day = i - firstDay + 1;
-		return day >= 1 && day <= daysInMonth ? { day, ymd: ymdFromParts(displayYear, displayMonth, day) } : null;
+		return day >= 1 && day <= daysInMonth ? { day, ymd: ymdFromParts(displayYear, displayMonth + 1, day) } : null;
 	});
 	return Array.from({ length: WEEK_ROWS }, (_, w) => cells.slice(w * 7, w * 7 + 7));
 });
@@ -69,7 +74,7 @@ const eventsByDate = $derived.by(() => {
 	const all = eventsQuery.data ?? [];
 	for (const source of ['school', 'custom'] as const) {
 		for (const event of all) {
-			if (event.source !== source || event.title === '토요휴업일') continue;
+			if (event.source !== source) continue;
 			(map[event.date] ??= []).push(event);
 		}
 	}
@@ -173,7 +178,6 @@ async function handleDeleteCustomEvent(id: Id<'schedules'>) {
 	}
 }
 
-const dayNames = ['일', '월', '화', '수', '목', '금', '토'];
 </script>
 
 <PageMeta
@@ -217,7 +221,7 @@ const dayNames = ['일', '월', '화', '수', '목', '금', '토'];
 		{@render navButton(1)}
 	</div>
 
-	<HScroll anchor="[data-today-cell]" hint="좌우로 스크롤하세요">
+	<HScroll anchor="[data-today-cell]">
 		<!-- A fixed width: under HScroll's `w-max` wrapper a min-width alone let
 		     long event titles widen the grid month to month. -->
 		<div class="w-[max(100cqw,40rem)] border border-border rounded-xl overflow-hidden" aria-busy={eventsPending}>
@@ -226,7 +230,7 @@ const dayNames = ['일', '월', '화', '수', '목', '금', '토'];
 			{/if}
 
 			<div class="grid grid-cols-7 bg-muted border-b border-border">
-				{#each dayNames as name, i (name)}
+				{#each WEEKDAYS_KR as name, i (name)}
 					<div
 						class={[
 							'py-2.5 text-center text-sm font-semibold',
@@ -392,7 +396,7 @@ const dayNames = ['일', '월', '화', '수', '목', '금', '토'];
 							text={isSaving ? '저장 중…' : '저장'}
 							pending={isSaving}
 							onclick={handleAddEvent}
-							disabled={isSaving || !newEventTitle.trim()}
+							disabled={!newEventTitle.trim()}
 							class="flex-1"
 						/>
 						<PillButton text="취소" variant="secondary" onclick={closeForm} />

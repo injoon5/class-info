@@ -1,5 +1,6 @@
 <script lang="ts">
-import { noticeTypeClass, type MinimalNotice } from '#lib/notices.js';
+import type { MinimalNotice } from '@class-info/backend/convex/validators';
+import { noticePath, noticeTypeClass } from '#lib/notices.js';
 import FileIcon from '#lib/components/ui/FileIcon.svelte';
 
 const {
@@ -14,7 +15,7 @@ const isLink = $derived(interactive && Boolean(notice.summary.trim() || notice.h
 
 <svelte:element
 	this={isLink ? 'a' : 'div'}
-	href={isLink ? `/notice/${notice.slug || notice._id}` : undefined}
+	href={isLink ? noticePath(notice) : undefined}
 	class={[
 		'block border border-border rounded-xl p-2.5 sm:p-3',
 		isPast ? 'bg-card/60 opacity-80' : 'bg-card',
